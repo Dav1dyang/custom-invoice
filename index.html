@@ -122,10 +122,10 @@
             <legend>PDF Fonts</legend>
             <div class="row">
               <div class="group">
-                <label>Header — Fat Rounded (Rubik Mono One)</label>
+                <label>Header — Bold Sans-Serif (Rubik Bold)</label>
                 <input id="fontHdr" type="file" accept=".ttf" />
                 <div id="fontHdrStatus" class="note">
-                  Will load via CDN unless you upload a TTF here
+                  Will load from local files, then CDN, or upload a TTF here
                   <span class="status-dot warn"></span>
                 </div>
               </div>
@@ -133,14 +133,13 @@
                 <label>Body — Thin Monospace (DM Mono Light)</label>
                 <input id="fontBody" type="file" accept=".ttf" />
                 <div id="fontBodyStatus" class="note">
-                  Will load via CDN unless you upload a TTF here
+                  Will load from local files, then CDN, or upload a TTF here
                   <span class="status-dot warn"></span>
                 </div>
               </div>
             </div>
             <div class="note">
-              If both CDN and uploads fail, I'll fall back to Courier (headers)
-              and Helvetica (body).
+              Fonts load in order: local files → CDN → user uploads → system fallback (Courier/Helvetica).
             </div>
           </fieldset>
         </div>

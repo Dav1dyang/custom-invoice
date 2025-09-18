@@ -5,7 +5,8 @@
       "Read(//Users/davidyang/Downloads/**)",
       "Bash(node:*)",
       "Bash(open:*)",
-      "Read(//Users/davidyang/Desktop/Screenshots/**)"
+      "Read(//Users/davidyang/Desktop/Screenshots/**)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

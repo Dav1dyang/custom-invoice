@@ -690,14 +690,15 @@ async function fetchFirst(urls, timeoutMs = 8000) {
 
 const FONT_TARGETS = {
   hdr: {
-    name: 'RubikMonoOne',
-    vfs: 'RubikMonoOne.ttf',
+    name: 'RubikBold',
+    vfs: 'RubikBold.ttf',
     input: 'fontHdr',
     status: 'fontHdrStatus',
+    localPath: './fonts/Rubik/static/Rubik-Bold.ttf',
     urls: [
-      'https://cdn.jsdelivr.net/npm/@fontsource/rubik-mono-one@5.0.0/files/rubik-mono-one-latin-400-normal.ttf',
-      'https://fonts.gstatic.com/s/rubikmonoone/v17/UqyJK8kPP3hjw6ANTdfRk9YSN-8wRqQrc_j9.ttf',
-      'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/rubikmonoone/RubikMonoOne-Regular.ttf',
+      'https://fonts.gstatic.com/s/rubik/v28/iJWZBXyIfDnIV5PNhY1KTN7Z-Yh-B4iFVUUzdYPFkaVNA6w.ttf',
+      'https://cdn.jsdelivr.net/npm/@fontsource/rubik@5.0.0/files/rubik-latin-700-normal.ttf',
+      'https://github.com/google/fonts/raw/main/ofl/rubik/static/Rubik-Bold.ttf',
     ],
   },
   body: {
@@ -705,10 +706,11 @@ const FONT_TARGETS = {
     vfs: 'DMMono-Light.ttf',
     input: 'fontBody',
     status: 'fontBodyStatus',
+    localPath: './fonts/DM_Mono/DMMono-Light.ttf',
     urls: [
-      'https://cdn.jsdelivr.net/npm/@fontsource/dm-mono@5.0.0/files/dm-mono-latin-300-normal.ttf',
       'https://fonts.gstatic.com/s/dmmono/v14/aFTU7PB1QTsUX8KYthqQBK0ReMw.ttf',
-      'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/dmmono/DMMono-Light.ttf',
+      'https://cdn.jsdelivr.net/npm/@fontsource/dm-mono@5.0.0/files/dm-mono-latin-300-normal.ttf',
+      'https://github.com/googlefonts/dm-mono/raw/main/fonts/ttf/DMMono-Light.ttf',
     ],
   },
 }
@@ -724,6 +726,21 @@ async function loadLocalFont(which, file) {
   const ab = await file.arrayBuffer()
   window.__pdfFonts[which] = toB64(ab)
   setStatus(which, 'ok', 'Loaded local TTF')
+}
+
+async function loadLocalFontFromPath(which, path) {
+  try {
+    const response = await fetch(path, { cache: 'force-cache' })
+    if (response.ok) {
+      const ab = await response.arrayBuffer()
+      window.__pdfFonts[which] = toB64(ab)
+      setStatus(which, 'ok', 'Loaded from local')
+      return true
+    }
+  } catch (error) {
+    console.warn(`Failed to load local font from ${path}:`, error)
+  }
+  return false
 }
 
 Object.keys(FONT_TARGETS).forEach((k) => {
@@ -749,6 +766,7 @@ async function ensureFonts() {
   }
   fontsReady = (async () => {
     try {
+      // Try header font: user upload -> local file -> CDN
       if (window.__pdfFonts.hdr) {
         await addFromB64(
           FONT_TARGETS.hdr.name,
@@ -756,6 +774,12 @@ async function ensureFonts() {
           window.__pdfFonts.hdr
         )
         setStatus('hdr', 'ok', 'Embedded')
+      } else if (await loadLocalFontFromPath('hdr', FONT_TARGETS.hdr.localPath)) {
+        await addFromB64(
+          FONT_TARGETS.hdr.name,
+          FONT_TARGETS.hdr.vfs,
+          window.__pdfFonts.hdr
+        )
       } else {
         await addFromUrls(
           FONT_TARGETS.hdr.name,
@@ -764,6 +788,8 @@ async function ensureFonts() {
         )
         setStatus('hdr', 'ok', 'CDN loaded')
       }
+
+      // Try body font: user upload -> local file -> CDN
       if (window.__pdfFonts.body) {
         await addFromB64(
           FONT_TARGETS.body.name,
@@ -771,6 +797,12 @@ async function ensureFonts() {
           window.__pdfFonts.body
         )
         setStatus('body', 'ok', 'Embedded')
+      } else if (await loadLocalFontFromPath('body', FONT_TARGETS.body.localPath)) {
+        await addFromB64(
+          FONT_TARGETS.body.name,
+          FONT_TARGETS.body.vfs,
+          window.__pdfFonts.body
+        )
       } else {
         await addFromUrls(
           FONT_TARGETS.body.name,
@@ -779,6 +811,7 @@ async function ensureFonts() {
         )
         setStatus('body', 'ok', 'CDN loaded')
       }
+
       return {
         hdr: FONT_TARGETS.hdr.name,
         body: FONT_TARGETS.body.name,
