@@ -347,6 +347,123 @@
         font-size: 9px;
         line-height: 1.3;
       }
+      .invoice-head {
+        min-height: 120px;
+        border-bottom: 0.5px solid var(--border);
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+      .invoice-head__meta {
+        text-align: right;
+        font-size: 8px;
+        line-height: 1.2;
+      }
+      .invoice-head__title {
+        font-weight: 700;
+        letter-spacing: 1px;
+        margin-bottom: 3px;
+        font-size: 18px;
+      }
+      .invoice-head__number {
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      .invoice-meta {
+        font-size: 8px;
+      }
+      .invoice-logo {
+        max-height: 40px;
+        max-width: 180px;
+      }
+      .invoice-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        margin-bottom: 15px;
+      }
+      .invoice-panel {
+        border: 0.5px solid var(--border);
+        padding: 8px;
+      }
+      .invoice-panel__title {
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 7px;
+        letter-spacing: 1px;
+        border-bottom: 0.5px solid var(--border);
+        padding-bottom: 3px;
+        margin-bottom: 5px;
+      }
+      .invoice-panel__pre {
+        white-space: pre-line;
+      }
+      .invoice-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+        border: 0.5px solid var(--border);
+        font-size: 8px;
+        table-layout: fixed;
+      }
+      .invoice-table col:nth-child(1) {
+        width: 50%;
+      }
+      .invoice-table col:nth-child(2),
+      .invoice-table col:nth-child(3) {
+        width: 15%;
+      }
+      .invoice-table col:nth-child(4) {
+        width: 20%;
+      }
+      .invoice-table th,
+      .invoice-table td {
+        border: 0.5px solid var(--grid);
+        padding: 5px;
+      }
+      .invoice-table th:first-child,
+      .invoice-table td:first-child {
+        text-align: left;
+      }
+      .invoice-table th {
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .invoice-cell--center {
+        text-align: center;
+      }
+      .invoice-cell--right {
+        text-align: right;
+      }
+      .invoice-cell--em {
+        font-weight: 600;
+      }
+      .invoice-summary {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 15px;
+        margin-top: 15px;
+      }
+      .invoice-summary__totals {
+        margin-top: 5px;
+        font-size: 8px;
+      }
+      .invoice-summary__line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+      }
+      .invoice-summary__total {
+        display: flex;
+        justify-content: space-between;
+        border-top: 0.5px solid var(--border);
+        padding-top: 5px;
+        margin-top: 5px;
+        font-size: 10px;
+        font-weight: 700;
+      }
       .dl {
         text-align: center;
         margin-top: 30px;
@@ -655,7 +772,8 @@ Account Number: 483091305810</textarea
 
     <script>
       /* ----------------------------- THEME ----------------------------- */
-      const themeSel = document.getElementById('uiTheme')
+      const $ = (id) => document.getElementById(id)
+      const themeSel = $('uiTheme')
       const savedTheme = localStorage.getItem('uiTheme') || 'system'
       document.documentElement.setAttribute('data-theme', savedTheme)
       themeSel.value = savedTheme
@@ -817,97 +935,96 @@ Account Number: 483091305810</textarea
           .replace(/ /g, '-')
       }
       function renderPreview() {
+        const fmtMoney = (value) => `$${(+value || 0).toFixed(2)}`
+        const invoiceNumber = $('invoiceNumber').value
+        const currencyValue = $('currency').value
+        const fromNameVal = $('fromName').value
+        const fromWebsiteVal = $('fromWebsite').value
+        const fromPhoneVal = $('fromPhone').value
+        const fromAddressVal = $('fromAddress').value
+        const toCompanyVal = $('toCompany').value
+        const toNamesVal = $('toNames').value
+        const toAddressVal = $('toAddress').value
+        const toContactVal = $('toContact').value
+        const paymentInstructionsVal = $('paymentInstructions').value
+        const invoiceDateVal = $('invoiceDate').value
+        const dueDateVal = $('dueDate').value
         const items = getItems()
-        let subtotal = items.reduce((s, i) => s + (+i.amount || 0), 0)
-        let rows = items
+        const subtotal = items.reduce((sum, item) => sum + (+item.amount || 0), 0)
+        const rows = items
           .map(
-            (i) => `
-          <tr>
-            <td>${i.description}</td>
-            <td style="text-align:center">${i.qty}</td>
-            <td style="text-align:right">$${(+i.rate || 0).toFixed(2)}</td>
-            <td style="text-align:right;font-weight:600">$${(
-              +i.amount || 0
-            ).toFixed(2)}</td>
-          </tr>`
+            (item) => `
+              <tr>
+                <td>${item.description}</td>
+                <td class="invoice-cell--center">${item.qty}</td>
+                <td class="invoice-cell--right">${fmtMoney(item.rate)}</td>
+                <td class="invoice-cell--right invoice-cell--em">${fmtMoney(item.amount)}</td>
+              </tr>`
           )
           .join('')
         const logoHTML = logoDataUrl
-          ? `<img src="${logoDataUrl}" style="max-height:40px;max-width:180px">`
+          ? `<img class="invoice-logo" src="${logoDataUrl}" alt="Logo">`
           : ''
-        document.getElementById('invoiceContent').innerHTML = `
-          <div style="min-height:120px;border-bottom:0.5px solid var(--border);margin-bottom:20px;padding-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start">
+        $('invoiceContent').innerHTML = `
+          <div class="invoice-head">
             ${logoHTML}
-            <div style="text-align:right;font-size:8px;line-height:1.2">
-              <div style="font-weight:700;letter-spacing:1px;margin-bottom:3px;font-size:18px">INVOICE</div>
-              <div style="font-weight:700;text-transform:uppercase">${
-                document.getElementById('invoiceNumber').value
-              }</div>
+            <div class="invoice-head__meta">
+              <div class="invoice-head__title">INVOICE</div>
+              <div class="invoice-head__number">${invoiceNumber}</div>
               <div>REV: A</div>
             </div>
           </div>
-          <div style="font-size:8px">
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:15px">
-              <div style="border:0.5px solid var(--border);padding:8px">
-                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">SENDER</div>
-                <div><strong>${fromName.value}</strong><br>${
-          fromWebsite.value
-        }<br>TEL: ${fromPhone.value}<br>${fromAddress.value}</div>
+          <div class="invoice-meta">
+            <div class="invoice-grid">
+              <div class="invoice-panel">
+                <div class="invoice-panel__title">SENDER</div>
+                <div><strong>${fromNameVal}</strong><br>${fromWebsiteVal}<br>TEL: ${fromPhoneVal}<br>${fromAddressVal}</div>
               </div>
-              <div style="border:0.5px solid var(--border);padding:8px">
-                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">RECIPIENT</div>
-                <div><strong>${toCompany.value}</strong><br>ATTN: ${
-          toNames.value
-        }<br>${toAddress.value}</div>
+              <div class="invoice-panel">
+                <div class="invoice-panel__title">RECIPIENT</div>
+                <div><strong>${toCompanyVal}</strong><br>ATTN: ${toNamesVal}<br>${toAddressVal}</div>
               </div>
-              <div style="border:0.5px solid var(--border);padding:8px">
-                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">CONTACT</div>
-                <div style="white-space:pre-line">${toContact.value}</div>
+              <div class="invoice-panel">
+                <div class="invoice-panel__title">CONTACT</div>
+                <div class="invoice-panel__pre">${toContactVal}</div>
               </div>
-              <div style="border:0.5px solid var(--border);padding:8px">
-                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">SPECIFICATIONS</div>
-                <div>ISSUED: ${fmtDate(invoiceDate.value)}<br>DUE: ${fmtDate(
-          dueDate.value
-        )}<br>CURRENCY: ${currency.value}<br>TERMS: NET 30</div>
+              <div class="invoice-panel">
+                <div class="invoice-panel__title">SPECIFICATIONS</div>
+                <div>ISSUED: ${fmtDate(invoiceDateVal)}<br>DUE: ${fmtDate(dueDateVal)}<br>CURRENCY: ${currencyValue}<br>TERMS: NET 30</div>
               </div>
             </div>
-            <table style="width:100%;border-collapse:collapse;margin:15px 0;border:0.5px solid var(--border);font-size:8px;table-layout:fixed">
-              <colgroup><col style="width:50%"/><col style="width:15%"/><col style="width:15%"/><col style="width:20%"/></colgroup>
-              <thead><tr>
-                <th style="text-align:left;padding:5px;border:0.5px solid var(--grid)">DESCRIPTION</th>
-                <th style="text-align:center;padding:5px;border:0.5px solid var(--grid)">QTY/HRS</th>
-                <th style="text-align:right;padding:5px;border:0.5px solid var(--grid)">RATE</th>
-                <th style="text-align:right;padding:5px;border:0.5px solid var(--grid)">AMOUNT</th>
-              </tr></thead>
+            <table class="invoice-table">
+              <colgroup><col /><col /><col /><col /></colgroup>
+              <thead>
+                <tr>
+                  <th>DESCRIPTION</th>
+                  <th class="invoice-cell--center">QTY/HRS</th>
+                  <th class="invoice-cell--right">RATE</th>
+                  <th class="invoice-cell--right">AMOUNT</th>
+                </tr>
+              </thead>
               <tbody>${rows}</tbody>
             </table>
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:15px;margin-top:15px">
-              <div style="border:0.5px solid var(--border);padding:8px">
-                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">PAYMENT INSTRUCTIONS</div>
-                <div style="white-space:pre-line">${
-                  paymentInstructions.value
-                }</div>
+            <div class="invoice-summary">
+              <div class="invoice-panel">
+                <div class="invoice-panel__title">PAYMENT INSTRUCTIONS</div>
+                <div class="invoice-panel__pre">${paymentInstructionsVal}</div>
               </div>
-              <div style="border:0.5px solid var(--border);padding:8px">
-                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">TOTAL</div>
-                <div style="margin-top:5px;font-size:8px">
-                  <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>SUBTOTAL:</span><span>$${subtotal.toFixed(
-                    2
-                  )}</span></div>
-                  <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>TAX (0%):</span><span>$0.00</span></div>
-                  <div style="display:flex;justify-content:space-between;border-top:0.5px solid var(--border);padding-top:5px;margin-top:5px;font-size:10px;font-weight:700"><span>TOTAL (${
-                    currency.value
-                  }):</span><span>$${subtotal.toFixed(2)}</span></div>
+              <div class="invoice-panel">
+                <div class="invoice-panel__title">TOTAL</div>
+                <div class="invoice-summary__totals">
+                  <div class="invoice-summary__line"><span>SUBTOTAL:</span><span>${fmtMoney(subtotal)}</span></div>
+                  <div class="invoice-summary__line"><span>TAX (0%):</span><span>$0.00</span></div>
+                  <div class="invoice-summary__total"><span>TOTAL (${currencyValue}):</span><span>${fmtMoney(subtotal)}</span></div>
                 </div>
               </div>
             </div>
           </div>`
-        document.getElementById('preview').style.display = 'block'
+        $('preview').style.display = 'block'
         document
           .getElementById('preview')
           .scrollIntoView({ behavior: 'smooth' })
       }
-
       /* -------------------------- PDF FONTS --------------------------- */
       let fontsReady = null
       function toB64(ab) {
