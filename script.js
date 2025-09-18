@@ -764,21 +764,42 @@ async function ensureFonts() {
     if (!jsPDF.API || typeof jsPDF.API.addFileToVFS !== 'function') {
       throw new Error('jsPDF API not properly initialized')
     }
-    jsPDF.API.addFileToVFS(vfs, b64)
-    jsPDF.API.addFont(vfs, name, 'normal')
+    if (!vfs || !b64) {
+      throw new Error('Invalid font data or filename')
+    }
+    try {
+      jsPDF.API.addFileToVFS(vfs, b64)
+      jsPDF.API.addFont(vfs, name, 'normal')
+    } catch (e) {
+      console.error(`Failed to add font ${name} (${vfs}):`, e)
+      throw e
+    }
   }
   async function addFromUrls(name, vfs, urls) {
     if (!jsPDF.API || typeof jsPDF.API.addFileToVFS !== 'function') {
       throw new Error('jsPDF API not properly initialized')
     }
-    const ab = await fetchFirst(urls)
-    jsPDF.API.addFileToVFS(vfs, toB64(ab))
-    jsPDF.API.addFont(vfs, name, 'normal')
+    if (!vfs || !urls || !Array.isArray(urls)) {
+      throw new Error('Invalid font URL data or filename')
+    }
+    try {
+      const ab = await fetchFirst(urls)
+      const b64 = toB64(ab)
+      if (!b64) {
+        throw new Error('Failed to convert font to base64')
+      }
+      jsPDF.API.addFileToVFS(vfs, b64)
+      jsPDF.API.addFont(vfs, name, 'normal')
+    } catch (e) {
+      console.error(`Failed to add font ${name} (${vfs}) from URLs:`, e)
+      throw e
+    }
   }
   fontsReady = (async () => {
     try {
       // Try header font: user upload -> local file -> CDN
-      if (window.__pdfFonts.hdr) {
+      if (window.__pdfFonts?.hdr) {
+        console.log('Loading header font from embedded data')
         await addFromB64(
           FONT_TARGETS.hdr.name,
           FONT_TARGETS.hdr.vfs,
@@ -786,12 +807,14 @@ async function ensureFonts() {
         )
         setStatus('hdr', 'ok', 'Embedded')
       } else if (await loadLocalFontFromPath('hdr', FONT_TARGETS.hdr.localPath)) {
+        console.log('Loading header font from local path')
         await addFromB64(
           FONT_TARGETS.hdr.name,
           FONT_TARGETS.hdr.vfs,
           window.__pdfFonts.hdr
         )
       } else {
+        console.log('Loading header font from CDN')
         await addFromUrls(
           FONT_TARGETS.hdr.name,
           FONT_TARGETS.hdr.vfs,
@@ -801,7 +824,8 @@ async function ensureFonts() {
       }
 
       // Try body font: user upload -> local file -> CDN
-      if (window.__pdfFonts.body) {
+      if (window.__pdfFonts?.body) {
+        console.log('Loading body font from embedded data')
         await addFromB64(
           FONT_TARGETS.body.name,
           FONT_TARGETS.body.vfs,
@@ -809,12 +833,14 @@ async function ensureFonts() {
         )
         setStatus('body', 'ok', 'Embedded')
       } else if (await loadLocalFontFromPath('body', FONT_TARGETS.body.localPath)) {
+        console.log('Loading body font from local path')
         await addFromB64(
           FONT_TARGETS.body.name,
           FONT_TARGETS.body.vfs,
           window.__pdfFonts.body
         )
       } else {
+        console.log('Loading body font from CDN')
         await addFromUrls(
           FONT_TARGETS.body.name,
           FONT_TARGETS.body.vfs,
