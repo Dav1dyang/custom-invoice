@@ -48,6 +48,7 @@
 
   function derivePalette(accent) {
     const { r, g, b } = hexToRgb(accent)
+    const accentRgb = `${r}, ${g}, ${b}`
     const brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255
     const inkStrong = greyFromLightness(clamp(brightness * 0.35 + 0.18, 0.12, 0.32))
     const ink = greyFromLightness(clamp(brightness * 0.45 + 0.28, 0.18, 0.45))
@@ -57,6 +58,7 @@
     const surfaceStrong = greyFromLightness(clamp(brightness * 0.6 + 0.7, 0.78, 0.96))
     return {
       accent,
+      accentRgb,
       inkStrong,
       ink,
       inkMuted,
@@ -266,12 +268,22 @@
   function applyPalette(element, palette) {
     if (!element) return
     element.style.setProperty('--accent', palette.accent)
+    element.style.setProperty('--accent-rgb', palette.accentRgb)
     element.style.setProperty('--ink-strong', palette.inkStrong)
     element.style.setProperty('--ink', palette.ink)
     element.style.setProperty('--ink-muted', palette.inkMuted)
     element.style.setProperty('--border', palette.border)
     element.style.setProperty('--surface', palette.surface)
     element.style.setProperty('--surface-strong', palette.surfaceStrong)
+  }
+
+  function updateUiAccent(color) {
+    document.documentElement.style.setProperty('--ui-accent', color)
+    const accentPicker = $('#accentColor')
+    if (accentPicker) {
+      accentPicker.style.borderColor = color
+      accentPicker.style.boxShadow = `0 0 0 1px ${color}`
+    }
   }
 
   function updatePreview() {
@@ -286,6 +298,7 @@
 
     invoiceElement.className = `invoice invoice--${panelStyle.value}`
     applyPalette(invoiceElement, palette)
+    updateUiAccent(palette.accent)
     invoiceElement.innerHTML = buildInvoiceMarkup(data)
   }
 
@@ -449,6 +462,12 @@
       clone.style.position = 'absolute'
       clone.style.left = '-9999px'
       clone.style.top = '0'
+      const computed = window.getComputedStyle(invoiceElement)
+      clone.style.width = computed.width
+      clone.style.margin = '0'
+      clone.style.maxWidth = 'none'
+      clone.style.background = computed.backgroundColor
+      clone.style.padding = computed.padding
       document.body.appendChild(clone)
 
       try {

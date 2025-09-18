@@ -4,6 +4,7 @@
   --ui-fg-light: #161616;
   --ui-bg-dark: #040404;
   --ui-fg-dark: #f3f3f3;
+  --ui-accent: #1a4dff;
 }
 
 html,
@@ -44,10 +45,9 @@ main.app {
 .card {
   background: color-mix(in srgb, currentColor 3%, transparent);
   border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  border-radius: 18px;
   padding: clamp(20px, 3vw, 32px);
   backdrop-filter: blur(6px);
-  box-shadow: 0 24px 48px -36px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 24px 48px -36px rgba(0, 0, 0, 0.35);
 }
 
 .masthead {
@@ -120,7 +120,6 @@ main.app {
 
 .field__control {
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
-  border-radius: 12px;
   padding: 12px;
   font-family: inherit;
   font-size: 14px;
@@ -129,7 +128,7 @@ main.app {
 }
 
 .field__control:focus {
-  outline: 2px solid currentColor;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
@@ -140,7 +139,6 @@ main.app {
 
 .field--radio {
   padding: 18px;
-  border-radius: 12px;
   border: 1px dashed color-mix(in srgb, currentColor 22%, transparent);
   gap: 12px;
 }
@@ -167,10 +165,32 @@ main.app {
   height: 18px;
 }
 
+input[type='radio'],
+input[type='checkbox'] {
+  accent-color: var(--ui-accent);
+}
+
+#accentColor {
+  width: 100%;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--ui-accent);
+  background: transparent;
+  cursor: pointer;
+}
+
+#accentColor::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+#accentColor::-webkit-color-swatch,
+#accentColor::-moz-color-swatch {
+  border: none;
+}
+
 .logo-preview {
   grid-column: 1 / -1;
   border: 1px dashed color-mix(in srgb, currentColor 22%, transparent);
-  border-radius: 12px;
   padding: 12px;
   display: flex;
   align-items: center;
@@ -212,7 +232,6 @@ main.app {
 
 .preview__canvas {
   background: color-mix(in srgb, currentColor 8%, transparent);
-  border-radius: 16px;
   padding: clamp(18px, 3vw, 28px);
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
   overflow-x: auto;
@@ -224,12 +243,16 @@ main.app {
   text-transform: uppercase;
   letter-spacing: 0.3em;
   padding: 10px 20px;
-  border-radius: 999px;
   border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
   background: transparent;
   color: inherit;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn:focus {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
 }
 
 .btn:hover {
@@ -238,12 +261,13 @@ main.app {
 }
 
 .btn--primary {
-  background: color-mix(in srgb, currentColor 12%, transparent);
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  color: #fff;
 }
 
 .table-wrap {
   overflow-x: auto;
-  border-radius: 12px;
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
 }
 
@@ -277,7 +301,7 @@ main.app {
 }
 
 .items td input:focus {
-  outline: 2px solid currentColor;
+  outline: 2px solid var(--ui-accent);
   outline-offset: -2px;
 }
 
@@ -293,29 +317,28 @@ main.app {
 .items .remove-row {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: color-mix(in srgb, currentColor 20%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  background: transparent;
   color: inherit;
   cursor: pointer;
 }
 
 .invoice {
   --accent: #1a4dff;
+  --accent-rgb: 26, 77, 255;
   --ink-strong: #1f1f1f;
   --ink: #2a2a2a;
   --ink-muted: #5c5c5c;
   --surface: #f5f5f5;
   --surface-strong: #e8e8e8;
   --border: #c7c7c7;
-  --corner-radius: 12px;
 
   background: #ffffff;
   color: var(--ink);
   padding: clamp(32px, 4vw, 48px);
-  border-radius: 18px;
   border: 1px solid var(--border);
-  min-width: 560px;
+  width: min(100%, 720px);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -325,7 +348,7 @@ main.app {
   display: flex;
   justify-content: space-between;
   gap: 18px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid rgba(var(--accent-rgb), 0.6);
   padding-bottom: 16px;
 }
 
@@ -346,6 +369,9 @@ main.app {
   font-size: 16px;
   font-weight: 700;
   color: var(--accent);
+  padding: 6px 12px;
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
 .invoice__meta {
@@ -367,11 +393,12 @@ main.app {
 }
 
 .invoice-panel {
-  border-radius: var(--corner-radius);
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  background: transparent;
+  border: 1px solid transparent;
 }
 
 .invoice-panel__title {
@@ -402,7 +429,7 @@ main.app {
   text-transform: uppercase;
   letter-spacing: 0.24em;
   color: var(--accent);
-  background: var(--surface);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .invoice-table td:nth-child(2) {
@@ -421,12 +448,13 @@ main.app {
 }
 
 .invoice-summary__totals {
-  border-radius: var(--corner-radius);
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 13px;
+  background: transparent;
+  border: 1px solid transparent;
 }
 
 .invoice-summary__line,
@@ -439,7 +467,7 @@ main.app {
   font-weight: 700;
   font-size: 14px;
   color: var(--ink-strong);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(var(--accent-rgb), 0.35);
   padding-top: 8px;
 }
 
@@ -451,18 +479,18 @@ main.app {
 .invoice--outline .invoice-panel,
 .invoice--outline .invoice-summary__totals {
   border: 1px solid var(--border);
-  background: transparent;
+  background: #ffffff;
+  box-shadow: inset 0 -3px 0 rgba(var(--accent-rgb), 0.35);
 }
 
 .invoice--solid .invoice-panel,
 .invoice--solid .invoice-summary__totals {
   border: none;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--surface) 20%, var(--accent));
+  background: rgba(var(--accent-rgb), 0.16);
 }
 
 .invoice--solid .invoice-table th {
-  background: var(--surface-strong);
+  background: rgba(var(--accent-rgb), 0.18);
 }
 
 @media (max-width: 960px) {
@@ -487,10 +515,15 @@ main.app {
   .preview__actions {
     width: 100%;
     justify-content: flex-start;
+    flex-direction: column;
+  }
+
+  .preview__actions .btn {
+    width: 100%;
   }
 
   .invoice {
-    min-width: 100%;
+    width: 100%;
     padding: 24px;
   }
 
