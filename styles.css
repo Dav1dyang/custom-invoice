@@ -240,7 +240,10 @@ input[type='checkbox'] {
   background: #f4f4f4;
   padding: clamp(18px, 3vw, 28px);
   border: 1px solid rgba(0, 0, 0, 0.12);
-  overflow-x: auto;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
 }
 
 .preview .btn {
@@ -348,11 +351,13 @@ input[type='checkbox'] {
   color: var(--ink);
   padding: clamp(32px, 4vw, 48px);
   border: 1px solid var(--border);
-  width: min(100%, 720px);
+  width: var(--page-width, 720px);
+  min-height: var(--page-height, auto);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  aspect-ratio: var(--page-aspect, auto);
 }
 
 .invoice__head {
