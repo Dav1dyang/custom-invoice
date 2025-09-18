@@ -125,22 +125,22 @@
                 <label>Header — Fat Rounded (Rubik Mono One)</label>
                 <input id="fontHdr" type="file" accept=".ttf" />
                 <div id="fontHdrStatus" class="note">
-                  Will load via CDN unless you upload a TTF here
-                  <span class="status-dot warn"></span>
+                  Bundled locally. Upload a TTF to override.
+                  <span class="status-dot ok"></span>
                 </div>
               </div>
               <div class="group">
                 <label>Body — Thin Monospace (DM Mono Light)</label>
                 <input id="fontBody" type="file" accept=".ttf" />
                 <div id="fontBodyStatus" class="note">
-                  Will load via CDN unless you upload a TTF here
-                  <span class="status-dot warn"></span>
+                  Bundled locally. Upload a TTF to override.
+                  <span class="status-dot ok"></span>
                 </div>
               </div>
             </div>
             <div class="note">
-              If both CDN and uploads fail, I'll fall back to Courier (headers)
-              and Helvetica (body).
+              If local fonts are missing or uploads fail, I'll fall back to
+              Courier (headers) and Helvetica (body).
             </div>
           </fieldset>
         </div>
