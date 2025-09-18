@@ -14,6 +14,7 @@
         --ui-fg-light: #000;
         --ui-bg-dark: #000;
         --ui-fg-dark: #fff;
+
         --ui-border-light: #666;
         --ui-border-dark: #888;
         --ui-grid-light: #ccc;
@@ -120,6 +121,7 @@
         letter-spacing: 1px;
         font-size: 10px;
       }
+
       .row {
         display: flex;
         flex-wrap: wrap;
@@ -128,7 +130,7 @@
         margin-top: 8px;
       }
       .group {
-        min-width: 220px;
+        min-width: 260px;
       }
       label {
         display: block;
@@ -140,7 +142,9 @@
       }
       select,
       input[type='color'],
-      input[type='checkbox'] {
+      input[type='checkbox'],
+      input[type='file'],
+      input[type='text'] {
         border: 0.5px solid var(--border);
         background: transparent;
         color: inherit;
@@ -185,6 +189,30 @@
         display: none;
       }
 
+      .note {
+        font-size: 10px;
+        opacity: 0.75;
+        margin-top: 6px;
+      }
+      .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: 0.5px solid var(--border);
+        margin-left: 6px;
+        vertical-align: middle;
+      }
+      .ok {
+        background: #27ae60;
+      }
+      .warn {
+        background: #f39c12;
+      }
+      .err {
+        background: #e74c3c;
+      }
+
       .editor {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -216,7 +244,6 @@
         padding-right: 10px;
         letter-spacing: 0.5px;
       }
-      input[type='text'],
       input[type='date'],
       input[type='number'],
       textarea {
@@ -372,11 +399,37 @@
                 </select>
               </div>
               <div class="group">
-                <label>Background Schematic Map</label>
+                <label>Map Source</label>
                 <select id="bgMap">
                   <option value="off" selected>Off</option>
-                  <option value="grid">Grid Route (light)</option>
+                  <option value="schematic">
+                    Schematic Grid/Route (light)
+                  </option>
+                  <option value="image">Custom Map Image (upload)</option>
                 </select>
+                <div class="note">
+                  Map APIs usually need keys—this uses a schematic or your
+                  uploaded image.
+                </div>
+              </div>
+              <div class="group">
+                <label>Map Image Upload (for Custom)</label>
+                <div class="logo-box">
+                  <label class="logo-btn" for="mapUpload"
+                    >Select Map Image</label
+                  >
+                  <input id="mapUpload" type="file" accept="image/*" />
+                  <img
+                    id="mapPreview"
+                    alt="Map preview"
+                    style="
+                      max-width: 180px;
+                      max-height: 60px;
+                      display: none;
+                      margin-top: 10px;
+                    "
+                  />
+                </div>
               </div>
               <div class="group">
                 <label>Logo Upload</label>
@@ -412,7 +465,7 @@
                 ></span>
               </div>
               <div class="group">
-                <label>Rules / Boxes</label>
+                <label>Rules / Boxes (Stroke)</label>
                 <input type="color" id="inkColor" value="#111111" />
                 <span
                   class="swatch"
@@ -430,13 +483,101 @@
                 ></span>
               </div>
               <div class="group">
-                <label>Accent</label>
+                <label>Accent (Headers)</label>
                 <input type="color" id="accentColor" value="#111111" />
                 <span
                   class="swatch"
                   id="swAcc"
                   style="background: #111111"
                 ></span>
+              </div>
+              <div class="group">
+                <label>Info Box Fill</label>
+                <input type="color" id="boxFillColor" value="#F2F2F2" />
+                <span
+                  class="swatch"
+                  id="swBox"
+                  style="background: #f2f2f2"
+                ></span>
+              </div>
+              <div class="group">
+                <label>Box Fill Opacity (PDF)</label>
+                <input
+                  type="range"
+                  id="boxOpacity"
+                  min="0"
+                  max="60"
+                  step="5"
+                  value="10"
+                />
+                <span id="boxOpacityVal" class="note">10%</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Fonts -->
+          <fieldset class="panel">
+            <legend>PDF Fonts (TTF)</legend>
+            <div class="row">
+              <div class="group">
+                <label>Header / Labels — M PLUS 1mn Black (900)</label>
+                <input id="fontHdr" type="file" accept=".ttf" />
+                <div id="fontHdrStatus" class="note">
+                  Load .ttf to embed<span class="status-dot warn"></span>
+                </div>
+              </div>
+              <div class="group">
+                <label>Body — M PLUS 1 Code Thin (100)</label>
+                <input id="fontBody" type="file" accept=".ttf" />
+                <div id="fontBodyStatus" class="note">
+                  Load .ttf to embed<span class="status-dot warn"></span>
+                </div>
+              </div>
+            </div>
+            <div class="note">
+              If no local TTFs, I try CDN (unpkg @fontsource). If that fails, I
+              fall back to Courier (headers) + Helvetica (body).
+            </div>
+          </fieldset>
+
+          <!-- Templates -->
+          <fieldset class="panel">
+            <legend>Templates</legend>
+            <div class="row">
+              <div class="group">
+                <label>Template Name</label>
+                <input
+                  type="text"
+                  id="tplName"
+                  placeholder="e.g., Morakana Default"
+                />
+              </div>
+              <div
+                class="group"
+                style="display: flex; gap: 8px; align-items: flex-end"
+              >
+                <button type="button" id="btnSaveTpl">Save Template</button>
+                <button type="button" id="btnExportTpl">Export JSON</button>
+                <input
+                  type="file"
+                  id="tplImport"
+                  accept="application/json"
+                  style="display: none"
+                />
+                <button type="button" id="btnImportTpl">Import JSON</button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="group">
+                <label>Saved Templates</label>
+                <select id="tplList" style="min-width: 260px"></select>
+              </div>
+              <div
+                class="group"
+                style="display: flex; gap: 8px; align-items: flex-end"
+              >
+                <button type="button" id="btnLoadTpl">Load</button>
+                <button type="button" id="btnDeleteTpl">Delete</button>
               </div>
             </div>
           </fieldset>
@@ -477,7 +618,7 @@
           </div>
           <div class="row2">
             <div class="label">ATTENTION:</div>
-            <input id="toNames" type="text" value="Sebastián & Tiri" />
+            <input id="toNames" type="text" value="Sebastián &amp; Tiri" />
           </div>
           <div class="row2">
             <div class="label">ADDRESS:</div>
@@ -608,15 +749,40 @@ Account Number: 483091305810</textarea
         r.readAsDataURL(f)
       })
 
+      /* ----------------------------- MAP IMG --------------------------- */
+      let mapDataUrl = null,
+        mapNatural = null
+      document.getElementById('mapUpload').addEventListener('change', (e) => {
+        const f = e.target.files[0]
+        if (!f) return
+        const r = new FileReader()
+        r.onload = (ev) => {
+          mapDataUrl = ev.target.result
+          const img = new Image()
+          img.onload = () => {
+            mapNatural = {
+              w: img.naturalWidth,
+              h: img.naturalHeight,
+              ratio: img.naturalWidth / img.naturalHeight,
+            }
+            const pv = document.getElementById('mapPreview')
+            pv.src = mapDataUrl
+            pv.style.display = 'block'
+          }
+          img.src = mapDataUrl
+        }
+        r.readAsDataURL(f)
+      })
+
       /* ----------------------------- ITEMS ----------------------------- */
       function addItem(desc = '', qty = '', rate = '') {
         const tr = document.createElement('tr')
         tr.innerHTML = `
-    <td><input class="item-desc" type="text" value="${desc}" placeholder="Service/Product Description"></td>
-    <td class="center"><input class="item-qty" type="number" step="0.01" value="${qty}"></td>
-    <td class="right"><input class="item-rate" type="number" step="0.01" value="${rate}"></td>
-    <td class="right"><input class="item-amt" type="number" step="0.01" value="0.00" readonly></td>
-    <td><button type="button" class="rm">×</button></td>`
+          <td><input class="item-desc" type="text" value="${desc}" placeholder="Service/Product Description"></td>
+          <td class="center"><input class="item-qty" type="number" step="0.01" value="${qty}"></td>
+          <td class="right"><input class="item-rate" type="number" step="0.01" value="${rate}"></td>
+          <td class="right"><input class="item-amt" type="number" step="0.01" value="0.00" readonly></td>
+          <td><button type="button" class="rm">×</button></td>`
         document.getElementById('itemsBody').appendChild(tr)
         const qtyEl = tr.querySelector('.item-qty')
         const rateEl = tr.querySelector('.item-rate')
@@ -650,6 +816,9 @@ Account Number: 483091305810</textarea
       const inkColor = document.getElementById('inkColor')
       const textColor = document.getElementById('textColor')
       const accColor = document.getElementById('accentColor')
+      const boxFillColor = document.getElementById('boxFillColor')
+      const boxOpacity = document.getElementById('boxOpacity')
+      const boxOpacityVal = document.getElementById('boxOpacityVal')
       const sw = (id, c) => (document.getElementById(id).style.background = c)
       function setPreset(p) {
         const map = {
@@ -658,49 +827,61 @@ Account Number: 483091305810</textarea
             ink: '#111111',
             text: '#111111',
             accent: '#111111',
+            box: '#F2F2F2',
           },
           wastberg: {
             paper: '#FFFFFF',
             ink: '#A1A1A1',
             text: '#111111',
             accent: '#111111',
+            box: '#FAFAFA',
           },
           technidata: {
             paper: '#EDF7FF',
             ink: '#0B4C8C',
             text: '#0B1F33',
             accent: '#0B4C8C',
+            box: '#DDEBFB',
           },
           hifi: {
             paper: '#FFE3CC',
             ink: '#1A1A1A',
             text: '#1A1A1A',
             accent: '#D45500',
+            box: '#FFD8B8',
           },
           neon: {
             paper: '#CEFF00',
             ink: '#111111',
             text: '#111111',
             accent: '#111111',
+            box: '#E9FF66',
           },
         }[p]
         paperColor.value = map.paper
         inkColor.value = map.ink
         textColor.value = map.text
         accColor.value = map.accent
+        boxFillColor.value = map.box
         sw('swPaper', map.paper)
         sw('swInk', map.ink)
         sw('swText', map.text)
         sw('swAcc', map.accent)
+        sw('swBox', map.box)
       }
       palette.addEventListener('change', (e) => setPreset(e.target.value))
-      ;[paperColor, inkColor, textColor, accColor].forEach((i) =>
+      ;[paperColor, inkColor, textColor, accColor, boxFillColor].forEach((i) =>
         i.addEventListener('input', () => {
           sw('swPaper', paperColor.value)
           sw('swInk', inkColor.value)
           sw('swText', textColor.value)
           sw('swAcc', accColor.value)
+          sw('swBox', boxFillColor.value)
         })
+      )
+      boxOpacity.addEventListener(
+        'input',
+        () => (boxOpacityVal.textContent = boxOpacity.value + '%')
       )
       setPreset('technical')
 
@@ -722,14 +903,14 @@ Account Number: 483091305810</textarea
         let rows = items
           .map(
             (i) => `
-    <tr>
-      <td>${i.description}</td>
-      <td style="text-align:center">${i.qty}</td>
-      <td style="text-align:right">$${(+i.rate || 0).toFixed(2)}</td>
-      <td style="text-align:right;font-weight:600">$${(+i.amount || 0).toFixed(
-        2
-      )}</td>
-    </tr>`
+          <tr>
+            <td>${i.description}</td>
+            <td style="text-align:center">${i.qty}</td>
+            <td style="text-align:right">$${(+i.rate || 0).toFixed(2)}</td>
+            <td style="text-align:right;font-weight:600">$${(
+              +i.amount || 0
+            ).toFixed(2)}</td>
+          </tr>`
           )
           .join('')
 
@@ -738,74 +919,75 @@ Account Number: 483091305810</textarea
           : ''
 
         document.getElementById('invoiceContent').innerHTML = `
-    <div style="min-height:120px;border-bottom:0.5px solid var(--border);margin-bottom:20px;padding-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start">
-      ${logoHTML}
-      <div style="text-align:right;font-size:8px;line-height:1.2">
-        <div style="font-weight:700;letter-spacing:1px;margin-bottom:3px;font-size:18px">INVOICE</div>
-        <div style="font-weight:700;text-transform:uppercase">${
-          document.getElementById('invoiceNumber').value
-        }</div>
-        <div>REV: A</div>
-      </div>
-    </div>
+          <div style="min-height:120px;border-bottom:0.5px solid var(--border);margin-bottom:20px;padding-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start">
+            ${logoHTML}
+            <div style="text-align:right;font-size:8px;line-height:1.2">
+              <div style="font-weight:700;letter-spacing:1px;margin-bottom:3px;font-size:18px">INVOICE</div>
+              <div style="font-weight:700;text-transform:uppercase">${
+                document.getElementById('invoiceNumber').value
+              }</div>
+              <div>REV: A</div>
+            </div>
+          </div>
 
-    <div style="font-size:8px">
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:15px">
-        <div style="border:0.5px solid var(--border);padding:8px">
-          <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">SENDER</div>
-          <div><strong>${fromName.value}</strong><br>${
+          <div style="font-size:8px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:15px">
+              <div style="border:0.5px solid var(--border);padding:8px">
+                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">SENDER</div>
+                <div><strong>${fromName.value}</strong><br>${
           fromWebsite.value
         }<br>TEL: ${fromPhone.value}<br>${fromAddress.value}</div>
-        </div>
-        <div style="border:0.5px solid var(--border);padding:8px">
-          <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">RECIPIENT</div>
-          <div><strong>${toCompany.value}</strong><br>ATTN: ${
+              </div>
+              <div style="border:0.5px solid var(--border);padding:8px">
+                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">RECIPIENT</div>
+                <div><strong>${toCompany.value}</strong><br>ATTN: ${
           toNames.value
         }<br>${toAddress.value}</div>
-        </div>
-        <div style="border:0.5px solid var(--border);padding:8px">
-          <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">CONTACT</div>
-          <div style="white-space:pre-line">${toContact.value}</div>
-        </div>
-        <div style="border:0.5px solid var(--border);padding:8px">
-          <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">SPECIFICATIONS</div>
-          <div>ISSUED: ${fmtDate(invoiceDate.value)}<br>DUE: ${fmtDate(
+              </div>
+              <div style="border:0.5px solid var(--border);padding:8px">
+                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">CONTACT</div>
+                <div style="white-space:pre-line">${toContact.value}</div>
+              </div>
+              <div style="border:0.5px solid var(--border);padding:8px">
+                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">SPECIFICATIONS</div>
+                <div>ISSUED: ${fmtDate(invoiceDate.value)}<br>DUE: ${fmtDate(
           dueDate.value
         )}<br>CURRENCY: ${currency.value}<br>TERMS: NET 30</div>
-        </div>
-      </div>
+              </div>
+            </div>
 
-      <table style="width:100%;border-collapse:collapse;margin:15px 0;border:0.5px solid var(--border);font-size:8px;table-layout:fixed">
-        <colgroup><col style="width:50%"/><col style="width:15%"/><col style="width:15%"/><col style="width:20%"/></colgroup>
-        <thead><tr>
-          <th style="text-align:left;padding:5px;border:0.5px solid var(--grid)">DESCRIPTION</th>
-          <th style="text-align:center;padding:5px;border:0.5px solid var(--grid)">QTY/HRS</th>
-          <th style="text-align:right;padding:5px;border:0.5px solid var(--grid)">RATE</th>
-          <th style="text-align:right;padding:5px;border:0.5px solid var(--grid)">AMOUNT</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
+            <table style="width:100%;border-collapse:collapse;margin:15px 0;border:0.5px solid var(--border);font-size:8px;table-layout:fixed">
+              <colgroup><col style="width:50%"/><col style="width:15%"/><col style="width:15%"/><col style="width:20%"/></colgroup>
+              <thead><tr>
+                <th style="text-align:left;padding:5px;border:0.5px solid var(--grid)">DESCRIPTION</th>
+                <th style="text-align:center;padding:5px;border:0.5px solid var(--grid)">QTY/HRS</th>
+                <th style="text-align:right;padding:5px;border:0.5px solid var(--grid)">RATE</th>
+                <th style="text-align:right;padding:5px;border:0.5px solid var(--grid)">AMOUNT</th>
+              </tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
 
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:15px;margin-top:15px">
-        <div style="border:0.5px solid var(--border);padding:8px">
-          <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">PAYMENT INSTRUCTIONS</div>
-          <div style="white-space:pre-line">${paymentInstructions.value}</div>
-        </div>
-        <div style="border:0.5px solid var(--border);padding:8px">
-          <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">TOTAL</div>
-          <div style="margin-top:5px;font-size:8px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>SUBTOTAL:</span><span>$${subtotal.toFixed(
-              2
-            )}</span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>TAX (0%):</span><span>$0.00</span></div>
-            <div style="display:flex;justify-content:space-between;border-top:0.5px solid var(--border);padding-top:5px;margin-top:5px;font-size:10px;font-weight:700"><span>TOTAL (${
-              currency.value
-            }):</span><span>$${subtotal.toFixed(2)}</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:15px;margin-top:15px">
+              <div style="border:0.5px solid var(--border);padding:8px">
+                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">PAYMENT INSTRUCTIONS</div>
+                <div style="white-space:pre-line">${
+                  paymentInstructions.value
+                }</div>
+              </div>
+              <div style="border:0.5px solid var(--border);padding:8px">
+                <div style="font-weight:700;text-transform:uppercase;font-size:7px;letter-spacing:1px;border-bottom:0.5px solid var(--border);padding-bottom:3px;margin-bottom:5px">TOTAL</div>
+                <div style="margin-top:5px;font-size:8px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>SUBTOTAL:</span><span>$${subtotal.toFixed(
+                    2
+                  )}</span></div>
+                  <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>TAX (0%):</span><span>$0.00</span></div>
+                  <div style="display:flex;justify-content:space-between;border-top:0.5px solid var(--border);padding-top:5px;margin-top:5px;font-size:10px;font-weight:700"><span>TOTAL (${
+                    currency.value
+                  }):</span><span>$${subtotal.toFixed(2)}</span></div>
+                </div>
+              </div>
+            </div>
+          </div>`
         document.getElementById('preview').style.display = 'block'
         document
           .getElementById('preview')
@@ -813,16 +995,14 @@ Account Number: 483091305810</textarea
       }
 
       /* -------------------------- PDF FONTS --------------------------- */
-      /* Load M PLUS 1mn Black (900) and M PLUS 1 Code Thin (100) into jsPDF VFS.
-   If loading fails, we fall back to built-ins: courier (bold) for headers, helvetica for body. */
+      /* Priority: local TTF uploads → CDN (unpkg @fontsource) → Courier/Helvetica */
       let fontsReady = null
       function toB64(ab) {
         let s = '',
           b = new Uint8Array(ab),
           chunk = 0x8000
-        for (let i = 0; i < b.length; i += chunk) {
+        for (let i = 0; i < b.length; i += chunk)
           s += String.fromCharCode.apply(null, b.subarray(i, i + chunk))
-        }
         return btoa(s)
       }
       async function fetchFirst(urls, timeoutMs = 8000) {
@@ -833,39 +1013,113 @@ Account Number: 483091305810</textarea
             const res = await fetch(u, {
               signal: controller.signal,
               cache: 'force-cache',
+              mode: 'cors',
             })
             if (res.ok) {
               clearTimeout(t)
               return await res.arrayBuffer()
             }
-          } catch (_) {
-            /* try next */
-          }
+          } catch (_) {}
         }
         clearTimeout(t)
         throw new Error('All font URLs failed')
       }
+
+      const PDF_FONT_TARGETS = {
+        hdr: {
+          name: 'MPLUS1mn-Black',
+          vfs: 'MPLUS1mn-Black.ttf',
+          input: 'fontHdr',
+          status: 'fontHdrStatus',
+        },
+        body: {
+          name: 'MPLUS1Code-Thin',
+          vfs: 'MPLUS1Code-Thin.ttf',
+          input: 'fontBody',
+          status: 'fontBodyStatus',
+        },
+      }
+      window.__pdfFonts = { hdr: null, body: null }
+      function setStatus(which, cls, msg) {
+        const el = document.getElementById(PDF_FONT_TARGETS[which].status)
+        if (el) el.innerHTML = `${msg} <span class="status-dot ${cls}"></span>`
+      }
+      async function loadLocalFont(which, file) {
+        const ab = await file.arrayBuffer()
+        window.__pdfFonts[which] = toB64(ab)
+        setStatus(which, 'ok', 'Loaded from local TTF')
+      }
+      Object.keys(PDF_FONT_TARGETS).forEach((k) => {
+        document
+          .getElementById(PDF_FONT_TARGETS[k].input)
+          .addEventListener('change', (e) => {
+            const f = e.target.files?.[0]
+            if (f) loadLocalFont(k, f)
+          })
+      })
+
       async function ensureFonts() {
         if (fontsReady) return fontsReady
         const { jsPDF } = window.jspdf
-        async function add(name, vfsName, urls) {
-          const ab = await fetchFirst(urls)
+        async function addFromB64(name, vfsName, b64) {
+          jsPDF.API.addFileToVFS(vfsName, b64)
+          jsPDF.API.addFont(vfsName, name, 'normal')
+        }
+        async function addFromUrls(name, vfsName, urls) {
+          const ab = await fetchFirst(urls, 8000)
           jsPDF.API.addFileToVFS(vfsName, toB64(ab))
           jsPDF.API.addFont(vfsName, name, 'normal')
         }
+
         fontsReady = (async () => {
           try {
-            await add('MPLUS1mn-Black', 'MPLUS1mn-Black.ttf', [
-              'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/mplus1mn/MPLUS1mn-Black.ttf',
-              'https://raw.githubusercontent.com/google/fonts/main/ofl/mplus1mn/MPLUS1mn-Black.ttf',
-            ])
-            await add('MPLUS1Code-Thin', 'MPLUS1Code-Thin.ttf', [
-              'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/mplus1code/MPLUS1Code-Thin.ttf',
-              'https://raw.githubusercontent.com/google/fonts/main/ofl/mplus1code/MPLUS1Code-Thin.ttf',
-            ])
-            return { hdr: 'MPLUS1mn-Black', body: 'MPLUS1Code-Thin', ok: true }
+            if (window.__pdfFonts.hdr) {
+              await addFromB64(
+                PDF_FONT_TARGETS.hdr.name,
+                PDF_FONT_TARGETS.hdr.vfs,
+                window.__pdfFonts.hdr
+              )
+              setStatus('hdr', 'ok', 'Embedded local TTF')
+            } else {
+              await addFromUrls(
+                PDF_FONT_TARGETS.hdr.name,
+                PDF_FONT_TARGETS.hdr.vfs,
+                [
+                  'https://unpkg.com/@fontsource/m-plus-1mn/files/m-plus-1mn-latin-900-normal.ttf',
+                  'https://unpkg.com/@fontsource/m-plus-1mn/files/m-plus-1mn-all-900-normal.ttf',
+                ]
+              )
+              setStatus('hdr', 'ok', 'Loaded via CDN')
+            }
+
+            if (window.__pdfFonts.body) {
+              await addFromB64(
+                PDF_FONT_TARGETS.body.name,
+                PDF_FONT_TARGETS.body.vfs,
+                window.__pdfFonts.body
+              )
+              setStatus('body', 'ok', 'Embedded local TTF')
+            } else {
+              await addFromUrls(
+                PDF_FONT_TARGETS.body.name,
+                PDF_FONT_TARGETS.body.vfs,
+                [
+                  'https://unpkg.com/@fontsource/m-plus-1-code/files/m-plus-1-code-latin-100-normal.ttf',
+                  'https://unpkg.com/@fontsource/m-plus-1-code/files/m-plus-1-code-all-100-normal.ttf',
+                ]
+              )
+              setStatus('body', 'ok', 'Loaded via CDN')
+            }
+
+            return {
+              hdr: PDF_FONT_TARGETS.hdr.name,
+              body: PDF_FONT_TARGETS.body.name,
+              ok: true,
+            }
           } catch (e) {
-            console.warn('Custom fonts failed, using fallbacks.', e)
+            console.warn('Custom fonts failed, falling back.', e)
+            setStatus('hdr', 'err', 'Using fallback')
+            setStatus('body', 'err', 'Using fallback')
             return { hdr: 'courier', body: 'helvetica', ok: false }
           }
         })()
@@ -904,25 +1158,15 @@ Account Number: 483091305810</textarea
         }-${d.getFullYear()}`
       }
 
-      /* Very light schematic grid+route “map” (diagrammatic, not geographic).
-   Uses hashed positions from the two address strings for a consistent aesthetic. */
+      /* Faint schematic grid+route “map” (diagrammatic, not geographic). */
       function drawSchematicMap(doc, x, y, w, h, fromAddr, toAddr, inkRGB) {
-        // ultra light lines
         const gridRGB = { r: inkRGB.r, g: inkRGB.g, b: inkRGB.b }
         doc.setDrawColor(gridRGB.r, gridRGB.g, gridRGB.b)
         doc.setLineWidth(0.05)
-        doc.setGState(new doc.GState({ opacity: 0.1 }))
-
-        // grid
+        doc.setGState(new doc.GState({ opacity: 0.08 }))
         const step = 8
-        for (let gx = x; gx <= x + w; gx += step) {
-          doc.line(gx, y, gx, y + h)
-        }
-        for (let gy = y; gy <= y + h; gy += step) {
-          doc.line(x, gy, x + w, gy)
-        }
-
-        // hash to coords (pseudo, stable)
+        for (let gx = x; gx <= x + w; gx += step) doc.line(gx, y, gx, y + h)
+        for (let gy = y; gy <= y + h; gy += step) doc.line(x, gy, x + w, gy)
         function hxy(str) {
           let h1 = 0,
             h2 = 0
@@ -937,25 +1181,17 @@ Account Number: 483091305810</textarea
         }
         const p1 = hxy(fromAddr),
           p2 = hxy(toAddr)
-
-        // route
+        doc.setGState(new doc.GState({ opacity: 0.18 }))
         doc.setLineWidth(0.2)
-        doc.setGState(new doc.GState({ opacity: 0.2 }))
         doc.line(p1.x, p1.y, p2.x, p2.y)
-
-        // nodes
-        doc.setGState(new doc.GState({ opacity: 0.35 }))
+        doc.setGState(new doc.GState({ opacity: 0.28 }))
         doc.circle(p1.x, p1.y, 1.2, 'S')
         doc.circle(p2.x, p2.y, 1.2, 'S')
-
-        // labels small
-        doc.setGState(new doc.GState({ opacity: 0.45 }))
+        doc.setGState(new doc.GState({ opacity: 0.35 }))
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(6)
         doc.text('FROM', p1.x + 2, p1.y - 1)
         doc.text('TO', p2.x + 2, p2.y - 1)
-
-        // reset opacity
         doc.setGState(new doc.GState({ opacity: 1 }))
       }
 
@@ -963,7 +1199,6 @@ Account Number: 483091305810</textarea
       async function downloadPDF() {
         const { jsPDF } = window.jspdf
         const fonts = await ensureFonts()
-
         // Gather data
         const fromName = document.getElementById('fromName').value
         const fromWebsite = document.getElementById('fromWebsite').value
@@ -989,28 +1224,34 @@ Account Number: 483091305810</textarea
           document.getElementById('orientation').value === 'landscape'
             ? 'l'
             : 'p'
+        const mapMode = document.getElementById('bgMap').value
 
         const paperRGB = hexToRgb(document.getElementById('paperColor').value)
         const inkRGB = hexToRgb(document.getElementById('inkColor').value)
         const textRGB = hexToRgb(document.getElementById('textColor').value)
         const accRGB = hexToRgb(document.getElementById('accentColor').value)
+        const boxRGB = hexToRgb(document.getElementById('boxFillColor').value)
+        const boxAlpha = Math.max(
+          0,
+          Math.min(1, (+document.getElementById('boxOpacity').value || 0) / 100)
+        )
 
         const doc = new jsPDF({ orientation, unit: 'mm', format: size })
-        const pageW = doc.internal.pageSize.getWidth()
-        const pageH = doc.internal.pageSize.getHeight()
+        const pageW = doc.internal.pageSize.getWidth(),
+          pageH = doc.internal.pageSize.getHeight()
 
         // Paper
         doc.setFillColor(paperRGB.r, paperRGB.g, paperRGB.b)
         doc.rect(0, 0, pageW, pageH, 'F')
 
-        // Background map (top whitespace area)
-        if (document.getElementById('bgMap').value !== 'off') {
-          const topY = 35,
-            bottomMargin = 10,
-            paymentH = 30,
-            spacer = 4
-          const yPaymentTop = pageH - bottomMargin - paymentH
-          const mapH = Math.max(30, yPaymentTop - spacer - pageH * 0.45) // fill the airy top zone
+        // Background map area (top whitespace)
+        const topY = 35,
+          bottomMargin = 10,
+          paymentH = 30,
+          spacer = 4
+        const yPaymentTop = pageH - bottomMargin - paymentH
+        const mapH = Math.max(30, yPaymentTop - spacer - pageH * 0.45)
+        if (mapMode === 'schematic') {
           drawSchematicMap(
             doc,
             10,
@@ -1019,19 +1260,38 @@ Account Number: 483091305810</textarea
             mapH - 6,
             fromAddress,
             toAddress,
-            inkRGB
+            {
+              r: Math.round(inkRGB.r),
+              g: Math.round(inkRGB.g),
+              b: Math.round(inkRGB.b),
+            }
           )
+        } else if (mapMode === 'image' && mapDataUrl && mapNatural) {
+          // Fit image to box preserving aspect
+          const boxW = pageW - 20,
+            boxH = mapH - 6
+          const r = mapNatural.w / mapNatural.h
+          let w = boxW,
+            h = w / r
+          if (h > boxH) {
+            h = boxH
+            w = h * r
+          }
+          const cx = 10 + (boxW - w) / 2,
+            cy = topY + 2 + (boxH - h) / 2
+          doc.setGState(new doc.GState({ opacity: 0.08 }))
+          doc.addImage(mapDataUrl, 'PNG', cx, cy, w, h) // keep ratio
+          doc.setGState(new doc.GState({ opacity: 1 }))
         }
 
         // Colors and hairlines
         doc.setDrawColor(inkRGB.r, inkRGB.g, inkRGB.b)
         doc.setTextColor(textRGB.r, textRGB.g, textRGB.b)
         doc.setLineWidth(0.1)
-
         const margin = 10,
           contentW = pageW - 2 * margin
 
-        // Header — logo (keep aspect), titles in ALL CAPS
+        // Header (logo & titles)
         if (logoDataUrl) {
           const maxW = 35,
             maxH = 15
@@ -1047,9 +1307,9 @@ Account Number: 483091305810</textarea
               h = w / r
             }
           }
-          doc.addImage(logoDataUrl, 'PNG', margin, 15, w, h) // scale only, keep ratio
+          doc.addImage(logoDataUrl, 'PNG', margin, 15, w, h) // aspect preserved
         }
-        doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold') // courier bold if fallback
+        doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
         doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
         doc.setFontSize(13)
         doc.text('INVOICE', pageW - margin, 20, { align: 'right' })
@@ -1062,15 +1322,10 @@ Account Number: 483091305810</textarea
         doc.line(margin, 35, pageW - margin, 35)
 
         // Bottom-heavy layout math
-        const bottomMargin = 10,
-          dataGridH = 25,
+        const dataGridH = 25,
           itemsHeaderH = 8,
-          rowH = 7,
-          spacer = 4,
-          paymentH = 30
+          rowH = 7
         const minTopSpace = pageH * 0.45
-
-        const yPaymentTop = pageH - bottomMargin - paymentH
         const yItemsBottom = yPaymentTop - spacer
         const usableHeight = yItemsBottom - minTopSpace
         const maxRowsFit = Math.max(
@@ -1082,15 +1337,21 @@ Account Number: 483091305810</textarea
           yItemsBottom - (itemsHeaderH + rows * rowH + spacer + dataGridH)
         const yItemsTop = yDataTop + dataGridH + spacer
 
-        // Spec grid (joined)
+        // Spec grid (joined) + optional fill
         const colW = contentW / 4
+        if (boxAlpha > 0) {
+          doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
+          doc.setGState(new doc.GState({ opacity: boxAlpha }))
+          doc.rect(margin, yDataTop, contentW, dataGridH, 'F')
+          doc.setGState(new doc.GState({ opacity: 1 }))
+        }
         doc.rect(margin, yDataTop, contentW, dataGridH)
         for (let i = 1; i < 4; i++) {
           const x = margin + i * colW
           doc.line(x, yDataTop, x, yDataTop + dataGridH)
         }
 
-        // Grid headers: ALL CAPS heavy mono
+        // Grid headers — caps, heavy
         doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
         doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
         doc.setFontSize(7.5)
@@ -1099,13 +1360,11 @@ Account Number: 483091305810</textarea
         doc.text('CONTACT', margin + 2 * colW + 2, yDataTop + 4)
         doc.text('SPECIFICATIONS', margin + 3 * colW + 2, yDataTop + 4)
 
-        // Grid body: ultra thin mono, slightly larger for readability
+        // Grid body — ultra thin mono
         doc.setFont(fonts.body, 'normal')
         doc.setTextColor(textRGB.r, textRGB.g, textRGB.b)
         doc.setFontSize(8)
         const pad = 2
-
-        // sender
         let x0 = margin,
           y0 = yDataTop + 8
         doc.text(fromName, x0 + pad, y0)
@@ -1115,8 +1374,6 @@ Account Number: 483091305810</textarea
         doc.text('TEL: ' + fromPhone, x0 + pad, y0)
         y0 += 3
         doc.text(doc.splitTextToSize(fromAddress, colW - 2 * pad), x0 + pad, y0)
-
-        // recipient
         x0 = margin + colW
         y0 = yDataTop + 8
         doc.text(toCompany, x0 + pad, y0)
@@ -1124,8 +1381,6 @@ Account Number: 483091305810</textarea
         doc.text('ATTN: ' + toNames, x0 + pad, y0)
         y0 += 3
         doc.text(doc.splitTextToSize(toAddress, colW - 2 * pad), x0 + pad, y0)
-
-        // contact
         x0 = margin + 2 * colW
         y0 = yDataTop + 8
         toContact
@@ -1138,8 +1393,6 @@ Account Number: 483091305810</textarea
               y0 += 3
             }
           })
-
-        // specs
         x0 = margin + 3 * colW
         y0 = yDataTop + 8
         doc.text('ISSUED: ' + invoiceDate, x0 + pad, y0)
@@ -1150,7 +1403,7 @@ Account Number: 483091305810</textarea
         y0 += 3
         doc.text('TERMS: NET 30', x0 + pad, y0)
 
-        // Items table
+        // Items table (with header fill option)
         const descW = contentW * 0.5,
           qtyW = contentW * 0.15,
           rateW = contentW * 0.15,
@@ -1160,13 +1413,16 @@ Account Number: 483091305810</textarea
           xRate = xQty + qtyW,
           xAmt = xRate + rateW
         const tableH = itemsHeaderH + rows * rowH
-
         doc.rect(margin, yItemsTop, contentW, tableH)
         doc.line(xQty, yItemsTop, xQty, yItemsTop + tableH)
         doc.line(xRate, yItemsTop, xRate, yItemsTop + tableH)
         doc.line(xAmt, yItemsTop, xAmt, yItemsTop + tableH)
-
-        // header row
+        if (boxAlpha > 0) {
+          doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
+          doc.setGState(new doc.GState({ opacity: boxAlpha }))
+          doc.rect(margin, yItemsTop, contentW, itemsHeaderH, 'F')
+          doc.setGState(new doc.GState({ opacity: 1 }))
+        }
         doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
         doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
         doc.setFontSize(7.5)
@@ -1182,7 +1438,6 @@ Account Number: 483091305810</textarea
           yItemsTop + itemsHeaderH
         )
 
-        // rows
         doc.setFont(fonts.body, 'normal')
         doc.setTextColor(textRGB.r, textRGB.g, textRGB.b)
         doc.setFontSize(8)
@@ -1194,39 +1449,40 @@ Account Number: 483091305810</textarea
           const amtVal = +it.amount || 0
           const amt = '$' + amtVal.toFixed(2)
           subtotal += amtVal
-
           const dLine = doc.splitTextToSize(it.description, descW - 4)[0] || ''
           doc.text(dLine, xDesc + 2, y + 4)
           doc.text(String(it.qty || ''), xQty + 2, y + 4)
           doc.text(rate, xRate + 2, y + 4)
           doc.text(amt, xAmt + amtW - 2, y + 4, { align: 'right' })
-
           y += rowH
-          if (i < rows - 1) {
-            doc.line(margin, y, margin + contentW, y)
-          }
+          if (i < rows - 1) doc.line(margin, y, margin + contentW, y)
         }
 
-        // Payment + totals
+        // Payment + totals (joined) with optional fill
         const splitW = contentW * 0.66,
-          xSplit = margin + splitW,
-          yPayTop = yPaymentTop
-        doc.rect(margin, yPayTop, contentW, paymentH)
-        doc.line(xSplit, yPayTop, xSplit, yPayTop + paymentH)
+          xSplit = margin + splitW
+        if (boxAlpha > 0) {
+          doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
+          doc.setGState(new doc.GState({ opacity: boxAlpha }))
+          doc.rect(margin, yPaymentTop, contentW, paymentH, 'F')
+          doc.setGState(new doc.GState({ opacity: 1 }))
+        }
+        doc.rect(margin, yPaymentTop, contentW, paymentH)
+        doc.line(xSplit, yPaymentTop, xSplit, yPaymentTop + paymentH)
 
         doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
         doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
         doc.setFontSize(7.5)
-        doc.text('PAYMENT INSTRUCTIONS', margin + 2, yPayTop + 4)
+        doc.text('PAYMENT INSTRUCTIONS', margin + 2, yPaymentTop + 4)
 
         doc.setFont(fonts.body, 'normal')
         doc.setTextColor(textRGB.r, textRGB.g, textRGB.b)
         doc.setFontSize(8)
-        let py = yPayTop + 8
+        let py = yPaymentTop + 8
         paymentInstructions.split('\n').forEach((line) => {
           const lines = doc.splitTextToSize(line, splitW - 4)
           lines.forEach((L) => {
-            if (py < yPayTop + paymentH - 2) {
+            if (py < yPaymentTop + paymentH - 2) {
               doc.text(L, margin + 2, py)
               py += 3
             }
@@ -1236,13 +1492,13 @@ Account Number: 483091305810</textarea
         doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
         doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
         doc.setFontSize(7.5)
-        doc.text('TOTAL', xSplit + 2, yPayTop + 4)
+        doc.text('TOTAL', xSplit + 2, yPaymentTop + 4)
 
         doc.setFont(fonts.body, 'normal')
         doc.setTextColor(textRGB.r, textRGB.g, textRGB.b)
         doc.setFontSize(8)
         const rightX = margin + contentW - 2
-        let ty = yPayTop + 10
+        let ty = yPaymentTop + 10
         doc.text('SUBTOTAL:', xSplit + 2, ty)
         doc.text('$' + subtotal.toFixed(2), rightX, ty, { align: 'right' })
         ty += 4
@@ -1258,6 +1514,172 @@ Account Number: 483091305810</textarea
 
         doc.save(`invoice-${invoiceNumber}.pdf`)
       }
+
+      /* --------------------------- TEMPLATES -------------------------- */
+      const TKEY = 'invoiceTemplates.v1'
+      const tplList = document.getElementById('tplList')
+      const tplName = document.getElementById('tplName')
+      const btnSaveTpl = document.getElementById('btnSaveTpl')
+      const btnLoadTpl = document.getElementById('btnLoadTpl')
+      const btnDeleteTpl = document.getElementById('btnDeleteTpl')
+      const btnExportTpl = document.getElementById('btnExportTpl')
+      const btnImportTpl = document.getElementById('btnImportTpl')
+      const tplImport = document.getElementById('tplImport')
+
+      function loadAllTemplates() {
+        try {
+          return JSON.parse(localStorage.getItem(TKEY) || '[]')
+        } catch {
+          return []
+        }
+      }
+      function saveAllTemplates(list) {
+        localStorage.setItem(TKEY, JSON.stringify(list))
+        refreshTplList()
+      }
+      function refreshTplList() {
+        const all = loadAllTemplates()
+        tplList.innerHTML = all
+          .map(
+            (t, i) =>
+              `<option value="${i}">${t.name} • ${new Date(
+                t.ts
+              ).toLocaleString()}</option>`
+          )
+          .join('')
+      }
+      function gatherState() {
+        return {
+          uiTheme: document.getElementById('uiTheme').value,
+          paperSize: document.getElementById('paperSize').value,
+          orientation: document.getElementById('orientation').value,
+          bgMap: document.getElementById('bgMap').value,
+          palette: {
+            paper: paperColor.value,
+            ink: inkColor.value,
+            text: textColor.value,
+            acc: accColor.value,
+            box: boxFillColor.value,
+            boxOpacity: boxOpacity.value,
+          },
+          sender: {
+            fromName: fromName.value,
+            fromWebsite: fromWebsite.value,
+            fromPhone: fromPhone.value,
+            fromAddress: fromAddress.value,
+          },
+          recipient: {
+            toCompany: toCompany.value,
+            toNames: toNames.value,
+            toAddress: toAddress.value,
+            toContact: toContact.value,
+          },
+          invoice: {
+            number: invoiceNumber.value,
+            date: invoiceDate.value,
+            due: dueDate.value,
+            currency: currency.value,
+          },
+          payment: paymentInstructions.value,
+          items: getItems(),
+        }
+      }
+      function applyState(s) {
+        if (!s) return
+        document.getElementById('uiTheme').value = s.uiTheme || 'system'
+        document.documentElement.setAttribute(
+          'data-theme',
+          s.uiTheme || 'system'
+        )
+        document.getElementById('paperSize').value = s.paperSize || 'letter'
+        document.getElementById('orientation').value =
+          s.orientation || 'portrait'
+        document.getElementById('bgMap').value = s.bgMap || 'off'
+        paperColor.value = s.palette?.paper || paperColor.value
+        inkColor.value = s.palette?.ink || inkColor.value
+        textColor.value = s.palette?.text || textColor.value
+        accColor.value = s.palette?.acc || accColor.value
+        boxFillColor.value = s.palette?.box || boxFillColor.value
+        boxOpacity.value = s.palette?.boxOpacity || boxOpacity.value
+        boxOpacityVal.textContent = boxOpacity.value + '%'
+        document.getElementById('fromName').value = s.sender?.fromName || ''
+        document.getElementById('fromWebsite').value =
+          s.sender?.fromWebsite || ''
+        document.getElementById('fromPhone').value = s.sender?.fromPhone || ''
+        document.getElementById('fromAddress').value =
+          s.sender?.fromAddress || ''
+        document.getElementById('toCompany').value =
+          s.recipient?.toCompany || ''
+        document.getElementById('toNames').value = s.recipient?.toNames || ''
+        document.getElementById('toAddress').value =
+          s.recipient?.toAddress || ''
+        document.getElementById('toContact').value =
+          s.recipient?.toContact || ''
+        document.getElementById('invoiceNumber').value = s.invoice?.number || ''
+        document.getElementById('invoiceDate').value = s.invoice?.date || ''
+        document.getElementById('dueDate').value = s.invoice?.due || ''
+        document.getElementById('currency').value = s.invoice?.currency || 'USD'
+        document.getElementById('paymentInstructions').value = s.payment || ''
+        document.getElementById('itemsBody').innerHTML = ''
+        ;(s.items || []).forEach((it) =>
+          addItem(it.description, it.qty, it.rate)
+        )
+        sw('swPaper', paperColor.value)
+        sw('swInk', inkColor.value)
+        sw('swText', textColor.value)
+        sw('swAcc', accColor.value)
+        sw('swBox', boxFillColor.value)
+      }
+      btnSaveTpl.onclick = () => {
+        const name = (tplName.value || '').trim()
+        if (!name) {
+          alert('Name your template first.')
+          return
+        }
+        const all = loadAllTemplates()
+        all.push({ name, ts: Date.now(), state: gatherState() })
+        saveAllTemplates(all)
+        tplName.value = ''
+      }
+      btnLoadTpl.onclick = () => {
+        const idx = +tplList.value
+        const all = loadAllTemplates()
+        if (isNaN(idx) || !all[idx]) return
+        applyState(all[idx].state)
+      }
+      btnDeleteTpl.onclick = () => {
+        const idx = +tplList.value
+        const all = loadAllTemplates()
+        if (isNaN(idx) || !all[idx]) return
+        all.splice(idx, 1)
+        saveAllTemplates(all)
+      }
+      btnExportTpl.onclick = () => {
+        const all = loadAllTemplates()
+        const blob = new Blob([JSON.stringify(all, null, 2)], {
+          type: 'application/json',
+        })
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = 'invoice-templates.json'
+        a.click()
+        URL.revokeObjectURL(a.href)
+      }
+      btnImportTpl.onclick = () => tplImport.click()
+      tplImport.onchange = async (e) => {
+        const f = e.target.files?.[0]
+        if (!f) return
+        const txt = await f.text()
+        try {
+          const arr = JSON.parse(txt)
+          if (Array.isArray(arr)) saveAllTemplates(arr)
+          else alert('Invalid template file')
+        } catch {
+          alert('Invalid JSON')
+        }
+        tplImport.value = ''
+      }
+      refreshTplList()
     </script>
   </body>
 </html>
