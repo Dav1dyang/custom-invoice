@@ -754,12 +754,23 @@ Object.keys(FONT_TARGETS).forEach((k) => {
 
 async function ensureFonts() {
   if (fontsReady) return fontsReady
+
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    throw new Error('jsPDF library not loaded')
+  }
+
   const { jsPDF } = window.jspdf
   async function addFromB64(name, vfs, b64) {
+    if (!jsPDF.API || typeof jsPDF.API.addFileToVFS !== 'function') {
+      throw new Error('jsPDF API not properly initialized')
+    }
     jsPDF.API.addFileToVFS(vfs, b64)
     jsPDF.API.addFont(vfs, name, 'normal')
   }
   async function addFromUrls(name, vfs, urls) {
+    if (!jsPDF.API || typeof jsPDF.API.addFileToVFS !== 'function') {
+      throw new Error('jsPDF API not properly initialized')
+    }
     const ab = await fetchFirst(urls)
     jsPDF.API.addFileToVFS(vfs, toB64(ab))
     jsPDF.API.addFont(vfs, name, 'normal')
