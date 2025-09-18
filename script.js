@@ -695,8 +695,12 @@ const FONT_TARGETS = {
     input: 'fontHdr',
     status: 'fontHdrStatus',
     urls: [
+      // GitHub raw keeps the original TTF and sends permissive CORS headers
+      'https://raw.githubusercontent.com/google/fonts/main/ofl/rubikmonoone/RubikMonoOne-Regular.ttf',
+      // jsDelivr has historically proxied the same file, keep it as a fallback
+      'https://cdn.jsdelivr.net/gh/google/fonts/ofl/rubikmonoone/RubikMonoOne-Regular.ttf',
+      // Unpkg began responding 403 for anonymous font fetches in some regions; leave it as a final fallback in case that changes
       'https://unpkg.com/@fontsource/rubik-mono-one/files/rubik-mono-one-latin-400-normal.ttf',
-      'https://unpkg.com/@fontsource/rubik-mono-one/files/rubik-mono-one-all-400-normal.ttf',
     ],
   },
   body: {
@@ -705,13 +709,17 @@ const FONT_TARGETS = {
     input: 'fontBody',
     status: 'fontBodyStatus',
     urls: [
+      'https://raw.githubusercontent.com/google/fonts/main/ofl/dmmono/DMMono-Light.ttf',
+      'https://cdn.jsdelivr.net/gh/google/fonts/ofl/dmmono/DMMono-Light.ttf',
       'https://unpkg.com/@fontsource/dm-mono/files/dm-mono-latin-300-normal.ttf',
-      'https://unpkg.com/@fontsource/dm-mono/files/dm-mono-all-300-normal.ttf',
     ],
   },
 }
 
-window.__pdfFonts = { hdr: null, body: null }
+window.__pdfFonts = {
+  hdr: { data: null, source: null },
+  body: { data: null, source: null },
+}
 
 function setStatus(which, cls, msg) {
   const el = document.getElementById(FONT_TARGETS[which].status)
@@ -720,8 +728,9 @@ function setStatus(which, cls, msg) {
 
 async function loadLocalFont(which, file) {
   const ab = await file.arrayBuffer()
-  window.__pdfFonts[which] = toB64(ab)
+  window.__pdfFonts[which] = { data: toB64(ab), source: 'local' }
   setStatus(which, 'ok', 'Loaded local TTF')
+  fontsReady = null
 }
 
 Object.keys(FONT_TARGETS).forEach((k) => {
@@ -735,58 +744,55 @@ Object.keys(FONT_TARGETS).forEach((k) => {
 
 async function ensureFonts() {
   if (fontsReady) return fontsReady
-  const { jsPDF } = window.jspdf
-  async function addFromB64(name, vfs, b64) {
-    jsPDF.API.addFileToVFS(vfs, b64)
-    jsPDF.API.addFont(vfs, name, 'normal')
-  }
-  async function addFromUrls(name, vfs, urls) {
-    const ab = await fetchFirst(urls)
-    jsPDF.API.addFileToVFS(vfs, toB64(ab))
-    jsPDF.API.addFont(vfs, name, 'normal')
+  async function resolveFont(which) {
+    const cached = window.__pdfFonts[which]
+    if (cached?.data) return cached
+    const ab = await fetchFirst(FONT_TARGETS[which].urls)
+    const data = toB64(ab)
+    const next = { data, source: 'cdn' }
+    window.__pdfFonts[which] = next
+    return next
   }
   fontsReady = (async () => {
     try {
-      if (window.__pdfFonts.hdr) {
-        await addFromB64(
-          FONT_TARGETS.hdr.name,
-          FONT_TARGETS.hdr.vfs,
-          window.__pdfFonts.hdr
-        )
-        setStatus('hdr', 'ok', 'Embedded')
-      } else {
-        await addFromUrls(
-          FONT_TARGETS.hdr.name,
-          FONT_TARGETS.hdr.vfs,
-          FONT_TARGETS.hdr.urls
-        )
-        setStatus('hdr', 'ok', 'CDN loaded')
-      }
-      if (window.__pdfFonts.body) {
-        await addFromB64(
-          FONT_TARGETS.body.name,
-          FONT_TARGETS.body.vfs,
-          window.__pdfFonts.body
-        )
-        setStatus('body', 'ok', 'Embedded')
-      } else {
-        await addFromUrls(
-          FONT_TARGETS.body.name,
-          FONT_TARGETS.body.vfs,
-          FONT_TARGETS.body.urls
-        )
-        setStatus('body', 'ok', 'CDN loaded')
-      }
+      const hdrFont = await resolveFont('hdr')
+      const bodyFont = await resolveFont('body')
+
+      setStatus(
+        'hdr',
+        'ok',
+        hdrFont.source === 'local' ? 'Ready (local TTF)' : 'CDN loaded'
+      )
+      setStatus(
+        'body',
+        'ok',
+        bodyFont.source === 'local' ? 'Ready (local TTF)' : 'CDN loaded'
+      )
+
       return {
-        hdr: FONT_TARGETS.hdr.name,
-        body: FONT_TARGETS.body.name,
         ok: true,
+        hdr: {
+          name: FONT_TARGETS.hdr.name,
+          vfs: FONT_TARGETS.hdr.vfs,
+          data: hdrFont.data,
+          source: hdrFont.source,
+        },
+        body: {
+          name: FONT_TARGETS.body.name,
+          vfs: FONT_TARGETS.body.vfs,
+          data: bodyFont.data,
+          source: bodyFont.source,
+        },
       }
     } catch (e) {
       console.warn('Custom fonts failed, falling back.', e)
       setStatus('hdr', 'err', 'Fallback')
       setStatus('body', 'err', 'Fallback')
-      return { hdr: 'courier', body: 'helvetica', ok: false }
+      return {
+        ok: false,
+        hdr: { name: 'courier', vfs: null, data: null, source: 'builtin' },
+        body: { name: 'helvetica', vfs: null, data: null, source: 'builtin' },
+      }
     }
   })()
   return fontsReady
@@ -874,6 +880,13 @@ async function downloadPDF() {
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
 
+  if (fonts.ok) {
+    doc.addFileToVFS(fonts.hdr.vfs, fonts.hdr.data)
+    doc.addFont(fonts.hdr.vfs, fonts.hdr.name, 'normal')
+    doc.addFileToVFS(fonts.body.vfs, fonts.body.data)
+    doc.addFont(fonts.body.vfs, fonts.body.name, 'normal')
+  }
+
   // Paper
   doc.setFillColor(paperRGB.r, paperRGB.g, paperRGB.b)
   doc.rect(0, 0, pageW, pageH, 'F')
@@ -904,7 +917,7 @@ async function downloadPDF() {
     }
     doc.addImage(logoDataUrl, 'PNG', margin, 15, w, h)
   }
-  doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
+  doc.setFont(fonts.hdr.name, fonts.ok ? 'normal' : 'bold')
   doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
   doc.setFontSize(13)
   doc.text('INVOICE', pageW - margin, 20, { align: 'right' })
@@ -953,7 +966,7 @@ async function downloadPDF() {
   }
 
   // Grid headers (ALL CAPS) - use black for headers inside boxes
-  doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
+  doc.setFont(fonts.hdr.name, fonts.ok ? 'normal' : 'bold')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use box text color (black)
   doc.setFontSize(7.5)
   doc.text('FROM', margin + 2, yDataTop + 4)
@@ -962,7 +975,7 @@ async function downloadPDF() {
   doc.text('SPECIFICATIONS', margin + 3 * colW + 2, yDataTop + 4)
 
   // Grid body (thin mono, slightly larger) - use box text color for content in boxes
-  doc.setFont(fonts.body, 'normal')
+  doc.setFont(fonts.body.name, 'normal')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
   doc.setFontSize(8)
   const pad = 2
@@ -1036,7 +1049,7 @@ async function downloadPDF() {
     doc.setGState(new doc.GState({ opacity: 1 }))
   }
 
-  doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
+  doc.setFont(fonts.hdr.name, fonts.ok ? 'normal' : 'bold')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use black for table headers inside boxes
   doc.setFontSize(7.5)
   const hY = yItemsTop + 5
@@ -1053,7 +1066,7 @@ async function downloadPDF() {
     )
 
   // rows - use table-specific colors for better readability
-  doc.setFont(fonts.body, 'normal')
+  doc.setFont(fonts.body.name, 'normal')
   doc.setTextColor(tableTextRGB.r, tableTextRGB.g, tableTextRGB.b)
   doc.setFontSize(8)
   let y = yItemsTop + itemsHeaderH,
@@ -1097,12 +1110,12 @@ async function downloadPDF() {
     doc.line(xSplit, yPayTop, xSplit, yPayTop + paymentH)
   }
 
-  doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
+  doc.setFont(fonts.hdr.name, fonts.ok ? 'normal' : 'bold')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use black for headers inside boxes
   doc.setFontSize(7.5)
   doc.text('PAYMENT INSTRUCTIONS', margin + 2, yPayTop + 4)
 
-  doc.setFont(fonts.body, 'normal')
+  doc.setFont(fonts.body.name, 'normal')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
   doc.setFontSize(8)
   let py = yPayTop + 8
@@ -1116,12 +1129,12 @@ async function downloadPDF() {
     })
   })
 
-  doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
+  doc.setFont(fonts.hdr.name, fonts.ok ? 'normal' : 'bold')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use black for headers inside boxes
   doc.setFontSize(7.5)
   doc.text('TOTAL', xSplit + 2, yPayTop + 4)
 
-  doc.setFont(fonts.body, 'normal')
+  doc.setFont(fonts.body.name, 'normal')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
   doc.setFontSize(8)
   const rightX = margin + contentW - 2
@@ -1134,7 +1147,7 @@ async function downloadPDF() {
   ty += 4
   if (showB) doc.line(xSplit + 2, ty + 1, margin + contentW - 2, ty + 1)
   ty += 6
-  doc.setFont(fonts.body, 'bold')
+  doc.setFont(fonts.body.name, 'bold')
   doc.setFontSize(9)
   doc.text('TOTAL (' + currency + '): ', xSplit + 2, ty)
   doc.text('$' + subtotal.toFixed(2), rightX, ty, { align: 'right' })
