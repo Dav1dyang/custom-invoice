@@ -343,8 +343,19 @@ function setupListeners() {
 
   $('#refreshPreview').addEventListener('click', updatePreview)
 
-  $('#downloadPdf').addEventListener('click', async () => {
+  const downloadBtn = $('#downloadPdf')
+  downloadBtn.addEventListener('click', async () => {
+    if (!window.jspdf?.jsPDF || !window.html2canvas) {
+      console.error('PDF dependencies are missing')
+      alert('PDF generation is unavailable right now. Please refresh and try again.')
+      return
+    }
+
     updatePreview()
+    downloadBtn.disabled = true
+    const originalLabel = downloadBtn.textContent
+    downloadBtn.textContent = 'Generating…'
+
     const data = collectFormData()
     const { jsPDF } = window.jspdf
     const doc = new jsPDF({
@@ -353,25 +364,41 @@ function setupListeners() {
       format: data.paperSize === 'a4' ? 'a4' : 'letter',
     })
 
-    const clone = $('#invoiceContent').cloneNode(true)
+    const source = $('#invoiceContent')
+    const clone = source.cloneNode(true)
     clone.style.position = 'absolute'
     clone.style.left = '-9999px'
     clone.style.top = '0'
+    const paperDimensions = {
+      letter: { portrait: 816, landscape: 1056 },
+      a4: { portrait: 794, landscape: 1123 },
+    }
+    const targetWidth = paperDimensions[data.paperSize]?.[data.orientation] || source.offsetWidth
+    clone.style.width = `${targetWidth}px`
+    clone.style.maxWidth = 'none'
     document.body.appendChild(clone)
 
-    await doc.html(clone, {
-      callback: (docInstance) => {
-        docInstance.save(`${data.invoiceNumber || 'invoice'}.pdf`)
-      },
-      margin: 36,
-      autoPaging: 'text',
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-      },
-    })
-
-    document.body.removeChild(clone)
+    try {
+      await doc.html(clone, {
+        callback: (docInstance) => {
+          docInstance.save(`${data.invoiceNumber || 'invoice'}.pdf`)
+        },
+        margin: 36,
+        autoPaging: 'text',
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          windowWidth: clone.scrollWidth,
+        },
+      })
+    } catch (error) {
+      console.error('Failed to generate PDF', error)
+      alert('Unable to generate the PDF. Please try again.')
+    } finally {
+      document.body.removeChild(clone)
+      downloadBtn.disabled = false
+      downloadBtn.textContent = originalLabel
+    }
   })
 
   $('#addItem').addEventListener('click', () => {

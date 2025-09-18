@@ -44,7 +44,7 @@ main.app {
 .card {
   background: color-mix(in srgb, currentColor 3%, transparent);
   border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  border-radius: 18px;
+  border-radius: 0;
   padding: clamp(20px, 3vw, 32px);
   backdrop-filter: blur(6px);
   box-shadow: 0 24px 48px -36px rgba(0, 0, 0, 0.55);
@@ -120,7 +120,7 @@ main.app {
 
 .field__control {
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 12px;
   font-family: inherit;
   font-size: 14px;
@@ -140,7 +140,7 @@ main.app {
 
 .field--radio {
   padding: 18px;
-  border-radius: 12px;
+  border-radius: 0;
   border: 1px dashed color-mix(in srgb, currentColor 22%, transparent);
   gap: 12px;
 }
@@ -170,7 +170,7 @@ main.app {
 .logo-preview {
   grid-column: 1 / -1;
   border: 1px dashed color-mix(in srgb, currentColor 22%, transparent);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 12px;
   display: flex;
   align-items: center;
@@ -212,10 +212,12 @@ main.app {
 
 .preview__canvas {
   background: color-mix(in srgb, currentColor 8%, transparent);
-  border-radius: 16px;
+  border-radius: 0;
   padding: clamp(18px, 3vw, 28px);
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
   overflow-x: auto;
+  display: flex;
+  justify-content: center;
 }
 
 .btn {
@@ -224,12 +226,13 @@ main.app {
   text-transform: uppercase;
   letter-spacing: 0.3em;
   padding: 10px 20px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
   background: transparent;
   color: inherit;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  touch-action: manipulation;
 }
 
 .btn:hover {
@@ -241,9 +244,16 @@ main.app {
   background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .table-wrap {
   overflow-x: auto;
-  border-radius: 12px;
+  border-radius: 0;
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
 }
 
@@ -293,7 +303,7 @@ main.app {
 .items .remove-row {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: 0;
   border: none;
   background: color-mix(in srgb, currentColor 20%, transparent);
   color: inherit;
@@ -308,14 +318,16 @@ main.app {
   --surface: #f5f5f5;
   --surface-strong: #e8e8e8;
   --border: #c7c7c7;
-  --corner-radius: 12px;
+  --corner-radius: 0;
 
   background: #ffffff;
   color: var(--ink);
   padding: clamp(32px, 4vw, 48px);
-  border-radius: 18px;
+  border-radius: 0;
   border: 1px solid var(--border);
-  min-width: 560px;
+  width: min(100%, 680px);
+  min-width: 0;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -489,8 +501,14 @@ main.app {
     justify-content: flex-start;
   }
 
+  .preview__canvas {
+    padding: 16px;
+  }
+
   .invoice {
-    min-width: 100%;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
     padding: 24px;
   }
 
@@ -505,6 +523,22 @@ main.app {
 
   .invoice-summary {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .preview__actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .preview__actions .btn {
+    width: 100%;
+  }
+
+  .invoice {
+    padding: 20px;
   }
 }
 
