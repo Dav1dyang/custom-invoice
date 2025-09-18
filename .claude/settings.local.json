@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(open invoice-generator.html)",
+      "Read(//Users/davidyang/Downloads/**)",
+      "Bash(node:*)",
+      "Bash(open:*)",
+      "Read(//Users/davidyang/Desktop/Screenshots/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

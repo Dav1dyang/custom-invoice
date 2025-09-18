@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="system">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TECHNICAL INVOICE GENERATOR • Datasheet PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="main themed">
+      <div class="header card">
+        <h1>TECHNICAL INVOICE GENERATOR</h1>
+        <div class="subtitle">DATASHEET AESTHETIC • ONE-PAGE PDF</div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="settings card">
+        <div class="grid">
+          <fieldset class="panel">
+            <legend>Website Appearance</legend>
+            <div class="row">
+              <div class="group">
+                <label>Theme</label>
+                <select id="uiTheme">
+                  <option value="system" selected>System</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="panel">
+            <legend>PDF Page</legend>
+            <div class="row">
+              <div class="group">
+                <label>Paper Size</label>
+                <select id="paperSize">
+                  <option value="letter" selected>Letter (8.5×11")</option>
+                  <option value="a4">A4 (210×297 mm)</option>
+                </select>
+              </div>
+              <div class="group">
+                <label>Orientation</label>
+                <select id="orientation">
+                  <option value="portrait" selected>Portrait</option>
+                  <option value="landscape">Landscape</option>
+                </select>
+              </div>
+              <div class="group">
+                <label>Logo Upload</label>
+                <div class="logo-box">
+                  <label class="logo-btn" for="logoUpload">Select Logo</label>
+                  <input id="logoUpload" type="file" accept="image/*" />
+                  <img id="logoPreview" alt="Logo preview" />
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="panel">
+            <legend>PDF Style & Color</legend>
+            <div class="row">
+              <div class="group">
+                <label>Style Mode</label>
+                <select id="styleMode">
+                  <option value="outline">Clean Outline (Technical Drawing)</option>
+                  <option value="filled">Filled Background (Datasheet)</option>
+                </select>
+                <div class="note">Choose between minimal outlines or bold filled backgrounds</div>
+              </div>
+              <div class="group">
+                <label>Accent Color</label>
+                <input type="color" id="accentColor" value="#CEFF00" />
+                <span
+                  class="swatch"
+                  id="swAccent"
+                  style="background: #CEFF00"
+                ></span>
+                <div class="note">Primary color for headers and accents</div>
+              </div>
+              <div class="group">
+                <label>Quick Presets</label>
+                <div class="preset-grid">
+                  <button type="button" class="preset-btn" data-preset="technical" style="background: #111111; color: #fff;">Technical Black</button>
+                  <button type="button" class="preset-btn" data-preset="blueprint" style="background: #0B4C8C; color: #fff;">Blueprint Blue</button>
+                  <button type="button" class="preset-btn" data-preset="neon" style="background: #CEFF00; color: #111;">Neon Green</button>
+                  <button type="button" class="preset-btn" data-preset="orange" style="background: #D45500; color: #fff;">Hi-Fi Orange</button>
+                  <button type="button" class="preset-btn" data-preset="purple" style="background: #7B2CBF; color: #fff;">Tech Purple</button>
+                  <button type="button" class="preset-btn" data-preset="red" style="background: #DC2626; color: #fff;">Alert Red</button>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="panel">
+            <legend>Client Templates</legend>
+            <div class="row">
+              <div class="group">
+                <label>Template Name</label>
+                <input id="templateName" type="text" placeholder="Enter template name" />
+                <div class="template-actions">
+                  <button type="button" onclick="saveTemplate()">Save Template</button>
+                  <button type="button" onclick="loadTemplateDialog()">Load Template</button>
+                </div>
+              </div>
+              <div class="group">
+                <label>Saved Templates</label>
+                <select id="templateSelector">
+                  <option value="">Select a template...</option>
+                </select>
+                <div class="template-actions">
+                  <button type="button" onclick="loadSelectedTemplate()">Load Selected</button>
+                  <button type="button" onclick="deleteSelectedTemplate()">Delete Selected</button>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="panel">
+            <legend>PDF Fonts</legend>
+            <div class="row">
+              <div class="group">
+                <label>Header — Fat Rounded (Rubik Mono One)</label>
+                <input id="fontHdr" type="file" accept=".ttf" />
+                <div id="fontHdrStatus" class="note">
+                  Will load via CDN unless you upload a TTF here
+                  <span class="status-dot warn"></span>
+                </div>
+              </div>
+              <div class="group">
+                <label>Body — Thin Monospace (DM Mono Light)</label>
+                <input id="fontBody" type="file" accept=".ttf" />
+                <div id="fontBodyStatus" class="note">
+                  Will load via CDN unless you upload a TTF here
+                  <span class="status-dot warn"></span>
+                </div>
+              </div>
+            </div>
+            <div class="note">
+              If both CDN and uploads fail, I'll fall back to Courier (headers)
+              and Helvetica (body).
+            </div>
+          </fieldset>
+        </div>
+      </div>
+
+      <!-- INPUT -->
+      <div class="editor">
+        <div class="section card">
+          <h3>SENDER INFORMATION</h3>
+          <div class="row2">
+            <div class="label">NAME/COMPANY:</div>
+            <input id="fromName" type="text" value="David Yang" />
+          </div>
+          <div class="row2">
+            <div class="label">WEBSITE:</div>
+            <input id="fromWebsite" type="text" value="www.davidyang.work" />
+          </div>
+          <div class="row2">
+            <div class="label">TELEPHONE:</div>
+            <input id="fromPhone" type="text" value="480-787-9710" />
+          </div>
+          <div class="row2">
+            <div class="label">ADDRESS:</div>
+            <input
+              id="fromAddress"
+              type="text"
+              value="10 Montieth St, APT 241, Brooklyn, NY 11206"
+            />
+          </div>
+        </div>
+
+        <div class="section card">
+          <h3>RECIPIENT INFORMATION</h3>
+          <div class="row2">
+            <div class="label">COMPANY:</div>
+            <input id="toCompany" type="text" value="MORAKANA" />
+          </div>
+          <div class="row2">
+            <div class="label">ATTENTION:</div>
+            <input id="toNames" type="text" value="Sebastián &amp; Tiri" />
+          </div>
+          <div class="row2">
+            <div class="label">ADDRESS:</div>
+            <input
+              id="toAddress"
+              type="text"
+              value="493 Greene Ave, Brooklyn, NY 11216"
+            />
+          </div>
+          <div class="row2">
+            <div class="label">CONTACT:</div>
+            <textarea id="toContact">
+seb@morakana.com (312) 399-1519
+tiri@morakana.com (917) 456-2956</textarea
+            >
+          </div>
+        </div>
+
+        <div class="section card">
+          <h3>INVOICE PARAMETERS</h3>
+          <div class="row2">
+            <div class="label">INVOICE NO:</div>
+            <input id="invoiceNumber" type="text" value="IN-19" />
+          </div>
+          <div class="row2">
+            <div class="label">DATE ISSUED:</div>
+            <input id="invoiceDate" type="date" value="2025-07-11" />
+          </div>
+          <div class="row2">
+            <div class="label">DUE DATE:</div>
+            <input id="dueDate" type="date" value="2025-08-11" />
+          </div>
+          <div class="row2">
+            <div class="label">CURRENCY:</div>
+            <input id="currency" type="text" value="USD" />
+          </div>
+        </div>
+
+        <div class="section card">
+          <h3>PAYMENT SPECIFICATIONS</h3>
+          <div class="row2">
+            <div class="label">INSTRUCTIONS:</div>
+            <textarea id="paymentInstructions">
+Transfer via Zelle or Venmo —
+davidyangfinance@gmail.com
+480-787-9710
+
+ACH Transfer Info —
+Routing Number: 021000322
+Account Number: 483091305810</textarea
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- ITEMS -->
+      <div class="items card">
+        <h3>ITEMIZED BILLING DATA</h3>
+        
+        <!-- Import Controls -->
+        <div class="import-section">
+          <div class="import-row">
+            <div class="import-group">
+              <label>Import from CSV File</label>
+              <input id="csvFileInput" type="file" accept=".csv,.tsv,.txt" />
+              <button type="button" onclick="importFromFile()">Import File</button>
+            </div>
+            <div class="import-group">
+              <label>Paste CSV Data</label>
+              <textarea id="csvPasteArea" placeholder="Paste CSV data here (Description, Quantity, Rate format)" rows="3"></textarea>
+              <button type="button" onclick="importFromPaste()">Import Pasted Data</button>
+            </div>
+            <div class="import-group">
+              <button type="button" onclick="clearAllItems()">Clear All Items</button>
+            </div>
+          </div>
+        </div>
+        
+        <table id="itemsTable">
+          <colgroup>
+            <col style="width: 40%" />
+            <col style="width: 15%" />
+            <col style="width: 15%" />
+            <col style="width: 20%" />
+            <col style="width: 10%" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>DESCRIPTION</th>
+              <th>QTY/HRS</th>
+              <th>RATE</th>
+              <th>AMOUNT</th>
+              <th>ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+        <button class="add" onclick="addItem()">+ ADD LINE ITEM</button>
+      </div>
+
+      <button class="go" onclick="renderPreview()">
+        ◼ GENERATE INVOICE OUTPUT
+      </button>
+
+      <!-- PREVIEW -->
+      <div class="preview" id="preview">
+        <div class="out card" id="invoiceContent"></div>
+        <div class="dl">
+          <button onclick="downloadPDF()">⬇ DOWNLOAD PDF FILE</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
