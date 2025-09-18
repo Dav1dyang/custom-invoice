@@ -547,8 +547,5 @@ input[type='checkbox'] {
     background: color-mix(in srgb, currentColor 8%, transparent);
   }
 
-  html[data-theme='system'] body .invoice,
-  html[data-theme='dark'] body .invoice {
-    background: #101010;
-  }
+  /* Keep the invoice preview styling consistent regardless of UI theme. */
 }
