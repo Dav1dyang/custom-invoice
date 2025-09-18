@@ -23,6 +23,11 @@
   const DEFAULT_THEME = 'system'
   const VALID_THEMES = new Set(['system', 'light', 'dark'])
 
+  const PAGE_DIMENSIONS = {
+    letter: { width: 816, height: 1056 },
+    a4: { width: 794, height: 1123 },
+  }
+
   const invoiceElement = document.getElementById('invoiceContent')
 
   function clamp(value, min, max) {
@@ -265,6 +270,16 @@
     }
   }
 
+  function getPageLayout(paperSize, orientation) {
+    const base = PAGE_DIMENSIONS[paperSize] || PAGE_DIMENSIONS.letter
+    const isLandscape = orientation === 'landscape'
+    return {
+      width: isLandscape ? base.height : base.width,
+      height: isLandscape ? base.width : base.height,
+      aspect: base.width && base.height ? (isLandscape ? base.height / base.width : base.width / base.height) : 1,
+    }
+  }
+
   function applyPalette(element, palette) {
     if (!element) return
     element.style.setProperty('--accent', palette.accent)
@@ -300,6 +315,12 @@
     applyPalette(invoiceElement, palette)
     updateUiAccent(palette.accent)
     invoiceElement.innerHTML = buildInvoiceMarkup(data)
+    const layout = getPageLayout(data.paperSize, data.orientation)
+    invoiceElement.dataset.paper = data.paperSize
+    invoiceElement.dataset.orientation = data.orientation
+    invoiceElement.style.setProperty('--page-width', `${layout.width}px`)
+    invoiceElement.style.setProperty('--page-height', `${layout.height}px`)
+    invoiceElement.style.setProperty('--page-aspect', layout.aspect.toString())
   }
 
   function setAmountValue(amountInput, qty, rate) {
@@ -475,6 +496,7 @@
       clone.style.margin = '0'
       clone.style.maxWidth = 'none'
       clone.style.width = computed.width
+      clone.style.height = computed.height
       clone.style.background = computed.backgroundColor || '#ffffff'
       clone.style.padding = computed.padding
 
@@ -505,22 +527,14 @@
         const pageWidth = doc.internal.pageSize.getWidth()
         const pageHeight = doc.internal.pageSize.getHeight()
         const availableWidth = pageWidth - margin * 2
-        const scale = availableWidth / canvas.width
-        const renderWidth = availableWidth
+        const availableHeight = pageHeight - margin * 2
+        const scale = Math.min(availableWidth / canvas.width, availableHeight / canvas.height)
+        const renderWidth = canvas.width * scale
         const renderHeight = canvas.height * scale
+        const offsetX = margin + (availableWidth - renderWidth) / 2
+        const offsetY = margin + (availableHeight - renderHeight)
 
-        let position = margin
-        let heightLeft = renderHeight
-
-        doc.addImage(imgData, 'PNG', margin, position, renderWidth, renderHeight)
-        heightLeft -= pageHeight - margin * 2
-
-        while (heightLeft > 0) {
-          position = heightLeft - renderHeight + margin
-          doc.addPage()
-          doc.addImage(imgData, 'PNG', margin, position, renderWidth, renderHeight)
-          heightLeft -= pageHeight - margin * 2
-        }
+        doc.addImage(imgData, 'PNG', offsetX, offsetY, renderWidth, renderHeight)
 
         doc.save(`${data.invoiceNumber || 'invoice'}.pdf`)
       } catch (error) {
