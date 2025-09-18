@@ -690,26 +690,18 @@ async function fetchFirst(urls, timeoutMs = 8000) {
 
 const FONT_TARGETS = {
   hdr: {
-    name: 'RubikMonoOne',
-    vfs: 'RubikMonoOne.ttf',
+    name: 'RubikFlex',
+    vfs: 'RubikFlex.ttf',
     input: 'fontHdr',
     status: 'fontHdrStatus',
-    urls: [
-      'https://cdn.jsdelivr.net/npm/@fontsource/rubik-mono-one@5.0.0/files/rubik-mono-one-latin-400-normal.ttf',
-      'https://fonts.gstatic.com/s/rubikmonoone/v17/UqyJK8kPP3hjw6ANTdfRk9YSN-8wRqQrc_j9.ttf',
-      'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/rubikmonoone/RubikMonoOne-Regular.ttf',
-    ],
+    urls: ['fonts/Rubik/Rubik-VariableFont_wght.ttf'],
   },
   body: {
     name: 'DMMono-Light',
     vfs: 'DMMono-Light.ttf',
     input: 'fontBody',
     status: 'fontBodyStatus',
-    urls: [
-      'https://cdn.jsdelivr.net/npm/@fontsource/dm-mono@5.0.0/files/dm-mono-latin-300-normal.ttf',
-      'https://fonts.gstatic.com/s/dmmono/v14/aFTU7PB1QTsUX8KYthqQBK0ReMw.ttf',
-      'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/dmmono/DMMono-Light.ttf',
-    ],
+    urls: ['fonts/DM_Mono/DMMono-Light.ttf'],
   },
 }
 
@@ -755,14 +747,14 @@ async function ensureFonts() {
           FONT_TARGETS.hdr.vfs,
           window.__pdfFonts.hdr
         )
-        setStatus('hdr', 'ok', 'Embedded')
+        setStatus('hdr', 'ok', 'Embedded override')
       } else {
         await addFromUrls(
           FONT_TARGETS.hdr.name,
           FONT_TARGETS.hdr.vfs,
           FONT_TARGETS.hdr.urls
         )
-        setStatus('hdr', 'ok', 'CDN loaded')
+        setStatus('hdr', 'ok', 'Local bundled font')
       }
       if (window.__pdfFonts.body) {
         await addFromB64(
@@ -770,14 +762,14 @@ async function ensureFonts() {
           FONT_TARGETS.body.vfs,
           window.__pdfFonts.body
         )
-        setStatus('body', 'ok', 'Embedded')
+        setStatus('body', 'ok', 'Embedded override')
       } else {
         await addFromUrls(
           FONT_TARGETS.body.name,
           FONT_TARGETS.body.vfs,
           FONT_TARGETS.body.urls
         )
-        setStatus('body', 'ok', 'CDN loaded')
+        setStatus('body', 'ok', 'Local bundled font')
       }
       return {
         hdr: FONT_TARGETS.hdr.name,
