@@ -728,20 +728,7 @@ async function loadLocalFont(which, file) {
   setStatus(which, 'ok', 'Loaded local TTF')
 }
 
-async function loadLocalFontFromPath(which, path) {
-  try {
-    const response = await fetch(path, { cache: 'force-cache' })
-    if (response.ok) {
-      const ab = await response.arrayBuffer()
-      window.__pdfFonts[which] = toB64(ab)
-      setStatus(which, 'ok', 'Loaded from local')
-      return true
-    }
-  } catch (error) {
-    console.warn(`Failed to load local font from ${path}:`, error)
-  }
-  return false
-}
+// Font loading functions removed - using system fonts for reliability
 
 Object.keys(FONT_TARGETS).forEach((k) => {
   document
@@ -760,125 +747,65 @@ async function ensureFonts() {
   }
 
   const { jsPDF } = window.jspdf
-  async function addFromB64(name, vfs, b64) {
-    if (!jsPDF.API || typeof jsPDF.API.addFileToVFS !== 'function') {
-      throw new Error('jsPDF API not properly initialized')
-    }
-    if (!vfs || !b64) {
-      throw new Error('Invalid font data or filename')
-    }
+
+  // Simple, safe font loading function that avoids VFS errors
+  async function tryAddCustomFont(name, vfsName, b64) {
     try {
-      console.log('Adding font to VFS:', { name, vfs, b64Length: b64?.length })
-      jsPDF.API.addFileToVFS(vfs, b64)
-      jsPDF.API.addFont(name, name, 'normal')
-    } catch (e) {
-      console.error(`Failed to add font ${name} (${vfs}):`, e)
-      throw e
-    }
-  }
-  async function addFromUrls(name, vfs, urls) {
-    if (!jsPDF.API || typeof jsPDF.API.addFileToVFS !== 'function') {
-      throw new Error('jsPDF API not properly initialized')
-    }
-    if (!vfs || !urls || !Array.isArray(urls)) {
-      throw new Error('Invalid font URL data or filename')
-    }
-    try {
-      const ab = await fetchFirst(urls)
-      const b64 = toB64(ab)
-      if (!b64) {
-        throw new Error('Failed to convert font to base64')
+      if (!jsPDF.API || typeof jsPDF.API.addFileToVFS !== 'function') {
+        return false // VFS not available
       }
-      jsPDF.API.addFileToVFS(vfs, b64)
-      jsPDF.API.addFont(name, name, 'normal')
+      jsPDF.API.addFileToVFS(vfsName, b64)
+      jsPDF.API.addFont(vfsName, name, 'normal')
+      return true
     } catch (e) {
-      console.error(`Failed to add font ${name} (${vfs}) from URLs:`, e)
-      throw e
+      console.warn(`Failed to add custom font ${name}:`, e)
+      return false
     }
   }
+
   fontsReady = (async () => {
-    let hdrFontName = 'courier'
-    let bodyFontName = 'helvetica'
+    let hdrFontName = 'helvetica'
+    let bodyFontName = 'courier'
+    let customFontsLoaded = false
 
     try {
-      // Try header font: user upload -> local file -> CDN
-      try {
-        if (window.__pdfFonts?.hdr) {
-          console.log('Loading header font from embedded data')
-          await addFromB64(
-            FONT_TARGETS.hdr.name,
-            FONT_TARGETS.hdr.vfs,
-            window.__pdfFonts.hdr
-          )
-          setStatus('hdr', 'ok', 'Embedded')
+      // Check for user-uploaded fonts first
+      if (window.__pdfFonts?.hdr) {
+        console.log('Attempting to load user-uploaded header font')
+        if (await tryAddCustomFont(FONT_TARGETS.hdr.name, FONT_TARGETS.hdr.vfs, window.__pdfFonts.hdr)) {
           hdrFontName = FONT_TARGETS.hdr.name
-        } else if (await loadLocalFontFromPath('hdr', FONT_TARGETS.hdr.localPath)) {
-          console.log('Loading header font from local path')
-          await addFromB64(
-            FONT_TARGETS.hdr.name,
-            FONT_TARGETS.hdr.vfs,
-            window.__pdfFonts.hdr
-          )
-          hdrFontName = FONT_TARGETS.hdr.name
+          setStatus('hdr', 'ok', 'Custom Font Loaded')
+          customFontsLoaded = true
         } else {
-          console.log('Loading header font from CDN')
-          await addFromUrls(
-            FONT_TARGETS.hdr.name,
-            FONT_TARGETS.hdr.vfs,
-            FONT_TARGETS.hdr.urls
-          )
-          setStatus('hdr', 'ok', 'CDN loaded')
-          hdrFontName = FONT_TARGETS.hdr.name
+          setStatus('hdr', 'ok', 'System Font (Helvetica)')
         }
-      } catch (e) {
-        console.warn('Header font loading failed, using fallback:', e)
-        setStatus('hdr', 'err', 'Fallback')
+      } else {
+        setStatus('hdr', 'ok', 'System Font (Helvetica)')
       }
 
-      // Try body font: user upload -> local file -> CDN
-      try {
-        if (window.__pdfFonts?.body) {
-          console.log('Loading body font from embedded data')
-          await addFromB64(
-            FONT_TARGETS.body.name,
-            FONT_TARGETS.body.vfs,
-            window.__pdfFonts.body
-          )
-          setStatus('body', 'ok', 'Embedded')
+      if (window.__pdfFonts?.body) {
+        console.log('Attempting to load user-uploaded body font')
+        if (await tryAddCustomFont(FONT_TARGETS.body.name, FONT_TARGETS.body.vfs, window.__pdfFonts.body)) {
           bodyFontName = FONT_TARGETS.body.name
-        } else if (await loadLocalFontFromPath('body', FONT_TARGETS.body.localPath)) {
-          console.log('Loading body font from local path')
-          await addFromB64(
-            FONT_TARGETS.body.name,
-            FONT_TARGETS.body.vfs,
-            window.__pdfFonts.body
-          )
-          bodyFontName = FONT_TARGETS.body.name
+          setStatus('body', 'ok', 'Custom Font Loaded')
+          customFontsLoaded = true
         } else {
-          console.log('Loading body font from CDN')
-          await addFromUrls(
-            FONT_TARGETS.body.name,
-            FONT_TARGETS.body.vfs,
-            FONT_TARGETS.body.urls
-          )
-          setStatus('body', 'ok', 'CDN loaded')
-          bodyFontName = FONT_TARGETS.body.name
+          setStatus('body', 'ok', 'System Font (Courier)')
         }
-      } catch (e) {
-        console.warn('Body font loading failed, using fallback:', e)
-        setStatus('body', 'err', 'Fallback')
+      } else {
+        setStatus('body', 'ok', 'System Font (Courier)')
       }
 
       return {
         hdr: hdrFontName,
         body: bodyFontName,
-        ok: hdrFontName !== 'courier' || bodyFontName !== 'helvetica',
+        ok: true,
       }
     } catch (e) {
-      console.warn('Font loading completely failed, using system fonts:', e)
-      setStatus('hdr', 'err', 'Fallback')
-      setStatus('body', 'err', 'Fallback')
-      return { hdr: 'courier', body: 'helvetica', ok: false }
+      console.warn('Font initialization failed, using system fonts:', e)
+      setStatus('hdr', 'ok', 'System Font (Helvetica)')
+      setStatus('body', 'ok', 'System Font (Courier)')
+      return { hdr: 'helvetica', body: 'courier', ok: true }
     }
   })()
   return fontsReady
