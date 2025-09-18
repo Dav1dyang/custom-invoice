@@ -695,8 +695,9 @@ const FONT_TARGETS = {
     input: 'fontHdr',
     status: 'fontHdrStatus',
     urls: [
-      'https://unpkg.com/@fontsource/rubik-mono-one/files/rubik-mono-one-latin-400-normal.ttf',
-      'https://unpkg.com/@fontsource/rubik-mono-one/files/rubik-mono-one-all-400-normal.ttf',
+      'https://cdn.jsdelivr.net/npm/@fontsource/rubik-mono-one@5.0.0/files/rubik-mono-one-latin-400-normal.ttf',
+      'https://fonts.gstatic.com/s/rubikmonoone/v17/UqyJK8kPP3hjw6ANTdfRk9YSN-8wRqQrc_j9.ttf',
+      'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/rubikmonoone/RubikMonoOne-Regular.ttf',
     ],
   },
   body: {
@@ -705,8 +706,9 @@ const FONT_TARGETS = {
     input: 'fontBody',
     status: 'fontBodyStatus',
     urls: [
-      'https://unpkg.com/@fontsource/dm-mono/files/dm-mono-latin-300-normal.ttf',
-      'https://unpkg.com/@fontsource/dm-mono/files/dm-mono-all-300-normal.ttf',
+      'https://cdn.jsdelivr.net/npm/@fontsource/dm-mono@5.0.0/files/dm-mono-latin-300-normal.ttf',
+      'https://fonts.gstatic.com/s/dmmono/v14/aFTU7PB1QTsUX8KYthqQBK0ReMw.ttf',
+      'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/dmmono/DMMono-Light.ttf',
     ],
   },
 }
