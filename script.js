@@ -695,8 +695,12 @@ const FONT_TARGETS = {
     input: 'fontHdr',
     status: 'fontHdrStatus',
     urls: [
+      // GitHub raw keeps the original TTF and sends permissive CORS headers
+      'https://raw.githubusercontent.com/google/fonts/main/ofl/rubikmonoone/RubikMonoOne-Regular.ttf',
+      // jsDelivr has historically proxied the same file, keep it as a fallback
+      'https://cdn.jsdelivr.net/gh/google/fonts/ofl/rubikmonoone/RubikMonoOne-Regular.ttf',
+      // Unpkg began responding 403 for anonymous font fetches in some regions; leave it as a final fallback in case that changes
       'https://unpkg.com/@fontsource/rubik-mono-one/files/rubik-mono-one-latin-400-normal.ttf',
-      'https://unpkg.com/@fontsource/rubik-mono-one/files/rubik-mono-one-all-400-normal.ttf',
     ],
   },
   body: {
@@ -705,8 +709,9 @@ const FONT_TARGETS = {
     input: 'fontBody',
     status: 'fontBodyStatus',
     urls: [
+      'https://raw.githubusercontent.com/google/fonts/main/ofl/dmmono/DMMono-Light.ttf',
+      'https://cdn.jsdelivr.net/gh/google/fonts/ofl/dmmono/DMMono-Light.ttf',
       'https://unpkg.com/@fontsource/dm-mono/files/dm-mono-latin-300-normal.ttf',
-      'https://unpkg.com/@fontsource/dm-mono/files/dm-mono-all-300-normal.ttf',
     ],
   },
 }
