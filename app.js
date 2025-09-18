@@ -462,8 +462,10 @@
       const computed = window.getComputedStyle(invoiceElement)
       const cloneWrapper = document.createElement('div')
       cloneWrapper.style.position = 'fixed'
-      cloneWrapper.style.left = '-9999px'
+      cloneWrapper.style.left = '0'
       cloneWrapper.style.top = '0'
+      cloneWrapper.style.visibility = 'hidden'
+      cloneWrapper.style.pointerEvents = 'none'
       cloneWrapper.style.background = computed.backgroundColor || '#ffffff'
       cloneWrapper.style.padding = '0'
       cloneWrapper.style.margin = '0'

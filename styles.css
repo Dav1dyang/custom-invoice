@@ -230,11 +230,22 @@ input[type='checkbox'] {
   flex-wrap: wrap;
 }
 
+.preview.card {
+  background: #ffffff;
+  color: var(--ui-fg-light);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
 .preview__canvas {
-  background: color-mix(in srgb, currentColor 8%, transparent);
+  background: #f4f4f4;
   padding: clamp(18px, 3vw, 28px);
-  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   overflow-x: auto;
+}
+
+.preview .btn {
+  color: var(--ui-fg-light);
+  border-color: rgba(0, 0, 0, 0.3);
 }
 
 .btn {
@@ -542,10 +553,20 @@ input[type='checkbox'] {
 }
 
 @media (prefers-color-scheme: dark) {
-  html[data-theme='system'] .card,
-  html[data-theme='dark'] .card {
+  html[data-theme='system'] .card:not(.preview),
+  html[data-theme='dark'] .card:not(.preview) {
     background: color-mix(in srgb, currentColor 8%, transparent);
   }
 
-  /* Keep the invoice preview styling consistent regardless of UI theme. */
+  html[data-theme='system'] .preview.card,
+  html[data-theme='dark'] .preview.card {
+    background: #ffffff;
+    color: var(--ui-fg-light);
+  }
+
+  html[data-theme='system'] .preview__canvas,
+  html[data-theme='dark'] .preview__canvas {
+    background: #f4f4f4;
+    border-color: rgba(0, 0, 0, 0.12);
+  }
 }
