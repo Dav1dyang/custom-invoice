@@ -769,7 +769,7 @@ async function ensureFonts() {
     }
     try {
       jsPDF.API.addFileToVFS(vfs, b64)
-      jsPDF.API.addFont(vfs, name, 'normal')
+      jsPDF.API.addFont(name, name, 'normal')
     } catch (e) {
       console.error(`Failed to add font ${name} (${vfs}):`, e)
       throw e
@@ -789,7 +789,7 @@ async function ensureFonts() {
         throw new Error('Failed to convert font to base64')
       }
       jsPDF.API.addFileToVFS(vfs, b64)
-      jsPDF.API.addFont(vfs, name, 'normal')
+      jsPDF.API.addFont(name, name, 'normal')
     } catch (e) {
       console.error(`Failed to add font ${name} (${vfs}) from URLs:`, e)
       throw e
@@ -899,6 +899,18 @@ function fmtDatePDF(v) {
 
 /* --------------------------- PDF MAIN --------------------------- */
 async function downloadPDF() {
+  // Wait for jsPDF to load if it's still loading
+  let retries = 0
+  while ((!window.jspdf || !window.jspdf.jsPDF) && retries < 50) {
+    await new Promise(resolve => setTimeout(resolve, 100))
+    retries++
+  }
+
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('jsPDF library failed to load. Please check your internet connection and refresh the page.')
+    return
+  }
+
   const { jsPDF } = window.jspdf
   const fonts = await ensureFonts()
 
