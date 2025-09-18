@@ -447,8 +447,9 @@
       const data = collectFormData()
       const jspdf = window.jspdf
       const jsPDFConstructor = jspdf?.jsPDF
-      if (!jsPDFConstructor || !invoiceElement) {
-        console.error('jsPDF library is not available')
+      const html2canvasLib = window.html2canvas
+      if (!jsPDFConstructor || !invoiceElement || typeof html2canvasLib !== 'function') {
+        console.error('Required PDF export libraries are not available')
         return
       }
 
@@ -458,34 +459,72 @@
         format: data.paperSize === 'a4' ? 'a4' : 'letter',
       })
 
-      const clone = invoiceElement.cloneNode(true)
-      clone.style.position = 'absolute'
-      clone.style.left = '-9999px'
-      clone.style.top = '0'
       const computed = window.getComputedStyle(invoiceElement)
-      clone.style.width = computed.width
+      const cloneWrapper = document.createElement('div')
+      cloneWrapper.style.position = 'fixed'
+      cloneWrapper.style.left = '-9999px'
+      cloneWrapper.style.top = '0'
+      cloneWrapper.style.background = computed.backgroundColor || '#ffffff'
+      cloneWrapper.style.padding = '0'
+      cloneWrapper.style.margin = '0'
+      cloneWrapper.style.width = computed.width
+
+      const clone = invoiceElement.cloneNode(true)
       clone.style.margin = '0'
       clone.style.maxWidth = 'none'
-      clone.style.background = computed.backgroundColor
+      clone.style.width = computed.width
+      clone.style.background = computed.backgroundColor || '#ffffff'
       clone.style.padding = computed.padding
-      document.body.appendChild(clone)
+
+      cloneWrapper.appendChild(clone)
+      document.body.appendChild(cloneWrapper)
 
       try {
-        await doc.html(clone, {
-          callback: (docInstance) => {
-            docInstance.save(`${data.invoiceNumber || 'invoice'}.pdf`)
-          },
-          margin: 36,
-          autoPaging: 'text',
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-          },
+        if (document.fonts?.ready) {
+          try {
+            await document.fonts.ready
+          } catch (fontError) {
+            console.warn('Failed waiting for fonts to load', fontError)
+          }
+        }
+
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+
+        const canvas = await html2canvasLib(clone, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          windowWidth: clone.scrollWidth,
+          windowHeight: clone.scrollHeight,
         })
+
+        const imgData = canvas.toDataURL('image/png')
+        const margin = 36
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
+        const availableWidth = pageWidth - margin * 2
+        const scale = availableWidth / canvas.width
+        const renderWidth = availableWidth
+        const renderHeight = canvas.height * scale
+
+        let position = margin
+        let heightLeft = renderHeight
+
+        doc.addImage(imgData, 'PNG', margin, position, renderWidth, renderHeight)
+        heightLeft -= pageHeight - margin * 2
+
+        while (heightLeft > 0) {
+          position = heightLeft - renderHeight + margin
+          doc.addPage()
+          doc.addImage(imgData, 'PNG', margin, position, renderWidth, renderHeight)
+          heightLeft -= pageHeight - margin * 2
+        }
+
+        doc.save(`${data.invoiceNumber || 'invoice'}.pdf`)
       } catch (error) {
         console.error('Failed to generate PDF', error)
       } finally {
-        document.body.removeChild(clone)
+        document.body.removeChild(cloneWrapper)
       }
     })
 
