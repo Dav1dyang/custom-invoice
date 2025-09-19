@@ -1,16 +1,30 @@
 /* TECHNICAL INVOICE GENERATOR - JAVASCRIPT */
 
-/* ----------------------------- THEME ----------------------------- */
+/* ----------------------------- UTILITIES ----------------------------- */
 const $ = (id) => document.getElementById(id)
-const themeSel = $('uiTheme')
-const savedTheme = localStorage.getItem('uiTheme') || 'system'
-document.documentElement.setAttribute('data-theme', savedTheme)
-themeSel.value = savedTheme
-themeSel.addEventListener('change', (e) => {
-  const t = e.target.value
-  document.documentElement.setAttribute('data-theme', t)
-  localStorage.setItem('uiTheme', t)
-})
+
+/* ----------------------------- THEME ----------------------------- */
+let currentTheme = localStorage.getItem('theme') || 'light'
+document.documentElement.setAttribute('data-theme', currentTheme)
+updateThemeIcon()
+
+function toggleTheme() {
+  currentTheme = currentTheme === 'light' ? 'dark' : 'light'
+  document.documentElement.setAttribute('data-theme', currentTheme)
+  localStorage.setItem('theme', currentTheme)
+  updateThemeIcon()
+}
+
+function updateThemeIcon() {
+  const themeIcon = document.querySelector('.theme-icon')
+  const downloadIcon = document.querySelector('.download-icon')
+  if (themeIcon) {
+    themeIcon.textContent = currentTheme === 'light' ? '🌙' : '☀️'
+  }
+  if (downloadIcon) {
+    downloadIcon.textContent = currentTheme === 'light' ? '⬇' : '⬇'
+  }
+}
 
 /* ----------------------------- LOGO ------------------------------ */
 let logoDataUrl = null,
@@ -76,6 +90,7 @@ function getItems() {
 /* ------------------------- STYLE & COLOR ------------------------ */
 const styleMode = document.getElementById('styleMode')
 const accentColor = document.getElementById('accentColor')
+const hexInput = document.getElementById('hexInput')
 const swAccent = document.getElementById('swAccent')
 
 // Color presets with predefined values
@@ -88,9 +103,28 @@ const colorPresets = {
   red: '#DC2626'
 }
 
-// Update accent color swatch
+// Update accent color swatch and sync inputs
 function updateAccentSwatch() {
   swAccent.style.background = accentColor.value
+  hexInput.value = accentColor.value.toUpperCase()
+}
+
+// Validate and apply hex input
+function applyHexInput(hex) {
+  // Add # if missing
+  if (!hex.startsWith('#')) {
+    hex = '#' + hex
+  }
+
+  // Validate hex format
+  const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
+  if (hexPattern.test(hex)) {
+    accentColor.value = hex
+    swAccent.style.background = hex
+    updatePreviewColors()
+    return true
+  }
+  return false
 }
 
 // Set accent color from preset
@@ -188,14 +222,14 @@ function createLightTableFillColor(accentColor) {
 // Get computed colors based on style mode and accent
 function getComputedColors() {
   const accent = accentColor.value
-  const isOutline = styleMode.value === 'outline'
-  
-  if (isOutline) {
+  const mode = styleMode.value
+
+  if (mode === 'outline') {
     // Clean outline style - pure technical drawing with NO fills
     return {
       paper: '#FFFFFF',
       ink: accent,
-      text: '#111111', 
+      text: '#111111',
       accent: accent,
       fill: '#FFFFFF', // Pure white - no fills for clean technical look
       tableFill: '#FFFFFF', // Pure white for table rows too
@@ -206,12 +240,30 @@ function getComputedColors() {
       textOnTable: '#111111',
       textOnAccent: getReadableTextColor(accent)
     }
+  } else if (mode === 'ascii') {
+    // ASCII art style - retro terminal look
+    return {
+      paper: '#000000', // Black background like terminal
+      ink: accent, // Accent color for borders and ASCII art
+      text: accent, // Accent color for all text
+      accent: accent, // Accent color for highlights
+      fill: '#000000', // Black fills to maintain terminal look
+      tableFill: '#000000', // Black table fills
+      showBorders: true,
+      showFill: false, // No fills, just borders and text
+      textOnPaper: accent, // Accent color text on black background
+      textOnFill: accent, // Accent color text
+      textOnTable: accent, // Accent color text in tables
+      textOnAccent: '#000000', // Black text on accent areas
+      boxHeaders: accent, // Accent color for headers
+      isAscii: true // Flag to enable ASCII art rendering
+    }
   } else {
     // Filled background style - vibrant datasheet with bright fills
     const brightFillColor = createBrightFillColor(accent)
     const lightTableFillColor = createLightTableFillColor(accent)
     const contrastingTextColor = createContrastingTextColor(accent)
-    
+
     return {
       paper: accent,
       ink: '#111111', // Always black borders for readability
@@ -235,31 +287,63 @@ function updatePreviewColors() {
   const colors = getComputedColors()
   const preview = document.getElementById('preview')
   const root = document.documentElement
-  
+
   // Set CSS custom properties for preview
   root.style.setProperty('--accent-color', accentColor.value)
   root.style.setProperty('--preview-accent-color', colors.accent) // Accent color for INVOICE title
   root.style.setProperty('--box-header-color', colors.boxHeaders || '#111111') // Black for box headers
-  
-  // For outline mode: no fills (white), for filled mode: bright fills
+
+  // Set colors based on style mode
   if (styleMode.value === 'outline') {
     root.style.setProperty('--accent-light', '#ffffff') // Pure white for outline
     root.style.setProperty('--table-light', '#ffffff') // Pure white for table
     root.style.setProperty('--lighter-text', '#111111') // Black text for outline
+  } else if (styleMode.value === 'ascii') {
+    root.style.setProperty('--accent-light', '#000000') // Black for ASCII art
+    root.style.setProperty('--table-light', '#000000') // Black for table
+    root.style.setProperty('--lighter-text', colors.text) // Accent color text for ASCII
   } else {
     root.style.setProperty('--accent-light', colors.fill) // Bright fill for datasheet
     root.style.setProperty('--table-light', colors.tableFill) // Lighter fill for table
     root.style.setProperty('--lighter-text', colors.textOnPaper) // Contrasting text for outside boxes
   }
-  
+
   // Update preview class
   preview.className = 'preview ' + styleMode.value
 }
 
 // Event listeners
+// Color picker input event
 accentColor.addEventListener('input', () => {
   updateAccentSwatch()
   updatePreviewColors()
+})
+
+// Hex input events
+hexInput.addEventListener('input', (e) => {
+  const hex = e.target.value
+  if (hex.length >= 6) { // Only try to apply when we have enough characters
+    applyHexInput(hex)
+  }
+})
+
+hexInput.addEventListener('blur', (e) => {
+  const hex = e.target.value
+  if (hex && !applyHexInput(hex)) {
+    // Reset to current color if invalid
+    hexInput.value = accentColor.value.toUpperCase()
+  }
+})
+
+hexInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const hex = e.target.value
+    if (hex && !applyHexInput(hex)) {
+      // Reset to current color if invalid
+      hexInput.value = accentColor.value.toUpperCase()
+    }
+    e.target.blur()
+  }
 })
 
 styleMode.addEventListener('change', updatePreviewColors)
@@ -275,6 +359,674 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 // Initialize with neon preset
 setAccentPreset('neon')
 updatePreviewColors()
+
+/* ------------------------- ASCII ART UTILITIES ----------------------- */
+// ASCII art utility functions for retro terminal style
+function createAsciiHeader(text, width = 50) {
+  const padding = Math.max(0, Math.floor((width - text.length - 4) / 2))
+  const paddingStr = '='.repeat(padding)
+  const totalWidth = paddingStr.length * 2 + text.length + 4
+  const adjustedPadding = '='.repeat(Math.max(0, width - text.length - 4))
+
+  return [
+    '=' + '='.repeat(width - 2) + '=',
+    '=' + ' '.repeat(width - 2) + '=',
+    `=  ${text.toUpperCase()}${' '.repeat(Math.max(0, width - text.length - 4))}  =`,
+    '=' + ' '.repeat(width - 2) + '=',
+    '=' + '='.repeat(width - 2) + '='
+  ]
+}
+
+function createAsciiBox(title, content, width = 40) {
+  const lines = [
+    '+' + '-'.repeat(width - 2) + '+',
+    `| ${title.toUpperCase()}${' '.repeat(Math.max(0, width - title.length - 4))} |`
+  ]
+
+  if (Array.isArray(content)) {
+    content.forEach(line => {
+      const trimmedLine = line.substring(0, width - 4)
+      lines.push(`| ${trimmedLine}${' '.repeat(Math.max(0, width - trimmedLine.length - 4))} |`)
+    })
+  } else {
+    const contentLines = content.split('\n')
+    contentLines.forEach(line => {
+      const trimmedLine = line.substring(0, width - 4)
+      lines.push(`| ${trimmedLine}${' '.repeat(Math.max(0, width - trimmedLine.length - 4))} |`)
+    })
+  }
+
+  lines.push('+' + '-'.repeat(width - 2) + '+')
+  return lines
+}
+
+function createAsciiTable(headers, rows, columnWidths) {
+  const lines = []
+  const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0) + columnWidths.length + 1
+
+  // Top border
+  lines.push('+' + columnWidths.map(w => '-'.repeat(w)).join('+') + '+')
+
+  // Headers
+  let headerLine = '|'
+  headers.forEach((header, i) => {
+    const paddedHeader = header.substring(0, columnWidths[i])
+    headerLine += paddedHeader + ' '.repeat(Math.max(0, columnWidths[i] - paddedHeader.length)) + '|'
+  })
+  lines.push(headerLine)
+
+  // Header separator
+  lines.push('+' + columnWidths.map(w => '-'.repeat(w)).join('+') + '+')
+
+  // Data rows
+  rows.forEach(row => {
+    let rowLine = '|'
+    row.forEach((cell, i) => {
+      const cellStr = String(cell || '').substring(0, columnWidths[i])
+      const isNumber = !isNaN(cell) && cell !== ''
+      if (isNumber) {
+        // Right align numbers
+        rowLine += ' '.repeat(Math.max(0, columnWidths[i] - cellStr.length)) + cellStr + '|'
+      } else {
+        // Left align text
+        rowLine += cellStr + ' '.repeat(Math.max(0, columnWidths[i] - cellStr.length)) + '|'
+      }
+    })
+    lines.push(rowLine)
+  })
+
+  // Bottom border
+  lines.push('+' + columnWidths.map(w => '-'.repeat(w)).join('+') + '+')
+
+  return lines
+}
+
+function createAsciiBanner(text) {
+  // Simple ASCII art banner for the main title
+  const banner = [
+    '####  #   # #   #  ###  ####  ###  #####',
+    '#     ##  # #   # #   #  #   #   # #    ',
+    '####  # # #  # #  #   #  #   #   # #### ',
+    '#     #  ##  # #  #   #  #   #   # #    ',
+    '####  #   #   #    ###  ####  ###  #####'
+  ]
+  return banner
+}
+
+/* ------------------------- TEMPLATE SYSTEM ----------------------- */
+// Global template state
+let selectedTemplate = null
+
+// Initialize template system
+document.addEventListener('DOMContentLoaded', () => {
+  const filterChips = document.querySelectorAll('.filter-chip')
+  const templateInput = document.getElementById('templateInput')
+
+  // Quick access chip selection
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      // Remove active class from all chips
+      filterChips.forEach(c => c.classList.remove('active'))
+
+      // Add active class to clicked chip
+      chip.classList.add('active')
+
+      // Store selection
+      selectedTemplate = chip.dataset.template
+
+      // Update input field
+      if (templateInput) {
+        templateInput.value = selectedTemplate
+        updateActionButtons()
+      }
+    })
+  })
+
+  // Template input change handler
+  if (templateInput) {
+    templateInput.addEventListener('input', (e) => {
+      selectedTemplate = e.target.value
+      updateActionButtons()
+      updateTemplateChipSelection()
+    })
+  }
+
+  // Initialize display
+  initializeTemplateDisplay()
+  populateTemplateSuggestions()
+  updateActionButtons()
+})
+
+// Populate template suggestions dropdown
+function populateTemplateSuggestions() {
+  const datalist = document.getElementById('templateSuggestions')
+  if (!datalist) return
+
+  // Clear existing options
+  datalist.innerHTML = ''
+
+  // Get all available templates
+  const savedTemplates = getTemplates()
+  const starredTemplates = getStarredTemplates()
+  const predefinedTemplates = ['default-client', 'tech-company', 'sample-client', 'freelance']
+
+  // Combine all template names
+  const allTemplates = [...predefinedTemplates, ...Object.keys(savedTemplates)]
+
+  // Remove duplicates
+  const uniqueTemplates = [...new Set(allTemplates)]
+
+  // Sort: starred first, then alphabetically
+  const sortedTemplates = uniqueTemplates.sort((a, b) => {
+    const aStarred = starredTemplates.includes(a)
+    const bStarred = starredTemplates.includes(b)
+
+    if (aStarred && !bStarred) return -1
+    if (!aStarred && bStarred) return 1
+    return a.localeCompare(b)
+  })
+
+  // Create option elements
+  sortedTemplates.forEach(template => {
+    const option = document.createElement('option')
+    option.value = template
+    const isStarred = starredTemplates.includes(template)
+    option.textContent = isStarred ? `★ ${template}` : template
+    datalist.appendChild(option)
+  })
+}
+
+// Update action buttons based on current selection
+function updateActionButtons() {
+  const templateInput = document.getElementById('templateInput')
+  const saveAction = document.getElementById('saveAction')
+  const starAction = document.getElementById('starAction')
+  const deleteAction = document.getElementById('deleteAction')
+
+  if (!templateInput || !saveAction || !starAction || !deleteAction) return
+
+  const selectedTemplate = templateInput.value.trim()
+  const savedTemplates = getTemplates()
+  const starredTemplates = getStarredTemplates()
+  const predefinedTemplates = ['default-client', 'tech-company', 'sample-client', 'freelance', 'default']
+
+  if (!selectedTemplate) {
+    // No selection - show save only
+    saveAction.style.display = 'flex'
+    starAction.style.display = 'none'
+    deleteAction.style.display = 'none'
+    saveAction.title = 'Save current form as new template'
+    return
+  }
+
+  const exists = savedTemplates.hasOwnProperty(selectedTemplate) || predefinedTemplates.includes(selectedTemplate)
+  const isStarred = starredTemplates.includes(selectedTemplate)
+  const isPredefined = predefinedTemplates.includes(selectedTemplate)
+  const isCustom = savedTemplates.hasOwnProperty(selectedTemplate)
+
+  if (exists) {
+    // Template exists
+    saveAction.style.display = 'flex'
+    saveAction.title = 'Update existing template'
+    saveAction.querySelector('span').textContent = '💾' // Update icon
+
+    starAction.style.display = 'flex'
+    if (isStarred) {
+      starAction.title = 'Remove star'
+      starAction.querySelector('span').textContent = '★'
+      starAction.style.color = '#f59e0b' // Gold color for filled star
+    } else {
+      starAction.title = 'Add star'
+      starAction.querySelector('span').textContent = '☆'
+      starAction.style.color = 'var(--ui-fg)' // Normal text color for outline star
+    }
+
+    deleteAction.style.display = isCustom ? 'flex' : 'none'
+    deleteAction.title = 'Delete template'
+  } else {
+    // Template doesn't exist - new template
+    saveAction.style.display = 'flex'
+    saveAction.title = 'Save as new template'
+    saveAction.querySelector('span').textContent = '💾'
+
+    starAction.style.display = 'none'
+    deleteAction.style.display = 'none'
+  }
+}
+
+// Sync template chip selection with input
+function updateTemplateChipSelection() {
+  const templateInput = document.getElementById('templateInput')
+  const filterChips = document.querySelectorAll('.filter-chip')
+
+  if (!templateInput) return
+
+  const selectedTemplate = templateInput.value.trim()
+
+  // Update chip selection
+  filterChips.forEach(chip => {
+    chip.classList.remove('active')
+    if (chip.dataset.template === selectedTemplate) {
+      chip.classList.add('active')
+    }
+  })
+}
+
+// Initialize template display
+function initializeTemplateDisplay() {
+  const starred = getStarredTemplates()
+  const recent = getRecentTemplate()
+  const filterChips = document.querySelectorAll('.filter-chip')
+
+  // Update template chips display
+  let visibleChips = 0
+
+  // Show starred templates first (max 2)
+  starred.slice(0, 2).forEach((template, index) => {
+    if (filterChips[index]) {
+      filterChips[index].textContent = template
+      filterChips[index].dataset.template = template
+      filterChips[index].style.display = 'block'
+      filterChips[index].classList.remove('recent-chip')
+      visibleChips++
+    }
+  })
+
+  // Show recent template if there's space and it's not already shown
+  if (recent && visibleChips < 3 && !starred.includes(recent)) {
+    if (filterChips[visibleChips]) {
+      filterChips[visibleChips].textContent = recent
+      filterChips[visibleChips].dataset.template = recent
+      filterChips[visibleChips].style.display = 'block'
+      filterChips[visibleChips].classList.add('recent-chip')
+      visibleChips++
+    }
+  }
+
+  // Show default if no templates are visible
+  if (visibleChips === 0) {
+    if (filterChips[0]) {
+      filterChips[0].textContent = 'Default'
+      filterChips[0].dataset.template = 'default'
+      filterChips[0].style.display = 'block'
+      filterChips[0].classList.remove('recent-chip')
+      visibleChips++
+    }
+  }
+
+  // Hide remaining chips
+  for (let i = visibleChips; i < filterChips.length; i++) {
+    filterChips[i].style.display = 'none'
+  }
+}
+
+// Load selected template from quick access or input
+function loadQuickTemplate() {
+  const filterChips = document.querySelectorAll('.filter-chip')
+  const templateInput = document.getElementById('templateInput')
+
+  // Find active chip or use input value
+  let selectedTemplate = null
+
+  const activeChip = document.querySelector('.filter-chip.active')
+  if (activeChip) {
+    selectedTemplate = activeChip.dataset.template
+  } else if (templateInput && templateInput.value.trim()) {
+    selectedTemplate = templateInput.value.trim()
+  }
+
+  if (!selectedTemplate) {
+    alert('Please select a template first')
+    return
+  }
+
+  // Load predefined template
+  const predefinedTemplates = ['default-client', 'tech-company', 'sample-client', 'freelance']
+  if (predefinedTemplates.includes(selectedTemplate)) {
+    loadTemplateById(selectedTemplate)
+    return
+  }
+
+  // Load custom template
+  const savedTemplates = getTemplates()
+  if (savedTemplates[selectedTemplate]) {
+    loadTemplateData(savedTemplates[selectedTemplate])
+    updateRecentTemplate(selectedTemplate)
+    return
+  }
+
+  // Handle default
+  if (selectedTemplate === 'default') {
+    // Clear form to defaults
+    const fields = ['fromName', 'fromWebsite', 'fromPhone', 'fromAddress', 'toCompany', 'toNames', 'toAddress', 'toContact', 'paymentInstructions', 'currency']
+    fields.forEach(field => {
+      const element = document.getElementById(field)
+      if (element) element.value = ''
+    })
+    return
+  }
+
+  alert('Template not found')
+}
+
+// Handle save action
+function handleSaveAction() {
+  const templateInput = document.getElementById('templateInput')
+  const selectedTemplate = templateInput ? templateInput.value.trim() : ''
+
+  if (!selectedTemplate) {
+    const templateName = prompt('Enter template name:')
+    if (templateName) {
+      saveCustomTemplate(templateName)
+      templateInput.value = templateName
+      updateActionButtons()
+      populateTemplateSuggestions()
+      initializeTemplateDisplay()
+    }
+    return
+  }
+
+  // Update existing or save new
+  const savedTemplates = getTemplates()
+  if (savedTemplates.hasOwnProperty(selectedTemplate)) {
+    if (confirm(`Update template "${selectedTemplate}"?`)) {
+      saveCustomTemplate(selectedTemplate)
+    }
+  } else {
+    saveCustomTemplate(selectedTemplate)
+    populateTemplateSuggestions()
+    initializeTemplateDisplay()
+  }
+}
+
+// Handle star action
+function handleStarAction() {
+  const templateInput = document.getElementById('templateInput')
+  const selectedTemplate = templateInput ? templateInput.value.trim() : ''
+
+  if (!selectedTemplate) {
+    alert('Please select a template first')
+    return
+  }
+
+  const starredTemplates = getStarredTemplates()
+
+  if (starredTemplates.includes(selectedTemplate)) {
+    // Remove star
+    removeStarredTemplate(selectedTemplate)
+    alert(`Removed star from "${selectedTemplate}"`)
+  } else {
+    // Add star
+    if (starredTemplates.length >= 2) {
+      alert('You can only have 2 starred templates. Please remove a star first.')
+      return
+    }
+    addStarredTemplate(selectedTemplate)
+    alert(`Added star to "${selectedTemplate}"`)
+  }
+
+  updateActionButtons()
+  populateTemplateSuggestions()
+  initializeTemplateDisplay()
+}
+
+// Handle delete action
+function handleDeleteAction() {
+  const templateInput = document.getElementById('templateInput')
+  const selectedTemplate = templateInput ? templateInput.value.trim() : ''
+
+  if (!selectedTemplate) {
+    alert('Please select a template first')
+    return
+  }
+
+  const savedTemplates = getTemplates()
+  if (!savedTemplates.hasOwnProperty(selectedTemplate)) {
+    alert('Cannot delete: template not found or is a built-in template')
+    return
+  }
+
+  if (confirm(`Are you sure you want to delete template "${selectedTemplate}"?`)) {
+    delete savedTemplates[selectedTemplate]
+    saveTemplates(savedTemplates)
+    removeStarredTemplate(selectedTemplate)
+
+    // Clear input
+    templateInput.value = ''
+
+    updateActionButtons()
+    populateTemplateSuggestions()
+    initializeTemplateDisplay()
+
+    alert(`Template "${selectedTemplate}" deleted successfully!`)
+  }
+}
+
+// Load template by ID
+function loadTemplateById(templateId) {
+  const templates = {
+    'default-client': {
+      fromName: 'Your Company Name',
+      fromWebsite: 'www.yourwebsite.com',
+      fromPhone: 'Your Phone Number',
+      fromAddress: 'Your Business Address',
+      toCompany: 'Client Company',
+      toNames: 'Client Contact Name',
+      toAddress: 'Client Address',
+      toContact: 'client@email.com',
+      paymentInstructions: 'Enter your payment instructions here',
+      currency: 'USD'
+    },
+    'tech-company': {
+      fromName: 'Your Company Name',
+      fromWebsite: 'www.yourwebsite.com',
+      fromPhone: 'Your Phone Number',
+      fromAddress: 'Your Business Address',
+      toCompany: 'Tech Client Inc.',
+      toNames: 'Technical Contact',
+      toAddress: 'Client Location',
+      toContact: 'tech@client.com',
+      paymentInstructions: 'Enter your payment instructions here',
+      currency: 'USD'
+    },
+    'sample-client': {
+      fromName: 'Your Company Name',
+      fromWebsite: 'www.yourwebsite.com',
+      fromPhone: 'Your Phone Number',
+      fromAddress: 'Your Business Address',
+      toCompany: 'Sample Client',
+      toNames: 'Client Contact',
+      toAddress: 'Client Address',
+      toContact: 'contact@sampleclient.com',
+      paymentInstructions: 'Enter your payment instructions here',
+      currency: 'USD'
+    },
+    'freelance': {
+      fromName: 'Your Company Name',
+      fromWebsite: 'www.yourwebsite.com',
+      fromPhone: 'Your Phone Number',
+      fromAddress: 'Your Business Address',
+      toCompany: 'Freelance Client',
+      toNames: 'Project Manager',
+      toAddress: 'Client Location',
+      toContact: 'contact@freelanceclient.com',
+      paymentInstructions: 'Enter your payment instructions here',
+      currency: 'USD'
+    }
+  }
+
+  const templateData = templates[templateId]
+  if (templateData) {
+    loadTemplateData(templateData)
+    // Update recent templates
+    updateRecentTemplate(templateId)
+  }
+}
+
+
+// Handle template management actions
+function handleTemplateAction(action) {
+  switch (action) {
+    case 'save':
+      const templateName = prompt('Enter template name:')
+      if (templateName) {
+        saveCustomTemplate(templateName)
+      }
+      break
+    case 'load':
+      showLoadTemplateDialog()
+      break
+    case 'star':
+      showStarTemplateDialog()
+      break
+    case 'unstar':
+      showUnstarTemplateDialog()
+      break
+    case 'delete':
+      showDeleteTemplateDialog()
+      break
+  }
+}
+
+// Template management functions
+function saveCustomTemplate(name) {
+  const templates = getTemplates()
+  templates[name] = getCurrentTemplateData()
+  saveTemplates(templates)
+  alert(`Template "${name}" saved successfully!`)
+}
+
+function showLoadTemplateDialog() {
+  const templates = getTemplates()
+  const templateNames = Object.keys(templates)
+
+  if (templateNames.length === 0) {
+    alert('No saved templates found.')
+    return
+  }
+
+  const templateName = prompt(`Available templates:\n${templateNames.join('\n')}\n\nEnter template name to load:`)
+  if (templateName && templates[templateName]) {
+    loadTemplateData(templates[templateName])
+    updateRecentTemplate(templateName)
+  } else if (templateName) {
+    alert('Template not found.')
+  }
+}
+
+function showStarTemplateDialog() {
+  const currentStarred = getStarredTemplates()
+  if (currentStarred.length >= 2) {
+    alert('You can only have 2 starred templates. Please remove a star first.')
+    return
+  }
+
+  const templateName = prompt('Enter template name to star:')
+  if (templateName) {
+    addStarredTemplate(templateName)
+    updateTemplateDisplay()
+  }
+}
+
+function showUnstarTemplateDialog() {
+  const starred = getStarredTemplates()
+  if (starred.length === 0) {
+    alert('No starred templates found.')
+    return
+  }
+
+  const templateName = prompt(`Starred templates:\n${starred.join('\n')}\n\nEnter template name to unstar:`)
+  if (templateName && starred.includes(templateName)) {
+    removeStarredTemplate(templateName)
+    updateTemplateDisplay()
+  }
+}
+
+function showDeleteTemplateDialog() {
+  const templates = getTemplates()
+  const templateNames = Object.keys(templates)
+
+  if (templateNames.length === 0) {
+    alert('No saved templates found.')
+    return
+  }
+
+  const templateName = prompt(`Saved templates:\n${templateNames.join('\n')}\n\nEnter template name to delete:`)
+  if (templateName && templates[templateName]) {
+    if (confirm(`Are you sure you want to delete template "${templateName}"?`)) {
+      delete templates[templateName]
+      saveTemplates(templates)
+      removeStarredTemplate(templateName) // Remove from starred if present
+      updateTemplateDisplay()
+      alert(`Template "${templateName}" deleted successfully!`)
+    }
+  } else if (templateName) {
+    alert('Template not found.')
+  }
+}
+
+// Starred templates management
+const STARRED_KEY = 'starred_templates'
+const RECENT_KEY = 'recent_template'
+
+function getStarredTemplates() {
+  const stored = localStorage.getItem(STARRED_KEY)
+  return stored ? JSON.parse(stored) : []
+}
+
+function saveStarredTemplates(starred) {
+  localStorage.setItem(STARRED_KEY, JSON.stringify(starred))
+}
+
+function addStarredTemplate(templateName) {
+  const starred = getStarredTemplates()
+  if (!starred.includes(templateName) && starred.length < 2) {
+    starred.push(templateName)
+    saveStarredTemplates(starred)
+  }
+}
+
+function removeStarredTemplate(templateName) {
+  const starred = getStarredTemplates()
+  const index = starred.indexOf(templateName)
+  if (index > -1) {
+    starred.splice(index, 1)
+    saveStarredTemplates(starred)
+  }
+}
+
+function updateRecentTemplate(templateName) {
+  localStorage.setItem(RECENT_KEY, templateName)
+  updateTemplateDisplay()
+}
+
+function getRecentTemplate() {
+  return localStorage.getItem(RECENT_KEY) || ''
+}
+
+function updateTemplateDisplay() {
+  const starred = getStarredTemplates()
+  const recent = getRecentTemplate()
+
+  // Update starred chips
+  const starredChips = document.querySelectorAll('.filter-group:first-child .filter-chip')
+  starredChips.forEach((chip, index) => {
+    if (starred[index]) {
+      chip.textContent = starred[index]
+      chip.setAttribute('data-template', starred[index])
+      chip.style.display = 'block'
+    } else {
+      chip.style.display = 'none'
+    }
+  })
+
+  // Update recent chip
+  const recentChip = document.querySelector('.filter-group:last-child .filter-chip')
+  if (recent && recentChip) {
+    recentChip.textContent = recent
+    recentChip.setAttribute('data-template', recent)
+  }
+}
 
 /* ------------------------- CLIENT TEMPLATES ----------------------- */
 const TEMPLATES_KEY = 'invoice_templates'
@@ -302,115 +1054,49 @@ function getCurrentTemplateData() {
     toAddress: document.getElementById('toAddress').value,
     toContact: document.getElementById('toContact').value,
     paymentInstructions: document.getElementById('paymentInstructions').value,
-    currency: document.getElementById('currency').value
+    currency: document.getElementById('currency').value,
+    paperSize: document.getElementById('paperSize').value,
+    orientation: document.getElementById('orientation').value,
+    styleMode: document.getElementById('styleMode').value,
+    accentColor: document.getElementById('accentColor').value,
+    logoDataUrl: document.getElementById('logoPreview').src || null
   }
 }
 
 // Load template data into form
 function loadTemplateData(templateData) {
   Object.keys(templateData).forEach(key => {
-    const element = document.getElementById(key)
-    if (element) {
-      element.value = templateData[key]
+    if (key === 'logoDataUrl') {
+      // Special handling for logo
+      const logoPreview = document.getElementById('logoPreview')
+      if (logoPreview && templateData[key]) {
+        logoPreview.src = templateData[key]
+        logoPreview.style.display = 'block'
+      }
+    } else {
+      const element = document.getElementById(key)
+      if (element) {
+        element.value = templateData[key]
+
+        // Update hex input if this is the accent color
+        if (key === 'accentColor') {
+          const hexInput = document.getElementById('hexInput')
+          const swatch = document.getElementById('swAccent')
+          if (hexInput) hexInput.value = templateData[key]
+          if (swatch) swatch.style.background = templateData[key]
+
+          // Update CSS custom property for preview
+          document.documentElement.style.setProperty('--accent-color', templateData[key])
+        }
+      }
     }
   })
+
+  // Update preview colors and render after loading template data
+  updatePreviewColors()
+  renderPreview()
 }
 
-// Update template selector dropdown
-function updateTemplateSelector() {
-  const selector = document.getElementById('templateSelector')
-  const templates = getTemplates()
-  
-  // Clear existing options except first
-  selector.innerHTML = '<option value="">Select a template...</option>'
-  
-  // Add templates
-  Object.keys(templates).forEach(name => {
-    const option = document.createElement('option')
-    option.value = name
-    option.textContent = name
-    selector.appendChild(option)
-  })
-}
-
-// Save current data as template
-function saveTemplate() {
-  const templateName = document.getElementById('templateName').value.trim()
-  
-  if (!templateName) {
-    alert('Please enter a template name')
-    return
-  }
-  
-  const templates = getTemplates()
-  templates[templateName] = getCurrentTemplateData()
-  saveTemplates(templates)
-  
-  updateTemplateSelector()
-  document.getElementById('templateName').value = ''
-  alert(`Template "${templateName}" saved successfully!`)
-}
-
-// Load selected template
-function loadSelectedTemplate() {
-  const selector = document.getElementById('templateSelector')
-  const templateName = selector.value
-  
-  if (!templateName) {
-    alert('Please select a template to load')
-    return
-  }
-  
-  const templates = getTemplates()
-  if (templates[templateName]) {
-    loadTemplateData(templates[templateName])
-    alert(`Template "${templateName}" loaded successfully!`)
-  } else {
-    alert('Template not found')
-  }
-}
-
-// Delete selected template
-function deleteSelectedTemplate() {
-  const selector = document.getElementById('templateSelector')
-  const templateName = selector.value
-  
-  if (!templateName) {
-    alert('Please select a template to delete')
-    return
-  }
-  
-  if (confirm(`Are you sure you want to delete template "${templateName}"?`)) {
-    const templates = getTemplates()
-    delete templates[templateName]
-    saveTemplates(templates)
-    updateTemplateSelector()
-    alert(`Template "${templateName}" deleted successfully!`)
-  }
-}
-
-// Show load template dialog (alternative method)
-function loadTemplateDialog() {
-  const templates = getTemplates()
-  const templateNames = Object.keys(templates)
-  
-  if (templateNames.length === 0) {
-    alert('No templates saved yet')
-    return
-  }
-  
-  const selected = prompt(`Available templates:\n${templateNames.join('\n')}\n\nEnter template name to load:`)
-  
-  if (selected && templates[selected]) {
-    loadTemplateData(templates[selected])
-    alert(`Template "${selected}" loaded successfully!`)
-  } else if (selected) {
-    alert('Template not found')
-  }
-}
-
-// Initialize template selector on page load
-updateTemplateSelector()
 
 /* ------------------------- CSV IMPORT ----------------------------- */
 
@@ -690,27 +1376,25 @@ async function fetchFirst(urls, timeoutMs = 8000) {
 
 const FONT_TARGETS = {
   hdr: {
-    name: 'RubikBold',
-    vfs: 'RubikBold.ttf',
+    name: 'Helvetica-Bold',
+    vfs: 'Helvetica-Bold.ttf',
     input: 'fontHdr',
     status: 'fontHdrStatus',
-    localPath: './fonts/Rubik/static/Rubik-Bold.ttf',
+    localPath: './fonts/Helvetica/Helvetica-Bold.ttf',
     urls: [
-      'https://fonts.gstatic.com/s/rubik/v28/iJWZBXyIfDnIV5PNhY1KTN7Z-Yh-B4iFVUUzdYPFkaVNA6w.ttf',
-      'https://cdn.jsdelivr.net/npm/@fontsource/rubik@5.0.0/files/rubik-latin-700-normal.ttf',
-      'https://github.com/google/fonts/raw/main/ofl/rubik/static/Rubik-Bold.ttf',
+      // Helvetica is a system font, no web URLs needed
+      // These would be custom uploads only
     ],
   },
   body: {
-    name: 'DMMono-Light',
-    vfs: 'DMMono-Light.ttf',
+    name: 'Helvetica',
+    vfs: 'Helvetica.ttf',
     input: 'fontBody',
     status: 'fontBodyStatus',
-    localPath: './fonts/DM_Mono/DMMono-Light.ttf',
+    localPath: './fonts/Helvetica/Helvetica.ttf',
     urls: [
-      'https://fonts.gstatic.com/s/dmmono/v14/aFTU7PB1QTsUX8KYthqQBK0ReMw.ttf',
-      'https://cdn.jsdelivr.net/npm/@fontsource/dm-mono@5.0.0/files/dm-mono-latin-300-normal.ttf',
-      'https://github.com/googlefonts/dm-mono/raw/main/fonts/ttf/DMMono-Light.ttf',
+      // Helvetica is a system font, no web URLs needed
+      // These would be custom uploads only
     ],
   },
 }
@@ -740,7 +1424,7 @@ Object.keys(FONT_TARGETS).forEach((k) => {
 })
 
 async function ensureFonts() {
-  if (fontsReady) return fontsReady
+  if (fontsReady) return await fontsReady
 
   if (!window.jspdf || !window.jspdf.jsPDF) {
     throw new Error('jsPDF library not loaded')
@@ -755,57 +1439,82 @@ async function ensureFonts() {
         return false // VFS not available
       }
       jsPDF.API.addFileToVFS(vfsName, b64)
-      jsPDF.API.addFont(vfsName, name, 'normal')
+      jsPDF.API.addFont(name, name, 'normal') // Fixed parameter order
       return true
     } catch (e) {
-      console.warn(`Failed to add custom font ${name}:`, e)
+      console.warn(`Failed to add custom font ${name} via VFS:`, e)
       return false
+    }
+  }
+
+  // Use Helvetica system font
+  function setupSystemFonts() {
+    try {
+      console.log('Setting up Helvetica fonts for PDF generation')
+      return {
+        hdr: 'helvetica', // Helvetica for headers
+        body: 'helvetica', // Helvetica for body
+        ok: true,
+        method: 'system-helvetica'
+      }
+    } catch (e) {
+      console.warn('Failed to setup system fonts:', e)
+      return null
     }
   }
 
   fontsReady = (async () => {
     let hdrFontName = 'helvetica'
-    let bodyFontName = 'courier'
-    let customFontsLoaded = false
+    let bodyFontName = 'helvetica' // Use helvetica as default
+    let fontMethod = 'system'
 
     try {
-      // Check for user-uploaded fonts first
+      // Step 1: Try user-uploaded fonts via VFS (if available)
       if (window.__pdfFonts?.hdr) {
-        console.log('Attempting to load user-uploaded header font')
+        console.log('Attempting to load user-uploaded header font via VFS')
         if (await tryAddCustomFont(FONT_TARGETS.hdr.name, FONT_TARGETS.hdr.vfs, window.__pdfFonts.hdr)) {
           hdrFontName = FONT_TARGETS.hdr.name
-          setStatus('hdr', 'ok', 'Custom Font Loaded')
-          customFontsLoaded = true
-        } else {
-          setStatus('hdr', 'ok', 'System Font (Helvetica)')
+          setStatus('hdr', 'ok', 'Custom Font (VFS)')
+          fontMethod = 'custom-vfs'
         }
-      } else {
-        setStatus('hdr', 'ok', 'System Font (Helvetica)')
       }
 
       if (window.__pdfFonts?.body) {
-        console.log('Attempting to load user-uploaded body font')
+        console.log('Attempting to load user-uploaded body font via VFS')
         if (await tryAddCustomFont(FONT_TARGETS.body.name, FONT_TARGETS.body.vfs, window.__pdfFonts.body)) {
           bodyFontName = FONT_TARGETS.body.name
-          setStatus('body', 'ok', 'Custom Font Loaded')
-          customFontsLoaded = true
-        } else {
-          setStatus('body', 'ok', 'System Font (Courier)')
+          setStatus('body', 'ok', 'Custom Font (VFS)')
+          fontMethod = 'custom-vfs'
         }
-      } else {
-        setStatus('body', 'ok', 'System Font (Courier)')
+      }
+
+      // Step 2: If no custom fonts loaded, use Helvetica system font
+      if (fontMethod === 'system') {
+        console.log('VFS approach failed or unavailable, using Helvetica system font')
+        const systemFonts = setupSystemFonts()
+        if (systemFonts) {
+          hdrFontName = systemFonts.hdr
+          bodyFontName = systemFonts.body
+          fontMethod = systemFonts.method
+          setStatus('hdr', 'ok', 'System Font (Helvetica)')
+          setStatus('body', 'ok', 'System Font (Helvetica)')
+        } else {
+          setStatus('hdr', 'ok', 'Fallback Font (Helvetica)')
+          setStatus('body', 'ok', 'Fallback Font (Helvetica)')
+        }
       }
 
       return {
         hdr: hdrFontName,
         body: bodyFontName,
         ok: true,
+        method: fontMethod
       }
     } catch (e) {
-      console.warn('Font initialization failed, using system fonts:', e)
-      setStatus('hdr', 'ok', 'System Font (Helvetica)')
-      setStatus('body', 'ok', 'System Font (Courier)')
-      return { hdr: 'helvetica', body: 'courier', ok: true }
+      console.warn('Font initialization failed, using Helvetica fallback:', e)
+      setStatus('hdr', 'ok', 'Fallback Font (Helvetica)')
+      setStatus('body', 'ok', 'Fallback Font (Helvetica)')
+      return { hdr: 'helvetica', body: 'helvetica', ok: true, method: 'system' }
     }
   })()
   return fontsReady
@@ -909,13 +1618,14 @@ async function downloadPDF() {
   doc.setFillColor(paperRGB.r, paperRGB.g, paperRGB.b)
   doc.rect(0, 0, pageW, pageH, 'F')
 
-  // Colors & stroke
+  // Colors & stroke - consistent thin lines throughout
   doc.setDrawColor(inkRGB.r, inkRGB.g, inkRGB.b)
   doc.setTextColor(textRGB.r, textRGB.g, textRGB.b)
-  doc.setLineWidth(0.1)
+  doc.setLineWidth(0.2) // Uniform thin line weight for all PDF elements
 
   const margin = 10,
-    contentW = pageW - 2 * margin
+    contentW = pageW - 2 * margin,
+    splitW = contentW * 0.66
 
   // Header — logo keeps aspect
   if (logoDataUrl) {
@@ -935,36 +1645,115 @@ async function downloadPDF() {
     }
     doc.addImage(logoDataUrl, 'PNG', margin, 15, w, h)
   }
-  doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
+  doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
   doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
-  doc.setFontSize(13)
-  doc.text('INVOICE', pageW - margin, 20, { align: 'right' })
-  // Keep accent color (black) for all header elements for consistency
-  doc.setFontSize(8)
-  doc.text(invoiceNumber.toUpperCase(), pageW - margin, 25, {
-    align: 'right',
-  })
-  doc.text('REV: A', pageW - margin, 29, { align: 'right' })
-  if (showB) doc.line(margin, 35, pageW - margin, 35)
 
-  // Bottom-heavy layout math
-  const bottomMargin = 10,
-    dataGridH = 25,
-    itemsHeaderH = 8,
-    rowH = 7,
-    spacer = 4,
-    paymentH = 30
-  const minTopSpace = pageH * 0.45
+  // ASCII Art Header or Regular Header
+  if (colors.isAscii) {
+    // ASCII Art INVOICE header
+    doc.setFontSize(6)
+    const asciiBanner = [
+      '####  #   # #   #  ###  ####  ###  #####',
+      '#     ##  # #   # #   #  #   #   # #    ',
+      '####  # # #  # #  #   #  #   #   # #### ',
+      '#     #  ##  # #  #   #  #   #   # #    ',
+      '####  #   #   #    ###  ####  ###  #####'
+    ]
+
+    asciiBanner.forEach((line, i) => {
+      doc.text(line, pageW - margin - 120, 10 + (i * 3), { align: 'left' })
+    })
+
+    // Invoice details in ASCII style
+    doc.setFontSize(8)
+    doc.text(`>>> INVOICE NO: ${invoiceNumber.toUpperCase()} <<<`, pageW - margin, 30, { align: 'right' })
+    doc.text('>>> REV: A <<<', pageW - margin, 35, { align: 'right' })
+
+    // ASCII line divider
+    const asciiLine = '=' + '='.repeat(Math.floor((pageW - 2 * margin) / 2)) + '='
+    doc.setFontSize(6)
+    doc.text(asciiLine, margin, 40)
+  } else {
+    // Regular header - increased spacing
+    doc.setFontSize(13)
+    doc.text('INVOICE', pageW - margin, 25, { align: 'right' })  // Move down
+    // Keep accent color (black) for all header elements for consistency
+    doc.setFontSize(8)
+    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 32, {
+      align: 'right',
+    })
+    doc.text('REV: A', pageW - margin, 38, { align: 'right' })
+    if (showB) doc.line(margin, 45, pageW - margin, 45)  // Move line down
+  }
+
+  // Multi-page layout math - increased spacing to match preview
+  const bottomMargin = 15,  // More bottom margin
+    dataGridH = 35,         // Taller grid sections for more breathing room
+    itemsHeaderH = 8,       // Compact table headers matching reference proportions
+    rowH = 10,              // Taller table rows
+    spacer = 8              // More spacing between sections
+
+  // Dynamic payment section height calculation
+  function calculatePaymentHeight(doc, paymentInstructions, splitW) {
+    // Base measurements
+    const headerHeight = 5      // Header positioning from top
+    const headerPadding = 6     // Space after header before content
+    const lineHeight = 4        // Height per line of text
+    const bottomPadding = 4     // Bottom margin within section
+
+    // Calculate payment instruction lines
+    let paymentLines = 0
+    paymentInstructions.split('\n').forEach(line => {
+      if (line.trim()) { // Only count non-empty lines
+        const wrapped = doc.splitTextToSize(line, splitW - 4.2) // Account for padding
+        paymentLines += wrapped.length
+      }
+    })
+
+    // Total section has 3 lines (subtotal, tax, total line)
+    const totalLines = 3
+    const totalExtraSpacing = 5 // Extra space before final total
+
+    // Calculate heights for both sections
+    const paymentSectionHeight = headerHeight + headerPadding +
+      (paymentLines * lineHeight) + bottomPadding
+    const totalSectionHeight = headerHeight + headerPadding +
+      (totalLines * lineHeight) + totalExtraSpacing + bottomPadding
+
+    // Return the larger of the two sections, with minimum height
+    return Math.max(paymentSectionHeight, totalSectionHeight, 20) // Minimum 20mm
+  }
+
+  // Calculate dynamic payment height
+  const paymentH = calculatePaymentHeight(doc, paymentInstructions, splitW)
+  const minTopSpace = pageH * 0.5  // More top space before content
+
+  // Calculate space for line items on first page
   const yPaymentTop = pageH - bottomMargin - paymentH
   const yItemsBottom = yPaymentTop - spacer
   const usableHeight = yItemsBottom - minTopSpace
-  const maxRowsFit = Math.max(
+  const maxRowsFitFirstPage = Math.max(
     0,
     Math.floor((usableHeight - dataGridH - spacer - itemsHeaderH) / rowH)
   )
-  const rows = Math.max(0, Math.min(items.length, maxRowsFit))
-  const yDataTop =
-    yItemsBottom - (itemsHeaderH + rows * rowH + spacer + dataGridH)
+
+  // Calculate space for line items on continuation pages (full page minus margins)
+  const continuationTopMargin = 30
+  const maxRowsFitContinuationPage = Math.max(
+    0,
+    Math.floor((pageH - continuationTopMargin - bottomMargin - paymentH - spacer - itemsHeaderH) / rowH)
+  )
+
+  // Determine how many pages we need
+  let totalPages = 1
+  let remainingItems = items.length - maxRowsFitFirstPage
+  if (remainingItems > 0) {
+    totalPages += Math.ceil(remainingItems / maxRowsFitContinuationPage)
+  }
+
+  // For first page, calculate positioning
+  const rowsFirstPage = Math.min(items.length, maxRowsFitFirstPage)
+  const yDataTop = yItemsBottom - (itemsHeaderH + rowsFirstPage * rowH + spacer + dataGridH)
   const yItemsTop = yDataTop + dataGridH + spacer
 
   // Spec grid with optional fill/borders
@@ -984,66 +1773,163 @@ async function downloadPDF() {
   }
 
   // Grid headers (ALL CAPS) - use black for headers inside boxes
-  doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
+  doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use box text color (black)
-  doc.setFontSize(7.5)
-  doc.text('FROM', margin + 2, yDataTop + 4)
-  doc.text('BILL TO', margin + colW + 2, yDataTop + 4)
-  doc.text('RECIPIENT CONTACT', margin + 2 * colW + 2, yDataTop + 4)
-  doc.text('SPECIFICATIONS', margin + 3 * colW + 2, yDataTop + 4)
 
-  // Grid body (thin mono, slightly larger) - use box text color for content in boxes
-  doc.setFont(fonts.body, 'normal')
-  doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
-  doc.setFontSize(8)
-  const pad = 2
+  if (colors.isAscii) {
+    // Pure ASCII text layout - no boxes, just structured text
+    doc.setFontSize(7)
+    doc.setFont(fonts.body, 'normal') // Use Helvetica font system
 
-  // sender
-  let x0 = margin,
-    y0 = yDataTop + 8
-  doc.text(fromName, x0 + pad, y0)
-  y0 += 3
-  doc.text(fromWebsite, x0 + pad, y0)
-  y0 += 3
-  doc.text('TEL: ' + fromPhone, x0 + pad, y0)
-  y0 += 3
-  doc.text(doc.splitTextToSize(fromAddress, colW - 2 * pad), x0 + pad, y0)
+    let currentY = yDataTop + 4
 
-  // recipient
-  x0 = margin + colW
-  y0 = yDataTop + 8
-  doc.text(toCompany, x0 + pad, y0)
-  y0 += 3
-  doc.text('ATTN: ' + toNames, x0 + pad, y0)
-  y0 += 3
-  doc.text(doc.splitTextToSize(toAddress, colW - 2 * pad), x0 + pad, y0)
+    // ASCII headers with text beneath - structured like a table
+    doc.setTextColor(accRGB.r, accRGB.g, accRGB.b) // Headers in accent color
+    doc.text('FROM:', margin, currentY)
+    doc.text('BILL TO:', margin + colW, currentY)
+    doc.text('CONTACT:', margin + 2 * colW, currentY)
+    doc.text('SPECS:', margin + 3 * colW, currentY)
 
-  // contact
-  x0 = margin + 2 * colW
-  y0 = yDataTop + 8
-  toContact
-    .split('\n')
-    .map((s) => doc.splitTextToSize(s, colW - 2 * pad))
-    .flat()
-    .forEach((L) => {
-      if (y0 < yDataTop + dataGridH - 2) {
-        doc.text(L, x0 + pad, y0)
-        y0 += 3
+    // Separator line using ASCII characters
+    currentY += 3
+    doc.text('----', margin, currentY)
+    doc.text('--------', margin + colW, currentY)
+    doc.text('-------', margin + 2 * colW, currentY)
+    doc.text('-----', margin + 3 * colW, currentY)
+
+    // Content in normal color
+    doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
+    currentY += 3
+
+    // FROM column
+    let yFrom = currentY
+    doc.text(fromName, margin, yFrom)
+    yFrom += 3
+    doc.text(fromWebsite, margin, yFrom)
+    yFrom += 3
+    doc.text(`TEL: ${fromPhone}`, margin, yFrom)
+    yFrom += 3
+    const fromAddressLines = doc.splitTextToSize(fromAddress, colW - 4)
+    fromAddressLines.forEach(line => {
+      doc.text(line, margin, yFrom)
+      yFrom += 3
+    })
+
+    // BILL TO column
+    let yBillTo = currentY
+    doc.text(toCompany, margin + colW, yBillTo)
+    yBillTo += 3
+    doc.text(`ATTN: ${toNames}`, margin + colW, yBillTo)
+    yBillTo += 3
+    const toAddressLines = doc.splitTextToSize(toAddress, colW - 4)
+    toAddressLines.forEach(line => {
+      doc.text(line, margin + colW, yBillTo)
+      yBillTo += 3
+    })
+
+    // CONTACT column
+    let yContact = currentY
+    const contactLines = toContact.split('\n').slice(0, 4)
+    contactLines.forEach(line => {
+      const contactLinesSplit = doc.splitTextToSize(line, colW - 4)
+      contactLinesSplit.forEach(splitLine => {
+        doc.text(splitLine, margin + 2 * colW, yContact)
+        yContact += 3
+      })
+    })
+
+    // SPECS column
+    let ySpecs = currentY
+    doc.text(`ISSUED: ${invoiceDate}`, margin + 3 * colW, ySpecs)
+    ySpecs += 3
+    doc.text(`DUE: ${dueDate}`, margin + 3 * colW, ySpecs)
+    ySpecs += 3
+    doc.text(`CURR: ${currency}`, margin + 3 * colW, ySpecs)
+    ySpecs += 3
+    doc.text('TERMS: NET 30', margin + 3 * colW, ySpecs)
+  } else {
+    // Regular grid headers with CSS padding (8px ≈ 2.1mm)
+    doc.setFontSize(7) // CSS: font-size: 7px for panel titles
+    doc.text('FROM', margin + 2.1, yDataTop + 5) // 8px padding from left edge, increased top padding
+    doc.text('BILL TO', margin + colW + 2.1, yDataTop + 5)
+    doc.text('RECIPIENT CONTACT', margin + 2 * colW + 2.1, yDataTop + 5)
+    doc.text('SPECIFICATIONS', margin + 3 * colW + 2.1, yDataTop + 5)
+
+    // No dividing lines under headers - clean design like reference PDF
+    // Typography differentiation only (bold caps headers)
+  }
+
+  // Grid body for non-ASCII only
+  if (!colors.isAscii) {
+    doc.setFont(fonts.body, 'normal') // Use Helvetica font system
+    doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
+    doc.setFontSize(8) // Helvetica font size
+
+    // CSS padding alignment (8px ≈ 2.1mm) with breathing room
+    let x0 = margin + 2.1, // 8px padding from left edge to match headers
+      y0 = yDataTop + 11 // Adjusted for increased header top padding
+    doc.setFont(fonts.body, 'bold') // Bold for company names using Helvetica
+    doc.text(fromName, x0, y0)
+    doc.setFont(fonts.body, 'normal')
+    y0 += 4 // Increased line spacing
+    doc.text(fromWebsite, x0, y0)
+    y0 += 4
+    doc.text('TEL: ' + fromPhone, x0, y0)
+    y0 += 4
+    const fromAddressLines = doc.splitTextToSize(fromAddress, colW - 4.2) // Account for 8px padding on both sides
+    fromAddressLines.forEach((line, index) => {
+      if (y0 < yDataTop + dataGridH - 2) { // Check bounds
+        doc.text(line, x0, y0)
+        y0 += 4
       }
     })
 
-  // specs
-  x0 = margin + 3 * colW
-  y0 = yDataTop + 8
-  doc.text('ISSUED: ' + invoiceDate, x0 + pad, y0)
-  y0 += 3
-  doc.text('DUE: ' + dueDate, x0 + pad, y0)
-  y0 += 3
-  doc.text('CURRENCY: ' + currency, x0 + pad, y0)
-  y0 += 3
-  doc.text('TERMS: NET 30', x0 + pad, y0)
+    // recipient - CSS padding alignment (8px ≈ 2.1mm)
+    x0 = margin + colW + 2.1 // 8px padding from left edge
+    y0 = yDataTop + 11 // Adjusted for increased header top padding
+    doc.setFont(fonts.body, 'bold') // Bold for company names using Helvetica
+    doc.text(toCompany, x0, y0)
+    doc.setFont(fonts.body, 'normal')
+    y0 += 4  // Increased spacing
+    doc.text('ATTN: ' + toNames, x0, y0)
+    y0 += 4
+    const toAddressLines = doc.splitTextToSize(toAddress, colW - 4.2) // Account for 8px padding on both sides
+    toAddressLines.forEach((line, index) => {
+      if (y0 < yDataTop + dataGridH - 2) { // Check bounds
+        doc.text(line, x0, y0)
+        y0 += 4
+      }
+    })
 
-  // Items table
+    // contact - CSS padding alignment (8px ≈ 2.1mm)
+    x0 = margin + 2 * colW + 2.1 // 8px padding from left edge
+    y0 = yDataTop + 11 // Adjusted for increased header top padding
+    toContact
+      .split('\n')
+      .slice(0, 4) // Limit lines to prevent overflow
+      .forEach((line) => {
+        const wrappedLines = doc.splitTextToSize(line, colW - 4.2) // Account for 8px padding on both sides
+        wrappedLines.forEach((wrappedLine) => {
+          if (y0 < yDataTop + dataGridH - 2) {
+            doc.text(wrappedLine, x0, y0)
+            y0 += 4
+          }
+        })
+      })
+
+    // specs - CSS padding alignment (8px ≈ 2.1mm)
+    x0 = margin + 3 * colW + 2.1 // 8px padding from left edge
+    y0 = yDataTop + 11 // Adjusted for increased header top padding
+    doc.text('ISSUED: ' + invoiceDate, x0, y0)
+    y0 += 4  // Increased spacing
+    doc.text('DUE: ' + dueDate, x0, y0)
+    y0 += 4
+    doc.text('CURRENCY: ' + currency, x0, y0)
+    y0 += 4
+    doc.text('TERMS: NET 30', x0, y0)
+  }
+
+  // Multi-page line items rendering
   const descW = contentW * 0.5,
     qtyW = contentW * 0.15,
     rateW = contentW * 0.15,
@@ -1052,71 +1938,153 @@ async function downloadPDF() {
     xQty = margin + descW,
     xRate = xQty + qtyW,
     xAmt = xRate + rateW
-  const tableH = itemsHeaderH + rows * rowH
 
-  if (showB) {
-    doc.rect(margin, yItemsTop, contentW, tableH)
-    doc.line(xQty, yItemsTop, xQty, yItemsTop + tableH)
-    doc.line(xRate, yItemsTop, xRate, yItemsTop + tableH)
-    doc.line(xAmt, yItemsTop, xAmt, yItemsTop + tableH)
-  }
-  if (showF && boxAlpha > 0) {
-    doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
-    doc.setGState(new doc.GState({ opacity: boxAlpha }))
-    doc.rect(margin, yItemsTop, contentW, itemsHeaderH, 'F') // header band
-    doc.setGState(new doc.GState({ opacity: 1 }))
-  }
+  // Function to render line items table header
+  function renderTableHeader(yTop) {
+    const tableHeaderH = itemsHeaderH
 
-  doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
-  doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use black for table headers inside boxes
-  doc.setFontSize(7.5)
-  const hY = yItemsTop + 5
-  doc.text('DESCRIPTION', xDesc + 2, hY)
-  doc.text('QTY/HRS', xQty + 2, hY)
-  doc.text('RATE', xRate + 2, hY)
-  doc.text('AMOUNT', xAmt + 2, hY)
-  if (showB)
-    doc.line(
-      margin,
-      yItemsTop + itemsHeaderH,
-      margin + contentW,
-      yItemsTop + itemsHeaderH
-    )
-
-  // rows - use table-specific colors for better readability
-  doc.setFont(fonts.body, 'normal')
-  doc.setTextColor(tableTextRGB.r, tableTextRGB.g, tableTextRGB.b)
-  doc.setFontSize(8)
-  let y = yItemsTop + itemsHeaderH,
-    subtotal = 0
-  for (let i = 0; i < rows; i++) {
-    const it = items[i]
-    
-    // Add lighter background fill for table rows in filled mode
     if (showF && boxAlpha > 0) {
-      doc.setFillColor(tableRGB.r, tableRGB.g, tableRGB.b)
-      doc.setGState(new doc.GState({ opacity: 1 }))
-      doc.rect(margin, y, contentW, rowH, 'F')
+      doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
+      doc.setGState(new doc.GState({ opacity: boxAlpha }))
+      doc.rect(margin, yTop, contentW, tableHeaderH, 'F')
       doc.setGState(new doc.GState({ opacity: 1 }))
     }
-    
-    const rate = '$' + (+it.rate || 0).toFixed(2)
-    const amtVal = +it.amount || 0
-    const amt = '$' + amtVal.toFixed(2)
-    subtotal += amtVal
-    const dLine = doc.splitTextToSize(it.description, descW - 4)[0] || ''
-    doc.text(dLine, xDesc + 2, y + 4)
-    doc.text(String(it.qty || ''), xQty + 2, y + 4)
-    doc.text(rate, xRate + 2, y + 4)
-    doc.text(amt, xAmt + amtW - 2, y + 4, { align: 'right' })
-    y += rowH
-    if (showB && i < rows - 1) doc.line(margin, y, margin + contentW, y)
+
+    doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
+    doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
+
+    if (colors.isAscii) {
+      doc.setFontSize(7)
+      doc.setFont(fonts.body, 'normal') // Use Helvetica font system
+      doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
+
+      let currentY = yTop + 4
+      doc.text('DESCRIPTION', xDesc + 2, currentY)
+      doc.text('QTY', xQty + 2, currentY)
+      doc.text('RATE', xRate + 2, currentY)
+      doc.text('AMOUNT', xAmt + 2, currentY)
+
+      currentY += 3
+      doc.text('-----------', xDesc + 2, currentY)
+      doc.text('---', xQty + 2, currentY)
+      doc.text('----', xRate + 2, currentY)
+      doc.text('------', xAmt + 2, currentY)
+    } else {
+      doc.setFontSize(8) // CSS: font-size: 8px for table headers
+      const hY = yTop + 5 // Better vertical alignment to match CSS
+      doc.text('DESCRIPTION', xDesc + 1.3, hY) // 5px padding from left edge
+      doc.text('QTY/HRS', xQty + 1.3, hY)
+      doc.text('RATE', xRate + 1.3, hY)
+      doc.text('AMOUNT', xAmt + 1.3, hY)
+
+      // No dividers for table headers - cleaner look matching CSS
+      // Table headers are functional, not content separators
+    }
+
+    if (showB) {
+      doc.line(margin, yTop + itemsHeaderH, margin + contentW, yTop + itemsHeaderH)
+    }
   }
 
-  // Payment + totals
-  const splitW = contentW * 0.66,
-    xSplit = margin + splitW,
-    yPayTop = yPaymentTop
+  // Function to render line items
+  function renderLineItems(itemsToRender, yTop, maxRows) {
+    const actualRows = Math.min(itemsToRender.length, maxRows)
+    const tableH = itemsHeaderH + actualRows * rowH
+
+    if (showB) {
+      doc.rect(margin, yTop, contentW, tableH)
+      doc.line(xQty, yTop, xQty, yTop + tableH)
+      doc.line(xRate, yTop, xRate, yTop + tableH)
+      doc.line(xAmt, yTop, xAmt, yTop + tableH)
+    }
+
+    renderTableHeader(yTop)
+
+    doc.setFont(fonts.body, 'normal') // Use Helvetica font system
+    doc.setTextColor(tableTextRGB.r, tableTextRGB.g, tableTextRGB.b)
+    doc.setFontSize(8) // Helvetica font size for table content
+
+    let y = yTop + itemsHeaderH
+    let pageSubtotal = 0
+
+    for (let i = 0; i < actualRows; i++) {
+      const it = itemsToRender[i]
+
+      if (showF && boxAlpha > 0) {
+        doc.setFillColor(tableRGB.r, tableRGB.g, tableRGB.b)
+        doc.setGState(new doc.GState({ opacity: 1 }))
+        doc.rect(margin, y, contentW, rowH, 'F')
+        doc.setGState(new doc.GState({ opacity: 1 }))
+      }
+
+      const rate = '$' + (+it.rate || 0).toFixed(2)
+      const amtVal = +it.amount || 0
+      const amt = '$' + amtVal.toFixed(2)
+      pageSubtotal += amtVal
+
+      const dLine = doc.splitTextToSize(it.description, descW - 2.6)[0] || '' // Account for 5px padding on both sides
+      doc.text(dLine, xDesc + 1.3, y + 6) // 5px padding from left edge
+      doc.text(String(it.qty || ''), xQty + qtyW/2, y + 6, { align: 'center' }) // Center in padded column
+      doc.text(rate, xRate + rateW - 1.3, y + 6, { align: 'right' }) // Right align with 5px padding
+
+      doc.setFont(fonts.body, 'bold') // Bold amounts using Helvetica
+      doc.text(amt, xAmt + amtW - 1.3, y + 6, { align: 'right' }) // Right align with 5px padding
+      doc.setFont(fonts.body, 'normal')
+
+      y += rowH
+      if (showB && i < actualRows - 1) {
+        doc.line(margin, y, margin + contentW, y)
+      }
+    }
+
+    return { renderedItems: actualRows, pageSubtotal }
+  }
+
+  // Render first page line items
+  const firstPageResult = renderLineItems(items, yItemsTop, rowsFirstPage)
+  let totalSubtotal = firstPageResult.pageSubtotal
+  let itemIndex = firstPageResult.renderedItems
+
+  // Render continuation pages if needed
+  while (itemIndex < items.length) {
+    doc.addPage()
+
+    // Set up page background for new page
+    doc.setFillColor(paperRGB.r, paperRGB.g, paperRGB.b)
+    doc.rect(0, 0, pageW, pageH, 'F')
+
+    // Add continuation page header
+    doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
+    doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
+    doc.setFontSize(11)
+    doc.text(`INVOICE ${invoiceNumber} (CONTINUED)`, pageW - margin, 20, { align: 'right' })
+    doc.setFontSize(8)
+    doc.text(`PAGE ${doc.internal.getCurrentPageInfo().pageNumber} OF ${totalPages}`, pageW - margin, 25, { align: 'right' })
+
+    if (showB) {
+      doc.setDrawColor(inkRGB.r, inkRGB.g, inkRGB.b)
+      doc.setLineWidth(0.2) // Same thin line weight as all other elements
+      doc.line(margin, 27, pageW - margin, 27)
+    }
+
+    const remainingItems = items.slice(itemIndex)
+    const continuationPageResult = renderLineItems(
+      remainingItems,
+      continuationTopMargin,
+      maxRowsFitContinuationPage
+    )
+
+    totalSubtotal += continuationPageResult.pageSubtotal
+    itemIndex += continuationPageResult.renderedItems
+  }
+
+  // Payment + totals (always on the last page)
+  const xSplit = margin + splitW
+
+  // Calculate payment section position on current page
+  const currentPageH = doc.internal.pageSize.getHeight()
+  const yPayTop = currentPageH - bottomMargin - paymentH
+
   if (showF && boxAlpha > 0) {
     doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
     doc.setGState(new doc.GState({ opacity: boxAlpha }))
@@ -1128,47 +2096,53 @@ async function downloadPDF() {
     doc.line(xSplit, yPayTop, xSplit, yPayTop + paymentH)
   }
 
-  doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
+  doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use black for headers inside boxes
-  doc.setFontSize(7.5)
-  doc.text('PAYMENT INSTRUCTIONS', margin + 2, yPayTop + 4)
+  doc.setFontSize(7) // Helvetica font size for panel titles
+  doc.text('PAYMENT INSTRUCTIONS', margin + 2.1, yPayTop + 5) // 8px padding from left edge, consistent with other headers
 
-  doc.setFont(fonts.body, 'normal')
+  // No dividing line under PAYMENT INSTRUCTIONS - clean design
+
+  doc.setFont(fonts.body, 'normal') // Use Helvetica font system
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
-  doc.setFontSize(8)
-  let py = yPayTop + 8
+  doc.setFontSize(8) // Helvetica font size for content
+  let py = yPayTop + 11 // Tighter spacing for better proportions
   paymentInstructions.split('\n').forEach((line) => {
-    const lines = doc.splitTextToSize(line, splitW - 4)
-    lines.forEach((L) => {
-      if (py < yPayTop + paymentH - 2) {
-        doc.text(L, margin + 2, py)
-        py += 3
-      }
-    })
+    if (line.trim()) { // Only process non-empty lines
+      const lines = doc.splitTextToSize(line, splitW - 4.2) // Account for 8px padding on both sides
+      lines.forEach((L) => {
+        if (py < yPayTop + paymentH - 4) { // Better bottom margin
+          doc.text(L, margin + 2.1, py) // 8px padding from left edge
+          py += 4 // Increased line spacing
+        }
+      })
+    }
   })
 
-  doc.setFont(fonts.hdr, fonts.ok ? 'normal' : 'bold')
+  doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use black for headers inside boxes
-  doc.setFontSize(7.5)
-  doc.text('TOTAL', xSplit + 2, yPayTop + 4)
+  doc.setFontSize(7) // Helvetica font size for panel titles
+  doc.text('TOTAL', xSplit + 2.1, yPayTop + 5) // 8px padding from left edge, consistent with other headers
 
-  doc.setFont(fonts.body, 'normal')
+  // No dividing line under TOTAL header - clean design
+
+  doc.setFont(fonts.body, 'normal') // Use Helvetica font system
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
-  doc.setFontSize(8)
-  const rightX = margin + contentW - 2
-  let ty = yPayTop + 10
-  doc.text('SUBTOTAL:', xSplit + 2, ty)
-  doc.text('$' + subtotal.toFixed(2), rightX, ty, { align: 'right' })
-  ty += 4
-  doc.text('TAX (0%):', xSplit + 2, ty)
+  doc.setFontSize(8) // Helvetica font size for totals content
+  const rightX = margin + contentW - 2.1 // Right edge with 8px padding
+  let ty = yPayTop + 13 // Tighter spacing for better proportions
+  doc.text('SUBTOTAL:', xSplit + 2.1, ty) // 8px padding from left edge
+  doc.text('$' + totalSubtotal.toFixed(2), rightX, ty, { align: 'right' })
+  ty += 4 // Increased line spacing
+  doc.text('TAX (0%):', xSplit + 2.1, ty)
   doc.text('$0.00', rightX, ty, { align: 'right' })
   ty += 4
-  if (showB) doc.line(xSplit + 2, ty + 1, margin + contentW - 2, ty + 1)
-  ty += 6
-  doc.setFont(fonts.body, 'bold')
-  doc.setFontSize(9)
-  doc.text('TOTAL (' + currency + '): ', xSplit + 2, ty)
-  doc.text('$' + subtotal.toFixed(2), rightX, ty, { align: 'right' })
+  // No border line above total - clean design like reference
+  ty += 5 // Increased spacing before total
+  doc.setFont(fonts.body, 'bold') // Bold for total using Helvetica
+  doc.setFontSize(10) // Slightly larger font for total
+  doc.text('TOTAL (' + currency + '): ', xSplit + 2.1, ty)
+  doc.text('$' + totalSubtotal.toFixed(2), rightX, ty, { align: 'right' })
 
   doc.save(`invoice-${invoiceNumber}.pdf`)
 }
