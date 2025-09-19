@@ -3,13 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>TECHNICAL INVOICE GENERATOR • Datasheet PDF</title>
+    <title>David's Invoice</title>
     <script src="https://unpkg.com/jspdf@2.4.0/dist/jspdf.umd.min.js"></script>
     <!-- Google Fonts for reliable PDF font rendering -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@700&family=DM+Mono:wght@300&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rubik:wght@700&family=DM+Mono:wght@300&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="main">
@@ -22,9 +25,15 @@
               <div class="header-content">
                 <div class="header-text">
                   <h1>Invoice Generator</h1>
-                  <div class="subtitle">Professional invoice creation with customizable styling</div>
+                  <div class="subtitle">
+                    Professional invoice creation with customizable styling
+                  </div>
                 </div>
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark theme">
+                <button
+                  class="theme-toggle"
+                  onclick="toggleTheme()"
+                  title="Toggle light/dark theme"
+                >
                   <span class="theme-icon">☀️</span>
                 </button>
               </div>
@@ -37,31 +46,77 @@
               <!-- Quick Access Row -->
               <div class="template-quick-row">
                 <div class="template-chips">
-                  <button class="filter-chip" data-template="default-client" style="display: none;">Default Client</button>
-                  <button class="filter-chip" data-template="tech-company" style="display: none;">Tech Company</button>
-                  <button class="filter-chip recent-chip" data-template="sample-client" style="display: none;">Sample Client</button>
-                  <button class="filter-chip" data-template="default" style="display: block;">Default</button>
+                  <button
+                    class="filter-chip"
+                    data-template="default-client"
+                    style="display: none"
+                  >
+                    Default Client
+                  </button>
+                  <button
+                    class="filter-chip"
+                    data-template="tech-company"
+                    style="display: none"
+                  >
+                    Tech Company
+                  </button>
+                  <button
+                    class="filter-chip recent-chip"
+                    data-template="sample-client"
+                    style="display: none"
+                  >
+                    Sample Client
+                  </button>
+                  <button
+                    class="filter-chip"
+                    data-template="default"
+                    style="display: block"
+                  >
+                    Default
+                  </button>
                 </div>
-                <button class="load-btn" onclick="loadQuickTemplate()">Load</button>
+                <button class="load-btn" onclick="loadQuickTemplate()">
+                  Load
+                </button>
               </div>
 
               <!-- Management Section -->
               <div class="template-manage-section">
                 <div class="template-input-row">
                   <div class="template-input-group">
-                    <input id="templateInput" type="text" placeholder="Template name..." list="templateSuggestions" />
+                    <input
+                      id="templateInput"
+                      type="text"
+                      placeholder="Template name..."
+                      list="templateSuggestions"
+                    />
                     <datalist id="templateSuggestions">
                       <!-- Dynamic options will be populated here -->
                     </datalist>
                   </div>
                   <div class="template-actions-row">
-                    <button class="action-icon save-icon" id="saveAction" title="Save Template" onclick="handleSaveAction()">
+                    <button
+                      class="action-icon save-icon"
+                      id="saveAction"
+                      title="Save Template"
+                      onclick="handleSaveAction()"
+                    >
                       <span>💾</span>
                     </button>
-                    <button class="action-icon star-icon" id="starAction" title="Star Template" onclick="handleStarAction()">
+                    <button
+                      class="action-icon star-icon"
+                      id="starAction"
+                      title="Star Template"
+                      onclick="handleStarAction()"
+                    >
                       <span>⭐</span>
                     </button>
-                    <button class="action-icon delete-icon" id="deleteAction" title="Delete Template" onclick="handleDeleteAction()">
+                    <button
+                      class="action-icon delete-icon"
+                      id="deleteAction"
+                      title="Delete Template"
+                      onclick="handleDeleteAction()"
+                    >
                       <span>🗑️</span>
                     </button>
                   </div>
@@ -86,11 +141,7 @@
               </div>
               <div class="row2">
                 <div class="label">ADDRESS:</div>
-                <input
-                  id="fromAddress"
-                  type="text"
-                  value=""
-                />
+                <input id="fromAddress" type="text" value="" />
               </div>
             </div>
 
@@ -106,16 +157,11 @@
               </div>
               <div class="row2">
                 <div class="label">ADDRESS:</div>
-                <input
-                  id="toAddress"
-                  type="text"
-                  value=""
-                />
+                <input id="toAddress" type="text" value="" />
               </div>
               <div class="row2">
                 <div class="label">CONTACT:</div>
-                <textarea id="toContact"></textarea
-                >
+                <textarea id="toContact"></textarea>
               </div>
             </div>
 
@@ -143,8 +189,7 @@
               <h3>Payment Instructions</h3>
               <div class="row2">
                 <div class="label">INSTRUCTIONS:</div>
-                <textarea id="paymentInstructions"></textarea
-                >
+                <textarea id="paymentInstructions"></textarea>
               </div>
             </div>
 
@@ -160,7 +205,9 @@
                       <div class="setting-row">
                         <label>Paper Size</label>
                         <select id="paperSize">
-                          <option value="letter" selected>Letter (8.5×11")</option>
+                          <option value="letter" selected>
+                            Letter (8.5×11")
+                          </option>
                           <option value="a4">A4 (210×297 mm)</option>
                         </select>
                       </div>
@@ -174,7 +221,9 @@
                       <div class="setting-row">
                         <label>Logo Upload</label>
                         <div class="logo-box">
-                          <label class="logo-btn" for="logoUpload">Select Logo</label>
+                          <label class="logo-btn" for="logoUpload"
+                            >Select Logo</label
+                          >
                           <input id="logoUpload" type="file" accept="image/*" />
                           <img id="logoPreview" alt="Logo preview" />
                         </div>
@@ -187,25 +236,65 @@
                       <div class="setting-row">
                         <label>Style Mode</label>
                         <select id="styleMode">
-                          <option value="outline">Clean Outline (Technical Drawing)</option>
-                          <option value="filled">Filled Background (Datasheet)</option>
-                          <option value="ascii">ASCII Art Style (Retro Terminal)</option>
+                          <option value="outline">
+                            Clean Outline (Technical Drawing)
+                          </option>
+                          <option value="filled">
+                            Filled Background (Datasheet)
+                          </option>
+                          <option value="ascii">
+                            ASCII Art Style (Retro Terminal)
+                          </option>
                         </select>
                       </div>
                       <div class="setting-row">
                         <label>Accent Color</label>
                         <div class="color-control">
-                          <input type="color" id="accentColor" value="#CEFF00" />
-                          <input type="text" id="hexInput" placeholder="#CEFF00" maxlength="7" />
-                          <span class="swatch" id="swAccent" style="background: #CEFF00"></span>
+                          <input
+                            type="color"
+                            id="accentColor"
+                            value="#CEFF00"
+                          />
+                          <input
+                            type="text"
+                            id="hexInput"
+                            placeholder="#CEFF00"
+                            maxlength="7"
+                          />
+                          <span
+                            class="swatch"
+                            id="swAccent"
+                            style="background: #ceff00"
+                          ></span>
                         </div>
                       </div>
                       <div class="setting-row">
                         <label>Quick Presets</label>
                         <div class="preset-grid">
-                          <button type="button" class="preset-btn" data-preset="technical" style="background: #111111; color: #fff;">Technical Black</button>
-                          <button type="button" class="preset-btn" data-preset="blueprint" style="background: #0B4C8C; color: #fff;">Blueprint Blue</button>
-                          <button type="button" class="preset-btn" data-preset="red" style="background: #DC2626; color: #fff;">Alert Red</button>
+                          <button
+                            type="button"
+                            class="preset-btn"
+                            data-preset="technical"
+                            style="background: #111111; color: #fff"
+                          >
+                            Technical Black
+                          </button>
+                          <button
+                            type="button"
+                            class="preset-btn"
+                            data-preset="blueprint"
+                            style="background: #0b4c8c; color: #fff"
+                          >
+                            Blueprint Blue
+                          </button>
+                          <button
+                            type="button"
+                            class="preset-btn"
+                            data-preset="red"
+                            style="background: #dc2626; color: #fff"
+                          >
+                            Alert Red
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -231,11 +320,19 @@
                       <h4>Data Input</h4>
                       <div class="setting-row">
                         <label>Upload CSV File</label>
-                        <input id="csvFileInput" type="file" accept=".csv,.tsv,.txt" />
+                        <input
+                          id="csvFileInput"
+                          type="file"
+                          accept=".csv,.tsv,.txt"
+                        />
                       </div>
                       <div class="setting-row">
                         <label>Or Paste CSV Data</label>
-                        <textarea id="csvPasteArea" placeholder="Paste CSV data here (Description, Quantity, Rate format)" rows="3"></textarea>
+                        <textarea
+                          id="csvPasteArea"
+                          placeholder="Paste CSV data here (Description, Quantity, Rate format)"
+                          rows="3"
+                        ></textarea>
                       </div>
                     </div>
 
@@ -245,13 +342,23 @@
                       <div class="setting-row">
                         <label>Import Data</label>
                         <div class="import-actions">
-                          <button type="button" onclick="importFromFile()">Import File</button>
-                          <button type="button" onclick="importFromPaste()">Import Pasted Data</button>
+                          <button type="button" onclick="importFromFile()">
+                            Import File
+                          </button>
+                          <button type="button" onclick="importFromPaste()">
+                            Import Pasted Data
+                          </button>
                         </div>
                       </div>
                       <div class="setting-row">
                         <label>Manage Items</label>
-                        <button type="button" class="clear-btn" onclick="clearAllItems()">Clear All Items</button>
+                        <button
+                          type="button"
+                          class="clear-btn"
+                          onclick="clearAllItems()"
+                        >
+                          Clear All Items
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -282,7 +389,9 @@
 
             <!-- PREVIEW & DOWNLOAD ACTIONS -->
             <div class="preview-actions card">
-              <button class="go" onclick="renderPreview()">Preview Invoice</button>
+              <button class="go" onclick="renderPreview()">
+                Preview Invoice
+              </button>
               <button class="dl-btn" onclick="downloadPDF()">
                 <span class="download-icon">⬇</span>
                 Download PDF
@@ -294,7 +403,6 @@
               <div class="out card" id="invoiceContent"></div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
