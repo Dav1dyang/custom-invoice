@@ -778,6 +778,39 @@ input[type='text'] {
   letter-spacing: 0.5px;
 }
 
+/* Invoice number group styling */
+.invoice-number-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.invoice-prefix,
+.invoice-separator {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+
+.invoice-number-group input {
+  padding: 4px 6px;
+  border: 0.5px solid var(--grid);
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
+  text-transform: uppercase;
+}
+
+.invoice-number-group #companyAbbrev {
+  width: 80px;
+}
+
+.invoice-number-group #invoiceSequence {
+  width: 60px;
+}
+
 input[type='date'],
 input[type='number'],
 textarea {

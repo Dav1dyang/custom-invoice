@@ -169,7 +169,12 @@
               <h3>Invoice Details</h3>
               <div class="row2">
                 <div class="label">INVOICE NO:</div>
-                <input id="invoiceNumber" type="text" value="IN-19" />
+                <div class="invoice-number-group">
+                  <span class="invoice-prefix">IN-</span>
+                  <input id="companyAbbrev" type="text" placeholder="CACTW" maxlength="10" />
+                  <span class="invoice-separator">-</span>
+                  <input id="invoiceSequence" type="text" placeholder="01" maxlength="6" />
+                </div>
               </div>
               <div class="row2">
                 <div class="label">DATE ISSUED:</div>

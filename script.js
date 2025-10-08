@@ -621,8 +621,8 @@ function initializeTemplateDisplay() {
   // Update template chips display
   let visibleChips = 0
 
-  // Show starred templates first (max 2)
-  starred.slice(0, 2).forEach((template, index) => {
+  // Show starred templates first (max 3)
+  starred.slice(0, 3).forEach((template, index) => {
     if (filterChips[index]) {
       filterChips[index].textContent = template
       filterChips[index].dataset.template = template
@@ -757,8 +757,8 @@ function handleStarAction() {
     alert(`Removed star from "${selectedTemplate}"`)
   } else {
     // Add star
-    if (starredTemplates.length >= 2) {
-      alert('You can only have 2 starred templates. Please remove a star first.')
+    if (starredTemplates.length >= 3) {
+      alert('You can only have 3 starred templates. Please remove a star first.')
       return
     }
     addStarredTemplate(selectedTemplate)
@@ -815,7 +815,9 @@ function loadTemplateById(templateId) {
       toAddress: 'Client Address',
       toContact: 'client@email.com',
       paymentInstructions: 'Enter your payment instructions here',
-      currency: 'USD'
+      currency: 'USD',
+      companyAbbrev: '',
+      invoiceSequence: '01'
     },
     'tech-company': {
       fromName: 'Your Company Name',
@@ -827,7 +829,9 @@ function loadTemplateById(templateId) {
       toAddress: 'Client Location',
       toContact: 'tech@client.com',
       paymentInstructions: 'Enter your payment instructions here',
-      currency: 'USD'
+      currency: 'USD',
+      companyAbbrev: 'TCI',
+      invoiceSequence: '01'
     },
     'sample-client': {
       fromName: 'Your Company Name',
@@ -839,7 +843,9 @@ function loadTemplateById(templateId) {
       toAddress: 'Client Address',
       toContact: 'contact@sampleclient.com',
       paymentInstructions: 'Enter your payment instructions here',
-      currency: 'USD'
+      currency: 'USD',
+      companyAbbrev: 'SC',
+      invoiceSequence: '01'
     },
     'freelance': {
       fromName: 'Your Company Name',
@@ -851,7 +857,9 @@ function loadTemplateById(templateId) {
       toAddress: 'Client Location',
       toContact: 'contact@freelanceclient.com',
       paymentInstructions: 'Enter your payment instructions here',
-      currency: 'USD'
+      currency: 'USD',
+      companyAbbrev: 'FC',
+      invoiceSequence: '01'
     }
   }
 
@@ -916,8 +924,8 @@ function showLoadTemplateDialog() {
 
 function showStarTemplateDialog() {
   const currentStarred = getStarredTemplates()
-  if (currentStarred.length >= 2) {
-    alert('You can only have 2 starred templates. Please remove a star first.')
+  if (currentStarred.length >= 3) {
+    alert('You can only have 3 starred templates. Please remove a star first.')
     return
   }
 
@@ -980,7 +988,7 @@ function saveStarredTemplates(starred) {
 
 function addStarredTemplate(templateName) {
   const starred = getStarredTemplates()
-  if (!starred.includes(templateName) && starred.length < 2) {
+  if (!starred.includes(templateName) && starred.length < 3) {
     starred.push(templateName)
     saveStarredTemplates(starred)
   }
@@ -1055,6 +1063,8 @@ function getCurrentTemplateData() {
     toContact: document.getElementById('toContact').value,
     paymentInstructions: document.getElementById('paymentInstructions').value,
     currency: document.getElementById('currency').value,
+    companyAbbrev: document.getElementById('companyAbbrev').value,  // New split field
+    invoiceSequence: document.getElementById('invoiceSequence').value,  // New split field
     paperSize: document.getElementById('paperSize').value,
     orientation: document.getElementById('orientation').value,
     styleMode: document.getElementById('styleMode').value,
@@ -1065,6 +1075,19 @@ function getCurrentTemplateData() {
 
 // Load template data into form
 function loadTemplateData(templateData) {
+  // Handle backwards compatibility: convert old invoiceNumber to new split fields
+  if (templateData.invoiceNumber && !templateData.companyAbbrev && !templateData.invoiceSequence) {
+    // Parse old format "IN-19" or "IN-ABBREV-19" into new fields
+    const parts = templateData.invoiceNumber.replace(/^IN-/i, '').split('-')
+    if (parts.length === 2) {
+      templateData.companyAbbrev = parts[0]
+      templateData.invoiceSequence = parts[1]
+    } else if (parts.length === 1) {
+      templateData.companyAbbrev = ''
+      templateData.invoiceSequence = parts[0]
+    }
+  }
+
   Object.keys(templateData).forEach(key => {
     if (key === 'logoDataUrl') {
       // Special handling for logo
@@ -1073,6 +1096,9 @@ function loadTemplateData(templateData) {
         logoPreview.src = templateData[key]
         logoPreview.style.display = 'block'
       }
+    } else if (key === 'invoiceNumber') {
+      // Skip old invoiceNumber field - already converted above
+      return
     } else {
       const element = document.getElementById(key)
       if (element) {
@@ -1242,7 +1268,10 @@ function fmtDate(v) {
 
 function renderPreview() {
   const fmtMoney = (value) => `$${(+value || 0).toFixed(2)}`
-  const invoiceNumber = $('invoiceNumber').value
+  // Build invoice number from separate fields: IN-{abbreviation}-{sequence}
+  const companyAbbrev = $('companyAbbrev').value.trim().toUpperCase()
+  const invoiceSeq = $('invoiceSequence').value.trim()
+  const invoiceNumber = `IN-${companyAbbrev}-${invoiceSeq}`
   const currencyValue = $('currency').value
   const fromNameVal = $('fromName').value
   const fromWebsiteVal = $('fromWebsite').value
@@ -1579,7 +1608,10 @@ async function downloadPDF() {
   const toNames = document.getElementById('toNames').value
   const toAddress = document.getElementById('toAddress').value
   const toContact = document.getElementById('toContact').value
-  const invoiceNumber = document.getElementById('invoiceNumber').value
+  // Build invoice number from separate fields: IN-{abbreviation}-{sequence}
+  const companyAbbrev = document.getElementById('companyAbbrev').value.trim().toUpperCase()
+  const invoiceSeq = document.getElementById('invoiceSequence').value.trim()
+  const invoiceNumber = `IN-${companyAbbrev}-${invoiceSeq}`
   const invoiceDate = fmtDatePDF(
     document.getElementById('invoiceDate').value
   )
@@ -1627,28 +1659,26 @@ async function downloadPDF() {
     contentW = pageW - 2 * margin,
     splitW = contentW * 0.66
 
-  // Header — logo keeps aspect
-  if (logoDataUrl) {
-    const maxW = 35,
-      maxH = 15
-    let w = maxW,
-      h = maxH
-    if (logoNatural && logoNatural.w && logoNatural.h) {
-      const r = logoNatural.w / logoNatural.h
-      if (maxW / maxH > r) {
-        h = maxH
-        w = h * r
-      } else {
-        w = maxW
-        h = w / r
-      }
-    }
-    doc.addImage(logoDataUrl, 'PNG', margin, 15, w, h)
-  }
-  doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
+  // FIXED LAYOUT CONSTANTS - All pages use same positioning for consistent alignment
+  const HEADER_END_Y = 30        // Where header separator line appears (all pages)
+  const CONTENT_START_Y = 35     // Fixed Y position where content begins (all pages)
+                                 // - Page 1: FROM/BILL TO grid starts here
+                                 // - Page 2+: Line items table starts here (same alignment!)
+  const DATA_GRID_HEIGHT = 35    // Height of FROM/BILL TO/SPECS grid
+  const SECTION_SPACER = 8       // Gap between sections
+  const BOTTOM_MARGIN = 15       // Bottom page margin
+  const ROW_HEIGHT = 10          // Line item row height
+  const TABLE_HEADER_HEIGHT = 8  // Line items table header height
+  const bottomMargin = BOTTOM_MARGIN  // Keep for compatibility
+  const dataGridH = DATA_GRID_HEIGHT
+  const itemsHeaderH = TABLE_HEADER_HEIGHT
+  const rowH = ROW_HEIGHT
+  const spacer = SECTION_SPACER
+
+  // Compact Header (all pages) - matches example PDF layout
+  doc.setFont(fonts.hdr, 'bold')
   doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
 
-  // ASCII Art Header or Regular Header
   if (colors.isAscii) {
     // ASCII Art INVOICE header
     doc.setFontSize(6)
@@ -1666,32 +1696,42 @@ async function downloadPDF() {
 
     // Invoice details in ASCII style
     doc.setFontSize(8)
-    doc.text(`>>> INVOICE NO: ${invoiceNumber.toUpperCase()} <<<`, pageW - margin, 30, { align: 'right' })
-    doc.text('>>> REV: A <<<', pageW - margin, 35, { align: 'right' })
+    doc.text(`>>> INVOICE NO: ${invoiceNumber.toUpperCase()} <<<`, pageW - margin, 25, { align: 'right' })
+    doc.text('>>> REV: A <<<', pageW - margin, 28, { align: 'right' })
 
     // ASCII line divider
     const asciiLine = '=' + '='.repeat(Math.floor((pageW - 2 * margin) / 2)) + '='
     doc.setFontSize(6)
-    doc.text(asciiLine, margin, 40)
+    doc.text(asciiLine, margin, HEADER_END_Y)
   } else {
-    // Regular header - increased spacing
-    doc.setFontSize(13)
-    doc.text('INVOICE', pageW - margin, 25, { align: 'right' })  // Move down
-    // Keep accent color (black) for all header elements for consistency
-    doc.setFontSize(8)
-    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 32, {
-      align: 'right',
-    })
-    doc.text('REV: A', pageW - margin, 38, { align: 'right' })
-    if (showB) doc.line(margin, 45, pageW - margin, 45)  // Move line down
-  }
+    // Compact header matching example PDF
+    // Logo (small, if present)
+    if (logoDataUrl) {
+      const maxW = 25, maxH = 10  // Smaller logo for compact header
+      let w = maxW, h = maxH
+      if (logoNatural && logoNatural.w && logoNatural.h) {
+        const r = logoNatural.w / logoNatural.h
+        if (maxW / maxH > r) {
+          h = maxH
+          w = h * r
+        } else {
+          w = maxW
+          h = w / r
+        }
+      }
+      doc.addImage(logoDataUrl, 'PNG', margin, 10, w, h)
+    }
 
-  // Multi-page layout math - increased spacing to match preview
-  const bottomMargin = 15,  // More bottom margin
-    dataGridH = 35,         // Taller grid sections for more breathing room
-    itemsHeaderH = 8,       // Compact table headers matching reference proportions
-    rowH = 10,              // Taller table rows
-    spacer = 8              // More spacing between sections
+    // Invoice header text (right-aligned, compact)
+    doc.setFontSize(13)
+    doc.text('INVOICE', pageW - margin, 15, { align: 'right' })
+    doc.setFontSize(8)
+    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 20, { align: 'right' })
+    doc.text('REV: A', pageW - margin, 25, { align: 'right' })
+
+    // Separator line at fixed position
+    if (showB) doc.line(margin, HEADER_END_Y, pageW - margin, HEADER_END_Y)
+  }
 
   // Dynamic payment section height calculation
   function calculatePaymentHeight(doc, paymentInstructions, splitW) {
@@ -1726,22 +1766,27 @@ async function downloadPDF() {
 
   // Calculate dynamic payment height
   const paymentH = calculatePaymentHeight(doc, paymentInstructions, splitW)
-  const minTopSpace = pageH * 0.5  // More top space before content
 
-  // Calculate space for line items on first page
-  const yPaymentTop = pageH - bottomMargin - paymentH
-  const yItemsBottom = yPaymentTop - spacer
-  const usableHeight = yItemsBottom - minTopSpace
+  // FORWARD CALCULATION - Top-down layout for consistent positioning
+  // Page 1: FROM/BILL TO grid at CONTENT_START_Y, then line items below
+  const yDataTop = CONTENT_START_Y  // FROM/BILL TO grid starts at fixed position
+  const yItemsTop = yDataTop + DATA_GRID_HEIGHT + SECTION_SPACER  // Line items start after grid
+
+  // Calculate space available for line items on page 1
+  const yPaymentTop = pageH - BOTTOM_MARGIN - paymentH
+  const availableSpaceForItemsPage1 = yPaymentTop - SECTION_SPACER - yItemsTop
   const maxRowsFitFirstPage = Math.max(
     0,
-    Math.floor((usableHeight - dataGridH - spacer - itemsHeaderH) / rowH)
+    Math.floor((availableSpaceForItemsPage1 - TABLE_HEADER_HEIGHT) / ROW_HEIGHT)
   )
 
-  // Calculate space for line items on continuation pages (full page minus margins)
-  const continuationTopMargin = 30
+  // Page 2+: Line items start at CONTENT_START_Y (same as FROM/BILL TO grid on page 1!)
+  // This creates perfect alignment between pages
+  const yItemsTopContinuation = CONTENT_START_Y  // Line items align with page 1 grid position
+  const availableSpaceForItemsContinuation = yPaymentTop - SECTION_SPACER - yItemsTopContinuation
   const maxRowsFitContinuationPage = Math.max(
     0,
-    Math.floor((pageH - continuationTopMargin - bottomMargin - paymentH - spacer - itemsHeaderH) / rowH)
+    Math.floor((availableSpaceForItemsContinuation - TABLE_HEADER_HEIGHT) / ROW_HEIGHT)
   )
 
   // Determine how many pages we need
@@ -1751,10 +1796,7 @@ async function downloadPDF() {
     totalPages += Math.ceil(remainingItems / maxRowsFitContinuationPage)
   }
 
-  // For first page, calculate positioning
   const rowsFirstPage = Math.min(items.length, maxRowsFitFirstPage)
-  const yDataTop = yItemsBottom - (itemsHeaderH + rowsFirstPage * rowH + spacer + dataGridH)
-  const yItemsTop = yDataTop + dataGridH + spacer
 
   // Spec grid with optional fill/borders
   const colW = contentW / 4
@@ -2053,24 +2095,26 @@ async function downloadPDF() {
     doc.setFillColor(paperRGB.r, paperRGB.g, paperRGB.b)
     doc.rect(0, 0, pageW, pageH, 'F')
 
-    // Add continuation page header
-    doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
+    // Compact continuation page header (matches page 1 header height)
+    doc.setFont(fonts.hdr, 'bold')
     doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
     doc.setFontSize(11)
-    doc.text(`INVOICE ${invoiceNumber} (CONTINUED)`, pageW - margin, 20, { align: 'right' })
+    doc.text(`INVOICE ${invoiceNumber} (CONTINUED)`, pageW - margin, 15, { align: 'right' })
     doc.setFontSize(8)
-    doc.text(`PAGE ${doc.internal.getCurrentPageInfo().pageNumber} OF ${totalPages}`, pageW - margin, 25, { align: 'right' })
+    doc.text(`PAGE ${doc.internal.getCurrentPageInfo().pageNumber} OF ${totalPages}`, pageW - margin, 20, { align: 'right' })
 
+    // Separator line at same position as page 1
     if (showB) {
       doc.setDrawColor(inkRGB.r, inkRGB.g, inkRGB.b)
-      doc.setLineWidth(0.2) // Same thin line weight as all other elements
-      doc.line(margin, 27, pageW - margin, 27)
+      doc.setLineWidth(0.2)
+      doc.line(margin, HEADER_END_Y, pageW - margin, HEADER_END_Y)
     }
 
+    // Render line items starting at CONTENT_START_Y (same as FROM/BILL TO grid on page 1)
     const remainingItems = items.slice(itemIndex)
     const continuationPageResult = renderLineItems(
       remainingItems,
-      continuationTopMargin,
+      yItemsTopContinuation,  // Use fixed continuation position
       maxRowsFitContinuationPage
     )
 
