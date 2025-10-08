@@ -1,4 +1,4 @@
-# Technical Invoice Generator
+# Invoice Tool
 
 A professional invoice generator that creates clean, datasheet-style PDF invoices with dynamic color systems and technical drawing aesthetics.
 

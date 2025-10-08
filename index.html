@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>David's Invoice</title>
+    <title>Invoice Tool</title>
     <script src="https://unpkg.com/jspdf@2.4.0/dist/jspdf.umd.min.js"></script>
     <!-- Google Fonts for reliable PDF font rendering -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -24,7 +24,7 @@
             <div class="header card">
               <div class="header-content">
                 <div class="header-text">
-                  <h1>Invoice Generator</h1>
+                  <h1>Invoice Tool</h1>
                   <div class="subtitle">
                     Professional invoice creation with customizable styling
                   </div>
@@ -192,11 +192,18 @@
               </div>
               <div class="row2">
                 <div class="label">DATE ISSUED:</div>
-                <input id="invoiceDate" type="date" value="2025-07-11" />
+                <input id="invoiceDate" type="date" value="" />
               </div>
               <div class="row2">
                 <div class="label">DUE DATE:</div>
-                <input id="dueDate" type="date" value="2025-08-11" />
+                <div class="due-date-controls">
+                  <div class="due-date-buttons">
+                    <button type="button" class="due-date-btn" data-days="7" onclick="setDueDate(7)">1 Week</button>
+                    <button type="button" class="due-date-btn" data-days="15" onclick="setDueDate(15)">15 Days</button>
+                    <button type="button" class="due-date-btn active" data-days="30" onclick="setDueDate(30)">30 Days</button>
+                  </div>
+                  <input id="dueDate" type="date" readonly />
+                </div>
               </div>
               <div class="row2">
                 <div class="label">CURRENCY:</div>
@@ -327,63 +334,42 @@
           <div class="content-right">
             <!-- ITEMS -->
             <div class="items card">
-              <div class="line-items-header">
-                <h3>Line Items</h3>
-                <label class="save-items-checkbox">
-                  <input type="checkbox" id="saveLineItemsCheckbox" checked />
-                  <span>Save items with template</span>
-                </label>
-              </div>
+              <h3>Line Items</h3>
 
-              <!-- Import Controls -->
-              <details class="import-section">
-                <summary>Import line items from CSV</summary>
-                <div class="import-content">
+              <!-- Import Controls - Collapsible Dropdown -->
+              <details class="csv-import-settings">
+                <summary>Import Line Items</summary>
+                <div class="csv-import-content">
                   <div class="settings-grid">
-                    <!-- Data Input Section -->
+                    <!-- File Upload Group -->
                     <div class="settings-group">
-                      <h4>Data Input</h4>
+                      <h4>File Upload</h4>
                       <div class="setting-row">
-                        <label>Upload CSV File</label>
-                        <input
-                          id="csvFileInput"
-                          type="file"
-                          accept=".csv,.tsv,.txt"
-                        />
+                        <label>CSV File</label>
+                        <input id="csvFileInput" type="file" accept=".csv,.tsv,.txt" />
                       </div>
                       <div class="setting-row">
-                        <label>Or Paste CSV Data</label>
-                        <textarea
-                          id="csvPasteArea"
-                          placeholder="Paste CSV data here (Description, Quantity, Rate format)"
-                          rows="3"
-                        ></textarea>
+                        <button type="button" onclick="importFromFile()" class="import-btn">Import File</button>
                       </div>
                     </div>
 
-                    <!-- Actions Section -->
+                    <!-- Paste Data Group -->
                     <div class="settings-group">
-                      <h4>Actions</h4>
+                      <h4>Paste Data</h4>
                       <div class="setting-row">
-                        <label>Import Data</label>
-                        <div class="import-actions">
-                          <button type="button" onclick="importFromFile()">
-                            Import File
-                          </button>
-                          <button type="button" onclick="importFromPaste()">
-                            Import Pasted Data
-                          </button>
-                        </div>
+                        <label>CSV Data</label>
+                        <textarea id="csvPasteArea" placeholder="Description, Quantity, Rate" rows="3"></textarea>
                       </div>
                       <div class="setting-row">
-                        <label>Manage Items</label>
-                        <button
-                          type="button"
-                          class="clear-btn"
-                          onclick="clearAllItems()"
-                        >
-                          Clear All Items
-                        </button>
+                        <button type="button" onclick="importFromPaste()" class="import-btn">Import Pasted</button>
+                      </div>
+                    </div>
+
+                    <!-- Manage Group -->
+                    <div class="settings-group">
+                      <h4>Manage</h4>
+                      <div class="setting-row">
+                        <button type="button" onclick="clearAllItems()" class="clear-items-btn">Clear All Items</button>
                       </div>
                     </div>
                   </div>
@@ -409,7 +395,15 @@
                 </thead>
                 <tbody id="itemsBody"></tbody>
               </table>
-              <button class="add" onclick="addItem()">+ ADD LINE ITEM</button>
+
+              <!-- Items Footer: Add Button + Checkbox -->
+              <div class="items-footer">
+                <button class="add" onclick="addItem()">+ ADD LINE ITEM</button>
+                <label class="save-items-checkbox">
+                  <input type="checkbox" id="saveLineItemsCheckbox" checked />
+                  <span>Save with template</span>
+                </label>
+              </div>
             </div>
 
             <!-- PREVIEW & DOWNLOAD ACTIONS -->

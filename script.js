@@ -1,4 +1,4 @@
-/* TECHNICAL INVOICE GENERATOR - JAVASCRIPT */
+/* INVOICE TOOL - JAVASCRIPT */
 
 /* ----------------------------- UTILITIES ----------------------------- */
 const $ = (id) => document.getElementById(id)
@@ -457,8 +457,59 @@ function createAsciiBanner(text) {
 // Global template state
 let selectedTemplate = null
 
+// Set due date based on days from invoice date
+function setDueDate(days) {
+  const invoiceDateEl = document.getElementById('invoiceDate')
+  const dueDateEl = document.getElementById('dueDate')
+
+  if (!invoiceDateEl || !dueDateEl) return
+
+  // Get invoice date or use today if not set
+  let invoiceDate
+  if (invoiceDateEl.value) {
+    invoiceDate = new Date(invoiceDateEl.value)
+  } else {
+    invoiceDate = new Date()
+    const yyyy = invoiceDate.getFullYear()
+    const mm = String(invoiceDate.getMonth() + 1).padStart(2, '0')
+    const dd = String(invoiceDate.getDate()).padStart(2, '0')
+    invoiceDateEl.value = `${yyyy}-${mm}-${dd}`
+  }
+
+  // Calculate due date
+  const dueDate = new Date(invoiceDate)
+  dueDate.setDate(dueDate.getDate() + days)
+
+  // Format as YYYY-MM-DD
+  const yyyy = dueDate.getFullYear()
+  const mm = String(dueDate.getMonth() + 1).padStart(2, '0')
+  const dd = String(dueDate.getDate()).padStart(2, '0')
+  dueDateEl.value = `${yyyy}-${mm}-${dd}`
+
+  // Update active button state
+  document.querySelectorAll('.due-date-btn').forEach(btn => {
+    btn.classList.remove('active')
+    if (btn.dataset.days === String(days)) {
+      btn.classList.add('active')
+    }
+  })
+}
+
 // Initialize template system
 document.addEventListener('DOMContentLoaded', () => {
+  // Set invoice date to today by default
+  const invoiceDateField = document.getElementById('invoiceDate')
+  if (invoiceDateField && !invoiceDateField.value) {
+    const today = new Date()
+    const yyyy = today.getFullYear()
+    const mm = String(today.getMonth() + 1).padStart(2, '0')
+    const dd = String(today.getDate()).padStart(2, '0')
+    invoiceDateField.value = `${yyyy}-${mm}-${dd}`
+  }
+
+  // Set default due date (30 days from today)
+  setDueDate(30)
+
   const filterChips = document.querySelectorAll('.filter-chip')
   const templateInput = document.getElementById('templateInput')
 
@@ -883,6 +934,8 @@ function loadTemplateById(templateId) {
       toContact: 'client@email.com',
       paymentInstructions: 'Enter your payment instructions here',
       currency: 'USD',
+      invoiceDate: '',  // Will be set to today on load
+      dueDate: '',      // Will be calculated
       companyAbbrev: '',
       invoiceSequence: '01',
       lineItems: [],
@@ -899,6 +952,8 @@ function loadTemplateById(templateId) {
       toContact: 'tech@client.com',
       paymentInstructions: 'Enter your payment instructions here',
       currency: 'USD',
+      invoiceDate: '',
+      dueDate: '',
       companyAbbrev: 'TCI',
       invoiceSequence: '01',
       lineItems: [],
@@ -915,6 +970,8 @@ function loadTemplateById(templateId) {
       toContact: 'contact@sampleclient.com',
       paymentInstructions: 'Enter your payment instructions here',
       currency: 'USD',
+      invoiceDate: '',
+      dueDate: '',
       companyAbbrev: 'SC',
       invoiceSequence: '01',
       lineItems: [],
@@ -931,6 +988,8 @@ function loadTemplateById(templateId) {
       toContact: 'contact@freelanceclient.com',
       paymentInstructions: 'Enter your payment instructions here',
       currency: 'USD',
+      invoiceDate: '',
+      dueDate: '',
       companyAbbrev: 'FC',
       invoiceSequence: '01',
       lineItems: [],
@@ -1146,6 +1205,8 @@ function getCurrentTemplateData() {
     toContact: document.getElementById('toContact').value,
     paymentInstructions: document.getElementById('paymentInstructions').value,
     currency: document.getElementById('currency').value,
+    invoiceDate: document.getElementById('invoiceDate').value,  // Save invoice date
+    dueDate: document.getElementById('dueDate').value,          // Save due date
     companyAbbrev: companyAbbrevEl ? companyAbbrevEl.value : '',  // Split field with null check
     invoiceSequence: invoiceSeqEl ? invoiceSeqEl.value : '',  // Split field with null check
     paperSize: document.getElementById('paperSize').value,
@@ -1419,7 +1480,6 @@ function renderPreview() {
       <div class="invoice-head__meta">
         <div class="invoice-head__title">INVOICE</div>
         <div class="invoice-head__number">${invoiceNumber}</div>
-        <div>REV: A</div>
       </div>
     </div>
     <div class="invoice-meta">
@@ -1815,8 +1875,7 @@ async function downloadPDF() {
 
     // Invoice details in ASCII style
     doc.setFontSize(8)
-    doc.text(`>>> INVOICE NO: ${invoiceNumber.toUpperCase()} <<<`, pageW - margin, 30, { align: 'right' })
-    doc.text('>>> REV: A <<<', pageW - margin, 35, { align: 'right' })
+    doc.text(`>>> INVOICE NO: ${invoiceNumber.toUpperCase()} <<<`, pageW - margin, 35, { align: 'right' })
 
     // ASCII line divider
     const asciiLine = '=' + '='.repeat(Math.floor((pageW - 2 * margin) / 2)) + '='
@@ -1846,10 +1905,7 @@ async function downloadPDF() {
     doc.text('INVOICE', pageW - margin, 22, { align: 'right' })
 
     doc.setFontSize(11)  // Larger: 11pt (was 8pt)
-    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 32, { align: 'right' })
-
-    doc.setFontSize(9)   // Slightly larger: 9pt (was 8pt)
-    doc.text('REV: A', pageW - margin, 40, { align: 'right' })
+    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 35, { align: 'right' })
 
     // Separator line at larger position (50mm instead of 30mm)
     if (showB) doc.line(margin, PAGE1_HEADER_END_Y, pageW - margin, PAGE1_HEADER_END_Y)

@@ -1,4 +1,4 @@
-/* TECHNICAL INVOICE GENERATOR - STYLESHEET */
+/* INVOICE TOOL - STYLESHEET */
 
 
 /* Site UI font (PDF uses embedded fonts below) */
@@ -13,6 +13,17 @@
 .pdf-body-font {
   font-family: 'DM Mono', 'Courier New', monospace;
   font-weight: 300;
+}
+
+/* ====================== TYPOGRAPHY SCALE ====================== */
+/* Consistent font sizing system - minimum 10px for readability */
+:root {
+  --font-size-h1: 20px;      /* Page title (INVOICE TOOL) - increased for prominence */
+  --font-size-h3: 12px;      /* Section headers (FROM, BILL TO, LINE ITEMS) */
+  --font-size-h4: 11px;      /* Subsection headers (Page Setup, File Upload) */
+  --font-size-body: 12px;    /* Input fields, normal text, form content */
+  --font-size-label: 10px;   /* Form labels, helper text - MINIMUM READABLE SIZE */
+  --font-size-button: 11px;  /* Buttons, interactive elements */
 }
 
 /* ====================== RESPONSIVE LAYOUT ====================== */
@@ -120,108 +131,104 @@
   opacity: 0.8;
 }
 
-/* Collapsible CSV styling */
-.import-section {
-  margin-bottom: 20px;
+/* === COLLAPSIBLE SECTIONS (PDF Settings & CSV Import) === */
+/* Both use identical styling for consistency */
+
+details.pdf-settings,
+details.csv-import-settings {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+/* Summary buttons - identical styling */
+details.pdf-settings summary,
+details.csv-import-settings summary {
+  padding: 12px 16px;
+  background: var(--panel-bg);
   border: 1px solid var(--border);
-  background: var(--panel-bg);
-}
-
-.import-section summary {
-  padding: 16px 20px;
   cursor: pointer;
-  font-weight: 600;
-  background: var(--panel-bg);
-  transition: background 0.2s;
-  font-size: 11px;
   text-transform: uppercase;
+  font-size: var(--font-size-h3);  /* 11px */
+  font-weight: 600;
   letter-spacing: 1px;
+  font-family: 'IBM Plex Mono', monospace;
+  transition: background 0.2s;
 }
 
-.import-section summary:hover {
+details.pdf-settings summary:hover,
+details.csv-import-settings summary:hover {
   background: var(--border);
 }
 
-.import-section[open] summary {
-  border-bottom: 1px solid var(--border);
-  background: var(--ui-fg);
-  color: var(--ui-bg);
+details.pdf-settings[open] summary,
+details.csv-import-settings[open] summary {
+  border-bottom: none;
 }
 
-.import-content {
-  padding: 20px;
-  background: var(--ui-bg);
-}
-
-/* Import-specific styling for file inputs and textareas within settings structure */
-.import-content input[type="file"] {
-  padding: 8px;
-  font-size: 10px;
+/* Content areas - identical styling */
+.pdf-content,
+.csv-import-content {
+  padding: 20px 16px;
   border: 1px solid var(--border);
-  background: var(--ui-bg);
-  color: var(--ui-fg);
-  margin-top: 4px;
+  border-top: none;
+  background: var(--panel-bg);
 }
 
-.import-content textarea {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  resize: vertical;
-  border: 1px solid var(--border);
-  padding: 12px;
-  background: var(--ui-bg);
-  color: var(--ui-fg);
-  min-height: 80px;
-  line-height: 1.4;
-  margin-top: 4px;
+/* Import-specific button styling */
+.csv-import-content .import-btn {
   width: 100%;
-}
-
-.import-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-  flex-wrap: wrap;
-}
-
-.import-actions button {
-  font-size: 10px;
-  padding: 8px 12px;
+  min-height: 40px;
+  padding: 10px 20px;
+  font-size: var(--font-size-button);  /* 10px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border: 1px solid var(--ui-fg);
   background: var(--ui-fg);
   color: var(--ui-bg);
+  font-family: 'IBM Plex Mono', monospace;
   cursor: pointer;
-  transition: all 0.2s ease;
-  flex: 1;
-  min-width: 120px;
+  transition: all 0.2s;
 }
 
-.import-actions button:hover {
+.csv-import-content .import-btn:hover {
   background: var(--border);
   color: var(--ui-fg);
 }
 
-.clear-btn {
-  background: #dc2626 !important;
-  border-color: #dc2626 !important;
-  color: white !important;
-  font-size: 10px;
-  padding: 10px 16px;
-  font-weight: 700;
+.csv-import-content .clear-items-btn {
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 20px;
+  font-size: var(--font-size-button);  /* 10px */
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 4px;
   border: 1px solid #dc2626;
+  background: transparent;
+  color: #dc2626;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.clear-btn:hover {
-  background: #b91c1c !important;
-  border-color: #b91c1c !important;
+.csv-import-content .clear-items-btn:hover {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+.csv-import-content input[type="file"] {
+  padding: 8px;
+  font-size: var(--font-size-body);  /* 11px */
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.csv-import-content textarea {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--font-size-body);  /* 11px */
+  min-height: 80px;
+  line-height: 1.4;
 }
 
 /* Theme toggle styling */
@@ -246,17 +253,17 @@
 
 /* Template system */
 .templates {
-  padding: 16px 15px;
+  padding: 16px;  /* Standardized */
 }
 
 .templates h3 {
-  border-bottom: 0.5px solid var(--border);
-  padding-bottom: 8px;
-  margin-bottom: 15px;
+  font-size: var(--font-size-h3);  /* 11px */
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 2px;
-  font-size: 11px;
+  border-bottom: 0.5px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 15px;
 }
 
 /* Quick Access Row */
@@ -278,17 +285,19 @@
 .filter-chip {
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
+  justify-content: center;
+  min-height: 40px;  /* Standardized with all buttons */
+  padding: 10px 16px;
+  font-size: var(--font-size-button);  /* 10px */
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--ui-fg);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .filter-chip:hover {
@@ -307,15 +316,16 @@
 }
 
 .load-btn {
-  padding: 4px 12px;
+  min-height: 40px;  /* Standardized with all primary buttons */
+  padding: 10px 20px;
+  font-size: var(--font-size-button);  /* 10px */
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   background: var(--ui-fg);
   color: var(--ui-bg);
   border: 1px solid var(--ui-fg);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -348,10 +358,12 @@
   display: flex;
   gap: 4px;
   width: 100%;
+  align-items: stretch;  /* Ensure equal height */
 }
 
 .template-input-wrapper input {
   flex: 1;
+  min-height: 36px;  /* Match all inputs */
 }
 
 .template-input-group input {
@@ -362,12 +374,14 @@
   color: var(--ui-fg);
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
-  min-height: 32px;
+  min-height: 36px;  /* Standardized */
 }
 
 /* Dropdown toggle button */
 .template-dropdown-toggle {
-  padding: 8px 14px;
+  min-height: 36px;  /* Match input height exactly */
+  min-width: 40px;   /* Consistent width */
+  padding: 8px 12px;
   background: var(--panel-bg);
   border: 1px solid var(--border);
   cursor: pointer;
@@ -421,11 +435,11 @@
 
 /* Section titles with icons */
 .template-dropdown-section-title {
-  padding: 10px 14px 6px 14px;
-  font-size: 8px;
+  font-size: var(--font-size-label);  /* 10px - minimum readable size */
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
+  padding: 10px 14px 6px 14px;
   color: var(--ui-fg);
   opacity: 0.7;
   background: var(--ui-bg);
@@ -433,8 +447,8 @@
 
 /* Dropdown items */
 .template-dropdown-item {
+  font-size: var(--font-size-button);  /* 10px */
   padding: 9px 18px;
-  font-size: 10px;
   cursor: pointer;
   transition: all 0.12s ease;
   color: var(--ui-fg);
@@ -543,9 +557,11 @@
 }
 
 .settings-group h4 {
-  margin-bottom: 12px;
-  font-size: 13px;
+  font-size: var(--font-size-h4);  /* 10px */
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
   color: var(--ui-fg);
 }
 
@@ -555,9 +571,11 @@
 
 .setting-row label {
   display: block;
-  font-size: 11px;
+  font-size: var(--font-size-label);  /* 9px */
   font-weight: 500;
   margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   color: var(--ui-fg);
 }
 
@@ -629,10 +647,11 @@ body {
 .card {
   background: var(--panel-bg);
   border: 0.5px solid var(--border);
+  padding: 16px;  /* Standardized base padding */
 }
 
 .header {
-  padding: 15px; /* Match content section padding */
+  padding: 16px;  /* Standardized */
   margin-bottom: 20px;
 }
 
@@ -647,27 +666,28 @@ body {
 }
 
 .header h1 {
+  font-size: var(--font-size-h1);  /* 18px - consistent with technical design */
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  font-size: 28px;
   margin-bottom: 6px;
 }
 
 .subtitle {
-  font-size: 12px;
-  letter-spacing: 3px;
+  font-size: var(--font-size-body);  /* 11px - consistent with body text */
+  letter-spacing: 1.5px;
   text-transform: uppercase;
+  opacity: 0.8;
 }
 
 @media (max-width: 768px) {
   .header h1 {
-    font-size: 22px;
+    font-size: 18px;  /* Slightly smaller than desktop 20px but still prominent */
     letter-spacing: 1px;
   }
   .subtitle {
-    font-size: 11px;
-    letter-spacing: 2px;
+    font-size: 11px;  /* Maintain readability on mobile */
+    letter-spacing: 1.5px;
   }
 }
 
@@ -849,17 +869,17 @@ input[type='text'] {
 }
 
 .section {
-  padding: 15px;
+  padding: 16px;  /* Standardized */
 }
 
 .section h3 {
-  border-bottom: 0.5px solid var(--border);
-  padding-bottom: 8px;
-  margin-bottom: 15px;
+  font-size: var(--font-size-h3);  /* 11px */
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 2px;
-  font-size: 11px;
+  border-bottom: 0.5px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 15px;
 }
 
 .row2 {
@@ -870,11 +890,11 @@ input[type='text'] {
 }
 
 .label {
+  font-size: var(--font-size-label);  /* 9px */
   font-weight: 600;
   text-transform: uppercase;
-  font-size: 9px;
-  padding-right: 10px;
   letter-spacing: 0.5px;
+  padding-right: 10px;
 }
 
 /* Invoice number group styling */
@@ -910,15 +930,19 @@ input[type='text'] {
   width: 60px;
 }
 
+input[type='text'],
 input[type='date'],
 input[type='number'],
+select,
 textarea {
   width: 100%;
-  padding: 4px 6px;
-  border: 0.5px solid var(--grid);
+  min-height: 36px;  /* Standardized height for all inputs */
+  padding: 8px 10px;  /* Consistent padding */
+  border: 1px solid var(--border);  /* Consistent border */
   background: transparent;
   color: inherit;
   font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
 }
 
 textarea {
@@ -927,62 +951,107 @@ textarea {
   line-height: 1.4;
 }
 
+/* Due date button selection controls */
+.due-date-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.due-date-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.due-date-btn {
+  flex: 1;
+  min-height: 40px;  /* Standardized with all primary buttons */
+  padding: 10px 16px;
+  font-size: var(--font-size-button);  /* 10px */
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--ui-fg);
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.due-date-btn:hover {
+  background: var(--border);
+  border-color: var(--ui-fg);
+}
+
+.due-date-btn.active {
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+  border-color: var(--ui-fg);
+}
+
+.due-date-controls input[type="date"] {
+  padding: 6px 10px;
+  min-height: 36px;
+  cursor: default;
+  background: var(--ui-bg);
+  opacity: 0.8;
+  font-size: 11px;
+  text-align: center;
+}
+
 .items {
-  padding: 15px;
+  padding: 16px;  /* Standardized */
   margin-bottom: 20px;
 }
 
-.line-items-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 0.5px solid var(--border);
-}
-
-.line-items-header h3 {
-  margin: 0;
+.items h3 {
+  font-size: var(--font-size-h3);  /* 11px */
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 2px;
-  font-size: 11px;
-  border-bottom: none;
-  padding-bottom: 0;
+  margin: 0 0 16px 0;
+  border-bottom: 0.5px solid var(--border);
+  padding-bottom: 8px;
 }
 
-.save-items-checkbox {
+/* Items footer - Add button (left) + Checkbox (right) */
+.items-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  gap: 16px;
+}
+
+.items-footer .add {
+  flex-shrink: 0;
+  margin-top: 0;  /* Override default margin */
+}
+
+.items-footer .save-items-checkbox {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 9px;
+  font-size: var(--font-size-label);  /* 9px */
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   cursor: pointer;
   user-select: none;
   transition: opacity 0.2s;
+  white-space: nowrap;
 }
 
-.save-items-checkbox:hover {
+.items-footer .save-items-checkbox:hover {
   opacity: 0.8;
 }
 
-.save-items-checkbox input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
+.items-footer .save-items-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
   cursor: pointer;
   accent-color: var(--accent);
-}
-
-.items h3 {
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  font-size: 11px;
-  margin-bottom: 12px;
-  border-bottom: 0.5px solid var(--border);
-  padding-bottom: 8px;
 }
 
 table#itemsTable {
@@ -1058,13 +1127,35 @@ button {
 }
 
 .add {
+  min-height: 40px;
+  padding: 10px 20px;
+  font-size: var(--font-size-button);  /* 10px */
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+  border: 1px solid var(--ui-fg);
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  transition: all 0.2s;
   margin-top: 10px;
 }
 
+.add:hover {
+  background: var(--border);
+  color: var(--ui-fg);
+}
+
 .go {
-  font-size: 14px;
-  padding: 12px 30px;
+  min-height: 40px;
+  padding: 10px 24px;
+  font-size: var(--font-size-button);  /* 10px */
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   width: 100%;
+  font-family: 'IBM Plex Mono', monospace;
 }
 
 .preview {
@@ -1348,20 +1439,94 @@ button {
   }
 }
 
-/* Old import-group styles removed - now using settings-group pattern */
+/* ====================== MOBILE RESPONSIVENESS ====================== */
+/* Complete mobile-friendly design for all sections */
 
-/* Mobile responsive adjustments for import section */
 @media (max-width: 768px) {
-  .import-actions {
+  /* === TEMPLATE SECTION === */
+  .template-quick-row {
     flex-direction: column;
+    gap: 8px;
   }
 
-  .import-actions button {
+  .template-chips {
     width: 100%;
   }
 
-  .import-content textarea {
-    font-size: 11px;
-    min-height: 60px;
+  .filter-chip {
+    flex: 1;
+    justify-content: center;
   }
+
+  .load-btn {
+    width: 100%;
+  }
+
+  .template-input-wrapper {
+    width: 100%;
+  }
+
+  .template-dropdown {
+    left: 0;
+    right: 0;
+  }
+
+  /* === INVOICE NUMBER === */
+  .invoice-number-group {
+    flex-wrap: wrap;
+  }
+
+  .invoice-number-group input {
+    min-width: 100px;
+  }
+
+  /* === DUE DATE BUTTONS === */
+  .due-date-buttons {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .due-date-btn {
+    width: 100%;
+  }
+
+  /* === ITEMS FOOTER === */
+  .items-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .items-footer .add {
+    width: 100%;
+  }
+
+  .items-footer .save-items-checkbox {
+    justify-content: center;
+  }
+
+  /* === PREVIEW ACTIONS === */
+  .preview-actions {
+    flex-direction: column;
+  }
+
+  .go,
+  .dl-btn {
+    width: 100%;
+  }
+
+  /* === SETTINGS GRIDS === */
+  .settings-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* === TABLE === */
+  #itemsTable {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* === BUTTONS REMAIN SAME HEIGHT === */
+  /* No height changes on mobile - 40px buttons remain 40px for easy tapping */
 }
