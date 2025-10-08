@@ -544,7 +544,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize display
   initializeTemplateDisplay()
-  populateTemplateSuggestions()
   updateActionButtons()
 })
 
@@ -838,7 +837,6 @@ function handleSaveAction() {
       saveCustomTemplate(templateName)
       templateInput.value = templateName
       updateActionButtons()
-      populateTemplateSuggestions()
       initializeTemplateDisplay()
     }
     return
@@ -849,11 +847,13 @@ function handleSaveAction() {
   if (savedTemplates.hasOwnProperty(selectedTemplate)) {
     if (confirm(`Update template "${selectedTemplate}"?`)) {
       saveCustomTemplate(selectedTemplate)
+      updateActionButtons()
+      initializeTemplateDisplay()
     }
   } else {
     saveCustomTemplate(selectedTemplate)
-    populateTemplateSuggestions()
     initializeTemplateDisplay()
+    updateActionButtons()
   }
 }
 
@@ -884,7 +884,6 @@ function handleStarAction() {
   }
 
   updateActionButtons()
-  populateTemplateSuggestions()
   initializeTemplateDisplay()
 }
 
@@ -913,7 +912,6 @@ function handleDeleteAction() {
     templateInput.value = ''
 
     updateActionButtons()
-    populateTemplateSuggestions()
     initializeTemplateDisplay()
 
     alert(`Template "${selectedTemplate}" deleted successfully!`)
