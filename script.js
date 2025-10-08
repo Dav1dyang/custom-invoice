@@ -497,44 +497,111 @@ document.addEventListener('DOMContentLoaded', () => {
   updateActionButtons()
 })
 
-// Populate template suggestions dropdown
-function populateTemplateSuggestions() {
-  const datalist = document.getElementById('templateSuggestions')
-  if (!datalist) return
+// Toggle dropdown visibility
+function toggleTemplateDropdown() {
+  const dropdown = document.getElementById('templateDropdown')
+  if (!dropdown) return
 
-  // Clear existing options
-  datalist.innerHTML = ''
+  const isVisible = dropdown.style.display === 'block'
 
-  // Get all available templates
-  const savedTemplates = getTemplates()
-  const starredTemplates = getStarredTemplates()
-  const predefinedTemplates = ['default-client', 'tech-company', 'sample-client', 'freelance']
-
-  // Combine all template names
-  const allTemplates = [...predefinedTemplates, ...Object.keys(savedTemplates)]
-
-  // Remove duplicates
-  const uniqueTemplates = [...new Set(allTemplates)]
-
-  // Sort: starred first, then alphabetically
-  const sortedTemplates = uniqueTemplates.sort((a, b) => {
-    const aStarred = starredTemplates.includes(a)
-    const bStarred = starredTemplates.includes(b)
-
-    if (aStarred && !bStarred) return -1
-    if (!aStarred && bStarred) return 1
-    return a.localeCompare(b)
-  })
-
-  // Create option elements
-  sortedTemplates.forEach(template => {
-    const option = document.createElement('option')
-    option.value = template
-    const isStarred = starredTemplates.includes(template)
-    option.textContent = isStarred ? `★ ${template}` : template
-    datalist.appendChild(option)
-  })
+  if (isVisible) {
+    dropdown.style.display = 'none'
+  } else {
+    populateTemplateDropdown()
+    dropdown.style.display = 'block'
+  }
 }
+
+// Populate dropdown with grouped sections and icons
+function populateTemplateDropdown() {
+  const dropdown = document.getElementById('templateDropdown')
+  const content = dropdown.querySelector('.template-dropdown-content')
+  if (!content) return
+
+  content.innerHTML = ''
+
+  const starred = getStarredTemplates()
+  const recent = getRecentTemplate()
+  const saved = getTemplates()
+  const predefined = ['default-client', 'tech-company', 'sample-client', 'freelance']
+  const allTemplates = [...new Set([...predefined, ...Object.keys(saved)])]
+
+  // Starred section (with ★ icon)
+  if (starred.length > 0) {
+    const starSection = createDropdownSection('★ STARRED', starred, true)
+    content.appendChild(starSection)
+  }
+
+  // Recent section (with ⏱ icon)
+  if (recent && !starred.includes(recent)) {
+    const recentSection = createDropdownSection('⏱ RECENT', [recent], false)
+    content.appendChild(recentSection)
+  }
+
+  // All templates section (with 📁 icon)
+  const nonStarred = allTemplates.filter(t => !starred.includes(t) && t !== recent)
+  if (nonStarred.length > 0) {
+    const allSection = createDropdownSection('📁 ALL TEMPLATES', nonStarred.sort(), false)
+    content.appendChild(allSection)
+  }
+}
+
+// Create a dropdown section with title and items
+function createDropdownSection(title, items, showStars) {
+  const section = document.createElement('div')
+  section.className = 'template-dropdown-section'
+
+  // Section title
+  const titleEl = document.createElement('div')
+  titleEl.className = 'template-dropdown-section-title'
+  titleEl.textContent = title
+  section.appendChild(titleEl)
+
+  // Section items
+  items.forEach(itemName => {
+    const itemEl = document.createElement('div')
+    itemEl.className = 'template-dropdown-item'
+    if (showStars) itemEl.classList.add('starred')
+    itemEl.textContent = itemName
+    itemEl.onclick = () => selectTemplateFromDropdown(itemName)
+    section.appendChild(itemEl)
+  })
+
+  return section
+}
+
+// Select template from dropdown
+function selectTemplateFromDropdown(templateName) {
+  const input = document.getElementById('templateInput')
+  if (input) {
+    input.value = templateName
+  }
+  toggleTemplateDropdown()
+  updateActionButtons()
+  updateTemplateChipSelection()
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('templateDropdown')
+  if (!dropdown) return
+
+  const templateGroup = e.target.closest('.template-input-group')
+
+  if (!templateGroup && dropdown.style.display === 'block') {
+    dropdown.style.display = 'none'
+  }
+})
+
+// Add keyboard navigation (Escape to close)
+document.addEventListener('keydown', (e) => {
+  const dropdown = document.getElementById('templateDropdown')
+  if (!dropdown) return
+
+  if (e.key === 'Escape' && dropdown.style.display === 'block') {
+    dropdown.style.display = 'none'
+  }
+})
 
 // Update action buttons based on current selection
 function updateActionButtons() {
@@ -817,7 +884,9 @@ function loadTemplateById(templateId) {
       paymentInstructions: 'Enter your payment instructions here',
       currency: 'USD',
       companyAbbrev: '',
-      invoiceSequence: '01'
+      invoiceSequence: '01',
+      lineItems: [],
+      saveLineItems: false
     },
     'tech-company': {
       fromName: 'Your Company Name',
@@ -831,7 +900,9 @@ function loadTemplateById(templateId) {
       paymentInstructions: 'Enter your payment instructions here',
       currency: 'USD',
       companyAbbrev: 'TCI',
-      invoiceSequence: '01'
+      invoiceSequence: '01',
+      lineItems: [],
+      saveLineItems: false
     },
     'sample-client': {
       fromName: 'Your Company Name',
@@ -845,7 +916,9 @@ function loadTemplateById(templateId) {
       paymentInstructions: 'Enter your payment instructions here',
       currency: 'USD',
       companyAbbrev: 'SC',
-      invoiceSequence: '01'
+      invoiceSequence: '01',
+      lineItems: [],
+      saveLineItems: false
     },
     'freelance': {
       fromName: 'Your Company Name',
@@ -859,7 +932,9 @@ function loadTemplateById(templateId) {
       paymentInstructions: 'Enter your payment instructions here',
       currency: 'USD',
       companyAbbrev: 'FC',
-      invoiceSequence: '01'
+      invoiceSequence: '01',
+      lineItems: [],
+      saveLineItems: false
     }
   }
 
@@ -1052,6 +1127,14 @@ function saveTemplates(templates) {
 
 // Get current form data as template
 function getCurrentTemplateData() {
+  // Check if user wants to save line items with template
+  const saveLineItemsCheckbox = document.getElementById('saveLineItemsCheckbox')
+  const saveLineItems = saveLineItemsCheckbox ? saveLineItemsCheckbox.checked : false
+
+  // Get company abbreviation and sequence with null checks
+  const companyAbbrevEl = document.getElementById('companyAbbrev')
+  const invoiceSeqEl = document.getElementById('invoiceSequence')
+
   return {
     fromName: document.getElementById('fromName').value,
     fromWebsite: document.getElementById('fromWebsite').value,
@@ -1063,12 +1146,14 @@ function getCurrentTemplateData() {
     toContact: document.getElementById('toContact').value,
     paymentInstructions: document.getElementById('paymentInstructions').value,
     currency: document.getElementById('currency').value,
-    companyAbbrev: document.getElementById('companyAbbrev').value,  // New split field
-    invoiceSequence: document.getElementById('invoiceSequence').value,  // New split field
+    companyAbbrev: companyAbbrevEl ? companyAbbrevEl.value : '',  // Split field with null check
+    invoiceSequence: invoiceSeqEl ? invoiceSeqEl.value : '',  // Split field with null check
     paperSize: document.getElementById('paperSize').value,
     orientation: document.getElementById('orientation').value,
     styleMode: document.getElementById('styleMode').value,
     accentColor: document.getElementById('accentColor').value,
+    lineItems: saveLineItems ? getItems() : [],  // Conditional: save items or empty array
+    saveLineItems: saveLineItems,  // Store checkbox preference
     logoDataUrl: document.getElementById('logoPreview').src || null
   }
 }
@@ -1099,6 +1184,15 @@ function loadTemplateData(templateData) {
     } else if (key === 'invoiceNumber') {
       // Skip old invoiceNumber field - already converted above
       return
+    } else if (key === 'lineItems') {
+      // Skip line items here - handled separately below
+      return
+    } else if (key === 'saveLineItems') {
+      // Restore checkbox state if stored
+      const saveItemsCheckbox = document.getElementById('saveLineItemsCheckbox')
+      if (saveItemsCheckbox) {
+        saveItemsCheckbox.checked = templateData[key]
+      }
     } else {
       const element = document.getElementById(key)
       if (element) {
@@ -1117,6 +1211,17 @@ function loadTemplateData(templateData) {
       }
     }
   })
+
+  // Load line items if present and not empty
+  if (templateData.lineItems && Array.isArray(templateData.lineItems) && templateData.lineItems.length > 0) {
+    // Clear existing items first
+    document.getElementById('itemsBody').innerHTML = ''
+
+    // Add each saved line item
+    templateData.lineItems.forEach(item => {
+      addItem(item.description || '', item.qty || '', item.rate || '')
+    })
+  }
 
   // Update preview colors and render after loading template data
   updatePreviewColors()
@@ -1269,8 +1374,11 @@ function fmtDate(v) {
 function renderPreview() {
   const fmtMoney = (value) => `$${(+value || 0).toFixed(2)}`
   // Build invoice number from separate fields: IN-{abbreviation}-{sequence}
-  const companyAbbrev = $('companyAbbrev').value.trim().toUpperCase()
-  const invoiceSeq = $('invoiceSequence').value.trim()
+  // Add null checks to prevent errors if elements don't exist
+  const companyAbbrevEl = $('companyAbbrev')
+  const invoiceSeqEl = $('invoiceSequence')
+  const companyAbbrev = companyAbbrevEl ? companyAbbrevEl.value.trim().toUpperCase() : ''
+  const invoiceSeq = invoiceSeqEl ? invoiceSeqEl.value.trim() : '01'
   const invoiceNumber = `IN-${companyAbbrev}-${invoiceSeq}`
   const currencyValue = $('currency').value
   const fromNameVal = $('fromName').value
@@ -1444,12 +1552,13 @@ async function loadLocalFont(which, file) {
 // Font loading functions removed - using system fonts for reliability
 
 Object.keys(FONT_TARGETS).forEach((k) => {
-  document
-    .getElementById(FONT_TARGETS[k].input)
-    .addEventListener('change', (e) => {
+  const element = document.getElementById(FONT_TARGETS[k].input)
+  if (element) {
+    element.addEventListener('change', (e) => {
       const f = e.target.files?.[0]
       if (f) loadLocalFont(k, f)
     })
+  }
 })
 
 async function ensureFonts() {
@@ -1609,8 +1718,11 @@ async function downloadPDF() {
   const toAddress = document.getElementById('toAddress').value
   const toContact = document.getElementById('toContact').value
   // Build invoice number from separate fields: IN-{abbreviation}-{sequence}
-  const companyAbbrev = document.getElementById('companyAbbrev').value.trim().toUpperCase()
-  const invoiceSeq = document.getElementById('invoiceSequence').value.trim()
+  // Add null checks to prevent errors if elements don't exist
+  const companyAbbrevEl = document.getElementById('companyAbbrev')
+  const invoiceSeqEl = document.getElementById('invoiceSequence')
+  const companyAbbrev = companyAbbrevEl ? companyAbbrevEl.value.trim().toUpperCase() : ''
+  const invoiceSeq = invoiceSeqEl ? invoiceSeqEl.value.trim() : '01'
   const invoiceNumber = `IN-${companyAbbrev}-${invoiceSeq}`
   const invoiceDate = fmtDatePDF(
     document.getElementById('invoiceDate').value
@@ -1659,23 +1771,30 @@ async function downloadPDF() {
     contentW = pageW - 2 * margin,
     splitW = contentW * 0.66
 
-  // FIXED LAYOUT CONSTANTS - All pages use same positioning for consistent alignment
-  const HEADER_END_Y = 30        // Where header separator line appears (all pages)
-  const CONTENT_START_Y = 35     // Fixed Y position where content begins (all pages)
-                                 // - Page 1: FROM/BILL TO grid starts here
-                                 // - Page 2+: Line items table starts here (same alignment!)
-  const DATA_GRID_HEIGHT = 35    // Height of FROM/BILL TO/SPECS grid
-  const SECTION_SPACER = 8       // Gap between sections
-  const BOTTOM_MARGIN = 15       // Bottom page margin
-  const ROW_HEIGHT = 10          // Line item row height
-  const TABLE_HEADER_HEIGHT = 8  // Line items table header height
-  const bottomMargin = BOTTOM_MARGIN  // Keep for compatibility
+  // FIXED LAYOUT CONSTANTS - Page-specific positioning (Option B)
+  // Page 1: Larger header area for prominent "cover page" aesthetic
+  const PAGE1_HEADER_END_Y = 50       // Larger header on page 1 (50mm vs 30mm)
+  const PAGE1_CONTENT_START_Y = 55    // FROM/BILL TO grid starts here (pushed down)
+
+  // Page 2+: Compact header to maximize content space
+  const PAGE2_HEADER_END_Y = 30       // Compact header on continuation pages
+  const PAGE2_CONTENT_START_Y = 35    // Line items start here (more space)
+
+  // Shared constants
+  const DATA_GRID_HEIGHT = 35         // Height of FROM/BILL TO/SPECS grid
+  const SECTION_SPACER = 8            // Gap between sections
+  const BOTTOM_MARGIN = 15            // Bottom page margin
+  const ROW_HEIGHT = 10               // Line item row height
+  const TABLE_HEADER_HEIGHT = 8       // Line items table header height
+
+  // Legacy compatibility aliases
+  const bottomMargin = BOTTOM_MARGIN
   const dataGridH = DATA_GRID_HEIGHT
   const itemsHeaderH = TABLE_HEADER_HEIGHT
   const rowH = ROW_HEIGHT
   const spacer = SECTION_SPACER
 
-  // Compact Header (all pages) - matches example PDF layout
+  // PAGE 1 HEADER - Larger and more prominent (Option B)
   doc.setFont(fonts.hdr, 'bold')
   doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
 
@@ -1696,18 +1815,18 @@ async function downloadPDF() {
 
     // Invoice details in ASCII style
     doc.setFontSize(8)
-    doc.text(`>>> INVOICE NO: ${invoiceNumber.toUpperCase()} <<<`, pageW - margin, 25, { align: 'right' })
-    doc.text('>>> REV: A <<<', pageW - margin, 28, { align: 'right' })
+    doc.text(`>>> INVOICE NO: ${invoiceNumber.toUpperCase()} <<<`, pageW - margin, 30, { align: 'right' })
+    doc.text('>>> REV: A <<<', pageW - margin, 35, { align: 'right' })
 
     // ASCII line divider
     const asciiLine = '=' + '='.repeat(Math.floor((pageW - 2 * margin) / 2)) + '='
     doc.setFontSize(6)
-    doc.text(asciiLine, margin, HEADER_END_Y)
+    doc.text(asciiLine, margin, PAGE1_HEADER_END_Y)
   } else {
-    // Compact header matching example PDF
-    // Logo (small, if present)
+    // LARGER PAGE 1 HEADER - Professional cover page aesthetic
+    // Logo (larger, if present)
     if (logoDataUrl) {
-      const maxW = 25, maxH = 10  // Smaller logo for compact header
+      const maxW = 50, maxH = 25  // Larger logo: 50mm × 25mm
       let w = maxW, h = maxH
       if (logoNatural && logoNatural.w && logoNatural.h) {
         const r = logoNatural.w / logoNatural.h
@@ -1719,18 +1838,21 @@ async function downloadPDF() {
           h = w / r
         }
       }
-      doc.addImage(logoDataUrl, 'PNG', margin, 10, w, h)
+      doc.addImage(logoDataUrl, 'PNG', margin, 12, w, h)
     }
 
-    // Invoice header text (right-aligned, compact)
-    doc.setFontSize(13)
-    doc.text('INVOICE', pageW - margin, 15, { align: 'right' })
-    doc.setFontSize(8)
-    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 20, { align: 'right' })
-    doc.text('REV: A', pageW - margin, 25, { align: 'right' })
+    // Invoice header text (right-aligned, prominent sizing)
+    doc.setFontSize(20)  // Larger: 20pt (was 13pt)
+    doc.text('INVOICE', pageW - margin, 22, { align: 'right' })
 
-    // Separator line at fixed position
-    if (showB) doc.line(margin, HEADER_END_Y, pageW - margin, HEADER_END_Y)
+    doc.setFontSize(11)  // Larger: 11pt (was 8pt)
+    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 32, { align: 'right' })
+
+    doc.setFontSize(9)   // Slightly larger: 9pt (was 8pt)
+    doc.text('REV: A', pageW - margin, 40, { align: 'right' })
+
+    // Separator line at larger position (50mm instead of 30mm)
+    if (showB) doc.line(margin, PAGE1_HEADER_END_Y, pageW - margin, PAGE1_HEADER_END_Y)
   }
 
   // Dynamic payment section height calculation
@@ -1767,9 +1889,9 @@ async function downloadPDF() {
   // Calculate dynamic payment height
   const paymentH = calculatePaymentHeight(doc, paymentInstructions, splitW)
 
-  // FORWARD CALCULATION - Top-down layout for consistent positioning
-  // Page 1: FROM/BILL TO grid at CONTENT_START_Y, then line items below
-  const yDataTop = CONTENT_START_Y  // FROM/BILL TO grid starts at fixed position
+  // FORWARD CALCULATION - Option B: Page 1 has larger header, page 2+ compact
+  // Page 1: FROM/BILL TO grid at PAGE1_CONTENT_START_Y (55mm), then line items below
+  const yDataTop = PAGE1_CONTENT_START_Y  // FROM/BILL TO grid starts at 55mm on page 1
   const yItemsTop = yDataTop + DATA_GRID_HEIGHT + SECTION_SPACER  // Line items start after grid
 
   // Calculate space available for line items on page 1
@@ -1780,9 +1902,9 @@ async function downloadPDF() {
     Math.floor((availableSpaceForItemsPage1 - TABLE_HEADER_HEIGHT) / ROW_HEIGHT)
   )
 
-  // Page 2+: Line items start at CONTENT_START_Y (same as FROM/BILL TO grid on page 1!)
-  // This creates perfect alignment between pages
-  const yItemsTopContinuation = CONTENT_START_Y  // Line items align with page 1 grid position
+  // Page 2+: Line items start at PAGE2_CONTENT_START_Y (35mm) for maximum content space
+  // Compact header on continuation pages allows more items per page
+  const yItemsTopContinuation = PAGE2_CONTENT_START_Y  // Line items at 35mm on page 2+
   const availableSpaceForItemsContinuation = yPaymentTop - SECTION_SPACER - yItemsTopContinuation
   const maxRowsFitContinuationPage = Math.max(
     0,
@@ -2095,7 +2217,7 @@ async function downloadPDF() {
     doc.setFillColor(paperRGB.r, paperRGB.g, paperRGB.b)
     doc.rect(0, 0, pageW, pageH, 'F')
 
-    // Compact continuation page header (matches page 1 header height)
+    // COMPACT continuation page header (page 2+) - maximize content space
     doc.setFont(fonts.hdr, 'bold')
     doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
     doc.setFontSize(11)
@@ -2103,18 +2225,18 @@ async function downloadPDF() {
     doc.setFontSize(8)
     doc.text(`PAGE ${doc.internal.getCurrentPageInfo().pageNumber} OF ${totalPages}`, pageW - margin, 20, { align: 'right' })
 
-    // Separator line at same position as page 1
+    // Separator line at compact position (30mm instead of 50mm on page 1)
     if (showB) {
       doc.setDrawColor(inkRGB.r, inkRGB.g, inkRGB.b)
       doc.setLineWidth(0.2)
-      doc.line(margin, HEADER_END_Y, pageW - margin, HEADER_END_Y)
+      doc.line(margin, PAGE2_HEADER_END_Y, pageW - margin, PAGE2_HEADER_END_Y)
     }
 
-    // Render line items starting at CONTENT_START_Y (same as FROM/BILL TO grid on page 1)
+    // Render line items starting at PAGE2_CONTENT_START_Y (35mm) for maximum space
     const remainingItems = items.slice(itemIndex)
     const continuationPageResult = renderLineItems(
       remainingItems,
-      yItemsTopContinuation,  // Use fixed continuation position
+      yItemsTopContinuation,  // Starts at 35mm on page 2+
       maxRowsFitContinuationPage
     )
 

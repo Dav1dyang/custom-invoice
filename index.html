@@ -84,15 +84,29 @@
               <div class="template-manage-section">
                 <div class="template-input-row">
                   <div class="template-input-group">
-                    <input
-                      id="templateInput"
-                      type="text"
-                      placeholder="Template name..."
-                      list="templateSuggestions"
-                    />
-                    <datalist id="templateSuggestions">
-                      <!-- Dynamic options will be populated here -->
-                    </datalist>
+                    <div class="template-input-wrapper">
+                      <input
+                        id="templateInput"
+                        type="text"
+                        placeholder="Template name..."
+                        autocomplete="off"
+                      />
+                      <button
+                        class="template-dropdown-toggle"
+                        onclick="toggleTemplateDropdown()"
+                        type="button"
+                        title="Browse templates"
+                      >
+                        <span class="dropdown-icon">▼</span>
+                      </button>
+                    </div>
+
+                    <!-- Custom dropdown (hidden by default) -->
+                    <div class="template-dropdown" id="templateDropdown" style="display: none;">
+                      <div class="template-dropdown-content">
+                        <!-- Populated dynamically by JavaScript -->
+                      </div>
+                    </div>
                   </div>
                   <div class="template-actions-row">
                     <button
@@ -313,7 +327,13 @@
           <div class="content-right">
             <!-- ITEMS -->
             <div class="items card">
-              <h3>Line Items</h3>
+              <div class="line-items-header">
+                <h3>Line Items</h3>
+                <label class="save-items-checkbox">
+                  <input type="checkbox" id="saveLineItemsCheckbox" checked />
+                  <span>Save items with template</span>
+                </label>
+              </div>
 
               <!-- Import Controls -->
               <details class="import-section">

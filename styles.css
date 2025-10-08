@@ -339,6 +339,18 @@
 }
 
 .template-input-group {
+  position: relative;  /* For absolute positioned dropdown */
+  flex: 1;
+}
+
+/* Template input wrapper - flex container for input + toggle button */
+.template-input-wrapper {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.template-input-wrapper input {
   flex: 1;
 }
 
@@ -351,6 +363,93 @@
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   min-height: 32px;
+}
+
+/* Dropdown toggle button */
+.template-dropdown-toggle {
+  padding: 8px 14px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-fg);
+}
+
+.template-dropdown-toggle:hover {
+  background: var(--border);
+  border-color: var(--ui-fg);
+}
+
+.template-dropdown-toggle:active {
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+}
+
+.dropdown-icon {
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* Custom dropdown container */
+.template-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  max-height: 340px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Dropdown sections */
+.template-dropdown-section {
+  border-bottom: 1px solid var(--border);
+}
+
+.template-dropdown-section:last-child {
+  border-bottom: none;
+}
+
+/* Section titles with icons */
+.template-dropdown-section-title {
+  padding: 10px 14px 6px 14px;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--ui-fg);
+  opacity: 0.7;
+  background: var(--ui-bg);
+}
+
+/* Dropdown items */
+.template-dropdown-item {
+  padding: 9px 18px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  color: var(--ui-fg);
+}
+
+.template-dropdown-item:hover {
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+}
+
+/* Starred items get gold star */
+.template-dropdown-item.starred::before {
+  content: '★ ';
+  color: #f59e0b;
+  margin-right: 4px;
 }
 
 .template-actions-row {
@@ -831,6 +930,49 @@ textarea {
 .items {
   padding: 15px;
   margin-bottom: 20px;
+}
+
+.line-items-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.line-items-header h3 {
+  margin: 0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 11px;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.save-items-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.save-items-checkbox:hover {
+  opacity: 0.8;
+}
+
+.save-items-checkbox input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--accent);
 }
 
 .items h3 {
