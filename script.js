@@ -2175,23 +2175,23 @@ async function downloadPDF() {
       doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
 
       let currentY = yTop + 4
-      doc.text('DESCRIPTION', xDesc + 2, currentY)
-      doc.text('QTY', xQty + 2, currentY)
-      doc.text('RATE', xRate + 2, currentY)
-      doc.text('AMOUNT', xAmt + 2, currentY)
+      doc.text('DESCRIPTION', xDesc + 2, currentY)  // Left-aligned
+      doc.text('QTY', xQty + qtyW/2, currentY, { align: 'center' })  // CENTER
+      doc.text('RATE', xRate + rateW - 2, currentY, { align: 'right' })  // RIGHT
+      doc.text('AMOUNT', xAmt + amtW - 2, currentY, { align: 'right' })  // RIGHT
 
       currentY += 3
       doc.text('-----------', xDesc + 2, currentY)
-      doc.text('---', xQty + 2, currentY)
-      doc.text('----', xRate + 2, currentY)
-      doc.text('------', xAmt + 2, currentY)
+      doc.text('---', xQty + qtyW/2, currentY, { align: 'center' })  // CENTER separator
+      doc.text('----', xRate + rateW - 2, currentY, { align: 'right' })  // RIGHT separator
+      doc.text('------', xAmt + amtW - 2, currentY, { align: 'right' })  // RIGHT separator
     } else {
       doc.setFontSize(8) // CSS: font-size: 8px for table headers
       const hY = yTop + 5 // Better vertical alignment to match CSS
-      doc.text('DESCRIPTION', xDesc + 1.3, hY) // 5px padding from left edge
-      doc.text('QTY/HRS', xQty + 1.3, hY)
-      doc.text('RATE', xRate + 1.3, hY)
-      doc.text('AMOUNT', xAmt + 1.3, hY)
+      doc.text('DESCRIPTION', xDesc + 1.3, hY) // Left-aligned with padding
+      doc.text('QTY/HRS', xQty + qtyW/2, hY, { align: 'center' }) // CENTER in column
+      doc.text('RATE', xRate + rateW - 1.3, hY, { align: 'right' }) // RIGHT align
+      doc.text('AMOUNT', xAmt + amtW - 1.3, hY, { align: 'right' }) // RIGHT align
 
       // No dividers for table headers - cleaner look matching CSS
       // Table headers are functional, not content separators
