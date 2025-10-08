@@ -56,38 +56,36 @@ Critical functions:
 
 ## PDF Multi-Page Logic
 
-PDF generation uses **Option B layout** with page-specific positioning for optimal presentation:
+PDF generation uses **Option A layout** with condensed headers and perfect alignment:
 
-### Fixed Layout Constants (script.js:1669-1690)
-**Page 1 - Prominent cover page aesthetic:**
-- `PAGE1_HEADER_END_Y = 50mm`: Larger header separator line
-- `PAGE1_CONTENT_START_Y = 55mm`: FROM/BILL TO grid starts here (pushed down for visual impact)
-- Logo: 50mm × 25mm (larger, professional size)
-- INVOICE text: 20pt (prominent)
-- Invoice number: 11pt
-
-**Page 2+ - Compact for maximum content:**
-- `PAGE2_HEADER_END_Y = 30mm`: Compact header separator
-- `PAGE2_CONTENT_START_Y = 35mm`: Line items start here (maximizes space)
-- More items fit per page than page 1
-
-**Shared constants:**
+### Fixed Layout Constants (script.js:1834-1851)
+**Single positioning system for all pages:**
+- `HEADER_END_Y = 30mm`: Header separator line (all pages)
+- `CONTENT_START_Y = 35mm`: Where content begins (all pages - PERFECT ALIGNMENT!)
+  - Page 1: FROM/BILL TO grid starts at 35mm
+  - Page 2+: Line items table starts at 35mm (same position!)
 - `DATA_GRID_HEIGHT = 35mm`: Height of FROM/BILL TO/SPECS grid
 - `SECTION_SPACER = 8mm`: Gap between sections
 - `ROW_HEIGHT = 10mm`: Line item row height
 - `TABLE_HEADER_HEIGHT = 8mm`: Line items table header
 
+**Visual Distinction:**
+- Page 1: Logo 35mm × 15mm, INVOICE text **16pt** (larger for first page)
+- Page 2+: No logo, INVOICE text **11pt** (condensed)
+- Both pages: Header ends at 30mm, content starts at 35mm
+
 ### Page Layout
-1. **Page 1**: Large header (50mm) → FROM/BILL TO grid at y=55mm → line items → payment (bottom)
-2. **Page 2+**: Compact header (30mm) → line items at y=35mm → payment (bottom)
-3. Page 1 emphasizes branding, page 2+ maximizes content efficiency
-4. Payment section always anchored at bottom with fixed margin
-5. Forward calculation (top-down) for all positioning
+1. **Page 1**: Condensed header (30mm) → FROM/BILL TO grid at y=35mm → line items → payment (bottom)
+2. **Page 2+**: Condensed header (30mm) → line items at y=35mm → payment (bottom)
+3. **Perfect alignment**: Both pages have content starting at y=35mm
+4. Page 1 visually distinct with larger INVOICE text (16pt vs 11pt)
+5. More items fit on page 1 (~8-10 items) vs Option B (~5-7 items)
+6. Payment section always anchored at bottom with fixed margin
 
 Key variables:
-- `maxRowsFitFirstPage`: Items that fit on page 1 (~5-7 items)
+- `maxRowsFitFirstPage`: Items that fit on page 1 (~8-10 items)
 - `maxRowsFitContinuationPage`: Items per continuation page (~12-15 items)
-- `yItemsTopContinuation`: Fixed position for line items on page 2+ (35mm)
+- `yItemsTopContinuation`: Fixed position for line items on page 2+ (35mm - same as page 1 grid!)
 
 ## Invoice Number Format
 
@@ -174,33 +172,42 @@ Backwards compatibility: `loadTemplateData()` converts old `invoiceNumber` forma
 
 ## Design System
 
-### Typography Scale (styles.css:18-27)
+### Typography Scale (styles.css:18-26)
 
 **CSS Variables for consistent font sizing - Minimum 10px for readability**:
 - `--font-size-h1: 20px` - Page title (INVOICE TOOL)
 - `--font-size-h3: 12px` - Section headers (FROM, BILL TO, LINE ITEMS)
 - `--font-size-h4: 11px` - Subsection headers (Page Setup, File Upload)
 - `--font-size-body: 12px` - Input fields, normal text, form content
-- `--font-size-label: 10px` - Form labels, helper text (MINIMUM)
+- `--font-size-label: 10px` - Form labels, helper text (MINIMUM SIZE)
 - `--font-size-button: 11px` - Buttons, interactive elements
 
-**Usage**:
+**Design Philosophy**:
 - All font sizes use CSS variables for consistency
-- Clear hierarchy from 20px (page title) down to 10px (minimum)
-- **No text smaller than 10px** for accessibility and readability
+- Clear hierarchy: 20px → 12px → 11px → 10px
+- **No text smaller than 10px anywhere** for accessibility and readability
 - Monospace font (IBM Plex Mono) throughout entire app
+- Increased from previous scale for better readability on all devices
 
 ### Button Height System
 
-**Three-tier hierarchy**:
-- **Primary actions** (40px): Add Item, Preview, Download, Import, Load, Due Date selection
-- **Secondary actions** (36px): Template icons (💾 ⭐ 🗑️), Dropdown toggle, Clear
-- **Tertiary selections** (40px): Template chips (changed from 32px for touch-friendliness)
+**Unified 40px height system** (improved from previous multi-tier):
+- **All buttons**: 40px height (primary, tertiary)
+- **Template action icons**: 40px × 40px (square buttons)
+- **Exception - Secondary**: Template icons slightly smaller for visual balance
+
+**Includes**:
+- "+ ADD LINE ITEM", "Preview Invoice", "Download PDF" → 40px
+- "Import File", "Import Pasted", "Clear All Items" → 40px
+- "Load", "1 Week", "15 Days", "30 Days" → 40px
+- Template chips (APOSSIBLE, MORAKANA, etc.) → 40px
+- Template action icons (💾 ⭐ 🗑️) → 40px × 40px
 
 **Standardization**:
-- All primary buttons: `min-height: 40px`, `padding: 10px 20px`
-- All use `font-size: var(--font-size-button)` (11px - improved readability)
-- Consistent typography and spacing throughout
+- Primary buttons: `min-height: 40px`, `max-height: 40px`, `padding: 10px 20px`
+- All use `font-size: var(--font-size-button)` (11px)
+- Consistent typography, spacing, and hover states
+- Touch-friendly on mobile (40px minimum target)
 
 ### Input Dimensions
 
@@ -236,9 +243,16 @@ Backwards compatibility: `loadTemplateData()` converts old `invoiceNumber` forma
 
 **Line Items Footer** (index.html:400-406):
 - "+ ADD LINE ITEM" button on left
-- "Save with template" checkbox on right
+- "Save with template" checkbox on far right (`margin-left: auto`)
 - Flex layout with space-between
-- Stacks vertically on mobile
+- Stacks vertically on mobile (button first, checkbox centered)
+
+**Line Items Table**:
+- ACTION column cells have no padding (script.js:1079-1082)
+- Remove button (×) fills entire cell (`width: 100%`, `height: 100%`, `min-height: 44px`)
+- Black background with white × symbol (18px font)
+- Hover state turns red (#dc2626)
+- No white space above/below button
 
 **Removed Elements:**
 - "REV: A" removed from all PDFs and preview (meaningless revision marker)
@@ -278,15 +292,15 @@ Backwards compatibility: `loadTemplateData()` converts old `invoiceNumber` forma
 3. Preset automatically applies color calculations
 
 **Modifying PDF Layout**
-1. Adjust page-specific layout constants at top of `downloadPDF()` (script.js:1669-1690)
-   - **Page 1 constants**: `PAGE1_HEADER_END_Y`, `PAGE1_CONTENT_START_Y`
-   - **Page 2+ constants**: `PAGE2_HEADER_END_Y`, `PAGE2_CONTENT_START_Y`
-   - **Shared constants**: `DATA_GRID_HEIGHT`, `SECTION_SPACER`, `ROW_HEIGHT`, `TABLE_HEADER_HEIGHT`
-2. Update header rendering for page-specific sizing (script.js:1692-1751)
-   - Page 1: Larger fonts (20pt, 11pt), bigger logo
-   - Page 2+: Compact header for maximum content space
-3. Update `renderLineItems()` for table styling (script.js:1990-2041)
-4. **Important**: Page 1 and Page 2+ use different content start positions by design (Option B layout)
+1. Adjust layout constants at top of `downloadPDF()` (script.js:1834-1851)
+   - **Shared constants**: `HEADER_END_Y`, `CONTENT_START_Y` (all pages use same!)
+   - **Other constants**: `DATA_GRID_HEIGHT`, `SECTION_SPACER`, `ROW_HEIGHT`, `TABLE_HEADER_HEIGHT`
+2. Update header rendering for visual distinction (script.js:1853-1908)
+   - Page 1: INVOICE 16pt (visually distinct), logo 35mm×15mm
+   - Page 2+: INVOICE 11pt (condensed)
+   - Both: Header ends at 30mm, content starts at 35mm
+3. Update `renderLineItems()` for table styling (script.js:~2000+)
+4. **Important**: Option A layout - all pages aligned at y=35mm, page 1 distinguished by larger INVOICE text
 
 **CSV Import Format**
 Supports flexible formats with auto-detection:

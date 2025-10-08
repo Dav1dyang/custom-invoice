@@ -1831,16 +1831,12 @@ async function downloadPDF() {
     contentW = pageW - 2 * margin,
     splitW = contentW * 0.66
 
-  // FIXED LAYOUT CONSTANTS - Page-specific positioning (Option B)
-  // Page 1: Larger header area for prominent "cover page" aesthetic
-  const PAGE1_HEADER_END_Y = 50       // Larger header on page 1 (50mm vs 30mm)
-  const PAGE1_CONTENT_START_Y = 55    // FROM/BILL TO grid starts here (pushed down)
-
-  // Page 2+: Compact header to maximize content space
-  const PAGE2_HEADER_END_Y = 30       // Compact header on continuation pages
-  const PAGE2_CONTENT_START_Y = 35    // Line items start here (more space)
-
-  // Shared constants
+  // OPTION A - Condensed header on all pages with perfect alignment
+  // All pages use same positioning for consistent content alignment
+  const HEADER_END_Y = 30             // Header separator line (all pages)
+  const CONTENT_START_Y = 35          // Content starts here (all pages - ALIGNED!)
+                                      // - Page 1: FROM/BILL TO grid at y=35mm
+                                      // - Page 2+: Line items table at y=35mm (same position!)
   const DATA_GRID_HEIGHT = 35         // Height of FROM/BILL TO/SPECS grid
   const SECTION_SPACER = 8            // Gap between sections
   const BOTTOM_MARGIN = 15            // Bottom page margin
@@ -1854,7 +1850,7 @@ async function downloadPDF() {
   const rowH = ROW_HEIGHT
   const spacer = SECTION_SPACER
 
-  // PAGE 1 HEADER - Larger and more prominent (Option B)
+  // OPTION A - CONDENSED PAGE 1 HEADER with visual distinction
   doc.setFont(fonts.hdr, 'bold')
   doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
 
@@ -1875,17 +1871,17 @@ async function downloadPDF() {
 
     // Invoice details in ASCII style
     doc.setFontSize(8)
-    doc.text(`>>> INVOICE NO: ${invoiceNumber.toUpperCase()} <<<`, pageW - margin, 35, { align: 'right' })
+    doc.text(`>>> INVOICE NO: ${invoiceNumber.toUpperCase()} <<<`, pageW - margin, 25, { align: 'right' })
 
     // ASCII line divider
     const asciiLine = '=' + '='.repeat(Math.floor((pageW - 2 * margin) / 2)) + '='
     doc.setFontSize(6)
-    doc.text(asciiLine, margin, PAGE1_HEADER_END_Y)
+    doc.text(asciiLine, margin, HEADER_END_Y)
   } else {
-    // LARGER PAGE 1 HEADER - Professional cover page aesthetic
-    // Logo (larger, if present)
+    // CONDENSED HEADER with visual distinction on page 1
+    // Logo - compact size
     if (logoDataUrl) {
-      const maxW = 50, maxH = 25  // Larger logo: 50mm × 25mm
+      const maxW = 35, maxH = 15  // Condensed logo
       let w = maxW, h = maxH
       if (logoNatural && logoNatural.w && logoNatural.h) {
         const r = logoNatural.w / logoNatural.h
@@ -1897,18 +1893,18 @@ async function downloadPDF() {
           h = w / r
         }
       }
-      doc.addImage(logoDataUrl, 'PNG', margin, 12, w, h)
+      doc.addImage(logoDataUrl, 'PNG', margin, 10, w, h)
     }
 
-    // Invoice header text (right-aligned, prominent sizing)
-    doc.setFontSize(20)  // Larger: 20pt (was 13pt)
-    doc.text('INVOICE', pageW - margin, 22, { align: 'right' })
+    // INVOICE text - LARGER on page 1 for distinction
+    doc.setFontSize(16)  // Visually distinct (larger than page 2's 11pt)
+    doc.text('INVOICE', pageW - margin, 18, { align: 'right' })
 
-    doc.setFontSize(11)  // Larger: 11pt (was 8pt)
-    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 35, { align: 'right' })
+    doc.setFontSize(11)
+    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 25, { align: 'right' })
 
-    // Separator line at larger position (50mm instead of 30mm)
-    if (showB) doc.line(margin, PAGE1_HEADER_END_Y, pageW - margin, PAGE1_HEADER_END_Y)
+    // Separator line at condensed position (30mm - same as page 2)
+    if (showB) doc.line(margin, HEADER_END_Y, pageW - margin, HEADER_END_Y)
   }
 
   // Dynamic payment section height calculation
@@ -1945,10 +1941,10 @@ async function downloadPDF() {
   // Calculate dynamic payment height
   const paymentH = calculatePaymentHeight(doc, paymentInstructions, splitW)
 
-  // FORWARD CALCULATION - Option B: Page 1 has larger header, page 2+ compact
-  // Page 1: FROM/BILL TO grid at PAGE1_CONTENT_START_Y (55mm), then line items below
-  const yDataTop = PAGE1_CONTENT_START_Y  // FROM/BILL TO grid starts at 55mm on page 1
-  const yItemsTop = yDataTop + DATA_GRID_HEIGHT + SECTION_SPACER  // Line items start after grid
+  // OPTION A - FORWARD CALCULATION with perfect alignment
+  // All pages: Content starts at CONTENT_START_Y = 35mm (perfect alignment!)
+  const yDataTop = CONTENT_START_Y  // FROM/BILL TO grid at 35mm on page 1
+  const yItemsTop = yDataTop + DATA_GRID_HEIGHT + SECTION_SPACER  // Line items after grid
 
   // Calculate space available for line items on page 1
   const yPaymentTop = pageH - BOTTOM_MARGIN - paymentH
@@ -1958,9 +1954,9 @@ async function downloadPDF() {
     Math.floor((availableSpaceForItemsPage1 - TABLE_HEADER_HEIGHT) / ROW_HEIGHT)
   )
 
-  // Page 2+: Line items start at PAGE2_CONTENT_START_Y (35mm) for maximum content space
-  // Compact header on continuation pages allows more items per page
-  const yItemsTopContinuation = PAGE2_CONTENT_START_Y  // Line items at 35mm on page 2+
+  // Page 2+: Line items start at CONTENT_START_Y (35mm - SAME as page 1 grid!)
+  // Perfect alignment between pages
+  const yItemsTopContinuation = CONTENT_START_Y  // 35mm on all pages
   const availableSpaceForItemsContinuation = yPaymentTop - SECTION_SPACER - yItemsTopContinuation
   const maxRowsFitContinuationPage = Math.max(
     0,
@@ -2273,26 +2269,26 @@ async function downloadPDF() {
     doc.setFillColor(paperRGB.r, paperRGB.g, paperRGB.b)
     doc.rect(0, 0, pageW, pageH, 'F')
 
-    // COMPACT continuation page header (page 2+) - maximize content space
+    // CONDENSED continuation page header (matches page 1 height)
     doc.setFont(fonts.hdr, 'bold')
     doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
-    doc.setFontSize(11)
+    doc.setFontSize(11)  // Smaller than page 1 (16pt) for subtle distinction
     doc.text(`INVOICE ${invoiceNumber} (CONTINUED)`, pageW - margin, 15, { align: 'right' })
-    doc.setFontSize(8)
+    doc.setFontSize(9)
     doc.text(`PAGE ${doc.internal.getCurrentPageInfo().pageNumber} OF ${totalPages}`, pageW - margin, 20, { align: 'right' })
 
-    // Separator line at compact position (30mm instead of 50mm on page 1)
+    // Separator line at same position as page 1 (30mm)
     if (showB) {
       doc.setDrawColor(inkRGB.r, inkRGB.g, inkRGB.b)
       doc.setLineWidth(0.2)
-      doc.line(margin, PAGE2_HEADER_END_Y, pageW - margin, PAGE2_HEADER_END_Y)
+      doc.line(margin, HEADER_END_Y, pageW - margin, HEADER_END_Y)
     }
 
-    // Render line items starting at PAGE2_CONTENT_START_Y (35mm) for maximum space
+    // Render line items starting at CONTENT_START_Y (35mm - SAME as page 1 grid!)
     const remainingItems = items.slice(itemIndex)
     const continuationPageResult = renderLineItems(
       remainingItems,
-      yItemsTopContinuation,  // Starts at 35mm on page 2+
+      yItemsTopContinuation,  // 35mm - aligned with page 1
       maxRowsFitContinuationPage
     )
 

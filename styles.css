@@ -286,9 +286,10 @@ details.csv-import-settings[open] summary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;  /* Standardized with all buttons */
+  min-height: 40px;
+  max-height: 40px;  /* Prevent growing */
   padding: 10px 16px;
-  font-size: var(--font-size-button);  /* 10px */
+  font-size: var(--font-size-button);  /* 11px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -316,9 +317,10 @@ details.csv-import-settings[open] summary {
 }
 
 .load-btn {
-  min-height: 40px;  /* Standardized with all primary buttons */
+  min-height: 40px;
+  max-height: 40px;  /* Prevent growing */
   padding: 10px 20px;
-  font-size: var(--font-size-button);  /* 10px */
+  font-size: var(--font-size-button);  /* 11px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -328,6 +330,9 @@ details.csv-import-settings[open] summary {
   font-family: 'IBM Plex Mono', monospace;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .load-btn:hover {
@@ -472,8 +477,10 @@ details.csv-import-settings[open] summary {
 }
 
 .action-icon {
-  width: 32px;
-  height: 32px;
+  min-width: 40px;
+  max-width: 40px;
+  min-height: 40px;
+  max-height: 40px;  /* Match all template section buttons */
   padding: 0;
   background: transparent;
   border: 1px solid var(--border);
@@ -482,7 +489,7 @@ details.csv-import-settings[open] summary {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  font-size: 12px;
+  font-size: 14px;  /* Slightly larger emoji */
 }
 
 .action-icon:hover {
@@ -1033,7 +1040,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: var(--font-size-label);  /* 9px */
+  font-size: var(--font-size-label);  /* 10px */
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1041,6 +1048,8 @@ textarea {
   user-select: none;
   transition: opacity 0.2s;
   white-space: nowrap;
+  margin-left: auto;  /* Force to far right */
+  flex-shrink: 0;     /* Prevent shrinking */
 }
 
 .items-footer .save-items-checkbox:hover {
@@ -1094,11 +1103,23 @@ table#itemsTable {
 .rm {
   width: 100%;
   height: 100%;
+  min-height: 44px;  /* Fill entire row */
   background: #000;
   color: #fff;
   border: none;
   cursor: pointer;
   font-weight: 700;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  transition: all 0.2s;
+}
+
+.rm:hover {
+  background: #dc2626;
 }
 
 button {
