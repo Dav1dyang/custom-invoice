@@ -3,6 +3,23 @@
 /* ----------------------------- UTILITIES ----------------------------- */
 const $ = (id) => document.getElementById(id)
 
+// Generate abbreviation from company name
+function generateAbbreviation(name) {
+  if (!name || !name.trim()) return ''
+
+  // Remove common words
+  const skipWords = ['the', 'a', 'an', 'and', 'of', 'for', 'to', 'in', 'on', 'at', 'foundation']
+
+  // Split into words, filter stop words, take first letter
+  const words = name.toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, '') // Remove special chars
+    .split(/\s+/)
+    .filter(word => word.length > 0 && !skipWords.includes(word.toLowerCase()))
+
+  // Take first letter of each significant word, max 6 letters
+  return words.map(w => w[0]).join('').slice(0, 6)
+}
+
 /* ----------------------------- THEME ----------------------------- */
 let currentTheme = localStorage.getItem('theme') || 'light'
 document.documentElement.setAttribute('data-theme', currentTheme)
@@ -52,16 +69,22 @@ document.getElementById('logoUpload').addEventListener('change', (e) => {
 })
 
 /* ----------------------------- ITEMS ----------------------------- */
-function addItem(desc = '', qty = '', rate = '') {
+// Global state for drag and drop
+let draggedRow = null
+
+function addItem(desc = '', qty = '', rate = '', type = '') {
   const tr = document.createElement('tr')
   tr.innerHTML = `
-    <td><input class="item-desc" type="text" value="${desc}" placeholder="Service/Product Description"></td>
-    <td class="center"><input class="item-qty" type="number" step="0.01" value="${qty}"></td>
-    <td class="right"><input class="item-rate" type="number" step="0.01" value="${rate}"></td>
+    <td class="drag-handle"><span class="drag-icon">⋮⋮</span></td>
+    <td class="type-cell"><input class="item-type" type="text" value="${type}" placeholder="Type..." list="typeOptions" /></td>
+    <td><input class="item-desc" type="text" value="${desc}" placeholder="Description..."></td>
+    <td class="center"><input class="item-qty" type="number" step="0.01" value="${qty}" placeholder="Qty"></td>
+    <td class="right"><input class="item-rate" type="number" step="0.01" value="${rate}" placeholder="Rate"></td>
     <td class="right"><input class="item-amt" type="number" step="0.01" value="0.00" readonly></td>
     <td><button type="button" class="rm">×</button></td>`
   document.getElementById('itemsBody').appendChild(tr)
-  const qtyEl = tr.querySelector('.item-qty'),
+  const typeEl = tr.querySelector('.item-type'),
+    qtyEl = tr.querySelector('.item-qty'),
     rateEl = tr.querySelector('.item-rate'),
     amtEl = tr.querySelector('.item-amt'),
     rm = tr.querySelector('.rm')
@@ -72,19 +95,126 @@ function addItem(desc = '', qty = '', rate = '') {
   rateEl.addEventListener('input', calc)
   calc()
   rm.onclick = () => tr.remove()
+
+  // Enable drag and drop for reordering
+  tr.setAttribute('draggable', 'true')
+  setupDragAndDrop(tr)
+
+  // Track if drag should be allowed (only from drag handle)
+  const dragHandle = tr.querySelector('.drag-handle')
+
+  dragHandle.addEventListener('mousedown', () => {
+    tr.dataset.allowDrag = 'true'
+  })
+
+  tr.addEventListener('mousedown', (e) => {
+    if (!e.target.closest('.drag-handle')) {
+      tr.dataset.allowDrag = 'false'
+    }
+  })
 }
 addItem()
 
 function getItems() {
   return [...document.querySelectorAll('#itemsBody tr')]
     .map((tr) => {
+      const t = tr.querySelector('.item-type')?.value.trim() || ''
       const d = tr.querySelector('.item-desc').value.trim()
       const q = tr.querySelector('.item-qty').value
       const r = tr.querySelector('.item-rate').value
       const a = tr.querySelector('.item-amt').value
-      return d ? { description: d, qty: q, rate: r, amount: a } : null
+      return d ? { type: t, description: d, qty: q, rate: r, amount: a } : null
     })
     .filter(Boolean)
+}
+
+// Check if any items have types filled
+function hasAnyTypes(items) {
+  return items.some(item => item.type && item.type.trim())
+}
+
+// Get notes position (above or below items)
+function getNotesPosition() {
+  const selected = document.querySelector('input[name="notesPosition"]:checked')
+  return selected ? selected.value : 'above'  // Default: above
+}
+
+/* ----------------------------- DRAG AND DROP ----------------------------- */
+// Setup drag and drop for a table row
+function setupDragAndDrop(row) {
+  row.addEventListener('dragstart', handleDragStart)
+  row.addEventListener('dragover', handleDragOver)
+  row.addEventListener('drop', handleDrop)
+  row.addEventListener('dragend', handleDragEnd)
+  row.addEventListener('dragenter', handleDragEnter)
+  row.addEventListener('dragleave', handleDragLeave)
+}
+
+function handleDragStart(e) {
+  // Only allow drag if started from drag handle
+  if (this.dataset.allowDrag !== 'true') {
+    e.preventDefault()
+    return false
+  }
+
+  draggedRow = this
+  this.classList.add('dragging')
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/html', this.innerHTML)
+}
+
+function handleDragOver(e) {
+  if (e.preventDefault) {
+    e.preventDefault()
+  }
+  e.dataTransfer.dropEffect = 'move'
+  return false
+}
+
+function handleDragEnter(e) {
+  if (this !== draggedRow) {
+    this.classList.add('drag-over')
+  }
+}
+
+function handleDragLeave(e) {
+  this.classList.remove('drag-over')
+}
+
+function handleDrop(e) {
+  if (e.stopPropagation) {
+    e.stopPropagation()
+  }
+
+  if (draggedRow !== this) {
+    const tbody = this.parentNode
+
+    // Determine drop position (above or below target row)
+    const rect = this.getBoundingClientRect()
+    const offset = e.clientY - rect.top
+    const middle = rect.height / 2
+
+    if (offset < middle) {
+      // Insert before target row
+      tbody.insertBefore(draggedRow, this)
+    } else {
+      // Insert after target row
+      tbody.insertBefore(draggedRow, this.nextSibling)
+    }
+  }
+
+  this.classList.remove('drag-over')
+  return false
+}
+
+function handleDragEnd(e) {
+  this.classList.remove('dragging')
+  this.dataset.allowDrag = 'false'  // Reset flag after drag
+
+  // Remove drag-over class from all rows
+  document.querySelectorAll('#itemsBody tr').forEach(row => {
+    row.classList.remove('drag-over')
+  })
 }
 
 /* ------------------------- STYLE & COLOR ------------------------ */
@@ -510,6 +640,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set default due date (30 days from today)
   setDueDate(30)
 
+  // Auto-update abbreviation when company name changes
+  const toCompanyEl = document.getElementById('toCompany')
+  const companyAbbrevEl = document.getElementById('companyAbbrev')
+
+  if (toCompanyEl && companyAbbrevEl) {
+    toCompanyEl.addEventListener('blur', () => {
+      // Only auto-fill if abbreviation is empty
+      if (!companyAbbrevEl.value || !companyAbbrevEl.value.trim()) {
+        const abbrev = generateAbbreviation(toCompanyEl.value)
+        companyAbbrevEl.value = abbrev
+      }
+    })
+  }
+
   const filterChips = document.querySelectorAll('.filter-chip')
   const templateInput = document.getElementById('templateInput')
 
@@ -931,9 +1075,12 @@ function loadTemplateById(templateId) {
       toAddress: 'Client Address',
       toContact: 'client@email.com',
       paymentInstructions: 'Enter your payment instructions here',
+      invoiceNotes: '',
+      notesPosition: 'above',
       currency: 'USD',
-      invoiceDate: '',  // Will be set to today on load
-      dueDate: '',      // Will be calculated
+      invoiceDate: '',
+      dueDate: '',
+      invoiceTitle: '',
       companyAbbrev: '',
       invoiceSequence: '01',
       lineItems: [],
@@ -949,9 +1096,12 @@ function loadTemplateById(templateId) {
       toAddress: 'Client Location',
       toContact: 'tech@client.com',
       paymentInstructions: 'Enter your payment instructions here',
+      invoiceNotes: '',
+      notesPosition: 'above',
       currency: 'USD',
       invoiceDate: '',
       dueDate: '',
+      invoiceTitle: '',
       companyAbbrev: 'TCI',
       invoiceSequence: '01',
       lineItems: [],
@@ -967,9 +1117,12 @@ function loadTemplateById(templateId) {
       toAddress: 'Client Address',
       toContact: 'contact@sampleclient.com',
       paymentInstructions: 'Enter your payment instructions here',
+      invoiceNotes: '',
+      notesPosition: 'above',
       currency: 'USD',
       invoiceDate: '',
       dueDate: '',
+      invoiceTitle: '',
       companyAbbrev: 'SC',
       invoiceSequence: '01',
       lineItems: [],
@@ -985,9 +1138,12 @@ function loadTemplateById(templateId) {
       toAddress: 'Client Location',
       toContact: 'contact@freelanceclient.com',
       paymentInstructions: 'Enter your payment instructions here',
+      invoiceNotes: '',
+      notesPosition: 'above',
       currency: 'USD',
       invoiceDate: '',
       dueDate: '',
+      invoiceTitle: '',
       companyAbbrev: 'FC',
       invoiceSequence: '01',
       lineItems: [],
@@ -1202,17 +1358,20 @@ function getCurrentTemplateData() {
     toAddress: document.getElementById('toAddress').value,
     toContact: document.getElementById('toContact').value,
     paymentInstructions: document.getElementById('paymentInstructions').value,
+    invoiceNotes: document.getElementById('invoiceNotes')?.value || '',
+    notesPosition: getNotesPosition(),  // Notes position (above or below)
     currency: document.getElementById('currency').value,
-    invoiceDate: document.getElementById('invoiceDate').value,  // Save invoice date
-    dueDate: document.getElementById('dueDate').value,          // Save due date
-    companyAbbrev: companyAbbrevEl ? companyAbbrevEl.value : '',  // Split field with null check
-    invoiceSequence: invoiceSeqEl ? invoiceSeqEl.value : '',  // Split field with null check
+    invoiceDate: document.getElementById('invoiceDate').value,
+    dueDate: document.getElementById('dueDate').value,
+    invoiceTitle: document.getElementById('invoiceTitle')?.value || '',  // New title field
+    companyAbbrev: companyAbbrevEl ? companyAbbrevEl.value : '',
+    invoiceSequence: invoiceSeqEl ? invoiceSeqEl.value : '',
     paperSize: document.getElementById('paperSize').value,
     orientation: document.getElementById('orientation').value,
     styleMode: document.getElementById('styleMode').value,
     accentColor: document.getElementById('accentColor').value,
     lineItems: saveLineItems ? getItems() : [],  // Conditional: save items or empty array
-    saveLineItems: saveLineItems,  // Store checkbox preference
+    saveLineItems: saveLineItems,
     logoDataUrl: document.getElementById('logoPreview').src || null
   }
 }
@@ -1252,6 +1411,10 @@ function loadTemplateData(templateData) {
       if (saveItemsCheckbox) {
         saveItemsCheckbox.checked = templateData[key]
       }
+    } else if (key === 'notesPosition') {
+      // Restore notes position radio button
+      const radio = document.querySelector(`input[name="notesPosition"][value="${templateData[key]}"]`)
+      if (radio) radio.checked = true
     } else {
       const element = document.getElementById(key)
       if (element) {
@@ -1276,9 +1439,9 @@ function loadTemplateData(templateData) {
     // Clear existing items first
     document.getElementById('itemsBody').innerHTML = ''
 
-    // Add each saved line item
+    // Add each saved line item (including type)
     templateData.lineItems.forEach(item => {
-      addItem(item.description || '', item.qty || '', item.rate || '')
+      addItem(item.description || '', item.qty || '', item.rate || '', item.type || '')
     })
   }
 
@@ -1418,6 +1581,50 @@ function importFromPaste() {
 }
 
 /* ---------------------------- PREVIEW ---------------------------- */
+// Calculate subtotals grouped by type
+function calculateSubtotalsByType(items) {
+  const typeGroups = {}
+  let uncategorizedTotal = 0
+  let hasTypes = false
+
+  items.forEach(item => {
+    const amount = +item.amount || 0
+    const type = item.type && item.type.trim() ? item.type.trim() : null
+
+    if (type) {
+      hasTypes = true
+      if (!typeGroups[type]) {
+        typeGroups[type] = 0
+      }
+      typeGroups[type] += amount
+    } else {
+      uncategorizedTotal += amount
+    }
+  })
+
+  return { typeGroups, uncategorizedTotal, hasTypes }
+}
+
+// Calculate notes section height for PDF
+function calculateNotesHeight(doc, notes, contentW) {
+  if (!notes || !notes.trim()) return 0
+
+  const headerHeight = 5
+  const headerPadding = 6
+  const lineHeight = 4
+  const bottomPadding = 4
+
+  let totalLines = 0
+  notes.split('\n').forEach(line => {
+    if (line.trim()) {
+      const wrapped = doc.splitTextToSize(line, contentW - 4.2)
+      totalLines += wrapped.length
+    }
+  })
+
+  return headerHeight + headerPadding + (totalLines * lineHeight) + bottomPadding
+}
+
 function fmtDate(v) {
   const d = v ? new Date(v) : new Date()
   return d
@@ -1449,35 +1656,44 @@ function renderPreview() {
   const toAddressVal = $('toAddress').value
   const toContactVal = $('toContact').value
   const paymentInstructionsVal = $('paymentInstructions').value
+  const invoiceNotesVal = $('invoiceNotes')?.value || ''
+  const invoiceTitleVal = $('invoiceTitle')?.value || ''
+  const notesPosition = getNotesPosition()
   const invoiceDateVal = $('invoiceDate').value
   const dueDateVal = $('dueDate').value
   const items = getItems()
+  const hasTypes = hasAnyTypes(items)
+  const { typeGroups, uncategorizedTotal } = calculateSubtotalsByType(items)
   const subtotal = items.reduce(
     (sum, item) => sum + (+item.amount || 0),
     0
   )
+
+  // Build table rows with conditional TYPE column
   const rows = items
     .map(
       (item) => `
         <tr>
+          ${hasTypes ? `<td>${item.type || ''}</td>` : ''}
           <td>${item.description}</td>
           <td class="invoice-cell--center">${item.qty}</td>
           <td class="invoice-cell--right">${fmtMoney(item.rate)}</td>
-          <td class="invoice-cell--right invoice-cell--em">${fmtMoney(
-            item.amount
-          )}</td>
+          <td class="invoice-cell--right invoice-cell--em">${fmtMoney(item.amount)}</td>
         </tr>`
     )
     .join('')
+
   const logoHTML = logoDataUrl
     ? `<img class="invoice-logo" src="${logoDataUrl}" alt="Logo">`
     : ''
+
   $('invoiceContent').innerHTML = `
     <div class="invoice-head">
       ${logoHTML}
       <div class="invoice-head__meta">
         <div class="invoice-head__title">INVOICE</div>
         <div class="invoice-head__number">${invoiceNumber}</div>
+        ${invoiceTitleVal ? `<div class="invoice-head__subtitle">${invoiceTitleVal}</div>` : ''}
       </div>
     </div>
     <div class="invoice-meta">
@@ -1501,10 +1717,22 @@ function renderPreview() {
   )}<br>CURRENCY: ${currencyValue}<br>TERMS: NET 30</div>
         </div>
       </div>
-      <table class="invoice-table">
-        <colgroup><col /><col /><col /><col /></colgroup>
+      ${notesPosition === 'above' && invoiceNotesVal ? `
+        <div class="invoice-notes-section">
+          <div class="invoice-panel">
+            <div class="invoice-panel__title">NOTES</div>
+            <div class="invoice-panel__pre">${invoiceNotesVal}</div>
+          </div>
+        </div>
+      ` : ''}
+      <table class="invoice-table${hasTypes ? ' has-types' : ''}">
+        <colgroup>
+          ${hasTypes ? '<col />' : ''}
+          <col /><col /><col /><col />
+        </colgroup>
         <thead>
           <tr>
+            ${hasTypes ? '<th>TYPE</th>' : ''}
             <th>DESCRIPTION</th>
             <th class="invoice-cell--center">QTY/HRS</th>
             <th class="invoice-cell--right">RATE</th>
@@ -1513,6 +1741,14 @@ function renderPreview() {
         </thead>
         <tbody>${rows}</tbody>
       </table>
+      ${notesPosition === 'below' && invoiceNotesVal ? `
+        <div class="invoice-notes-section">
+          <div class="invoice-panel">
+            <div class="invoice-panel__title">NOTES</div>
+            <div class="invoice-panel__pre">${invoiceNotesVal}</div>
+          </div>
+        </div>
+      ` : ''}
       <div class="invoice-summary">
         <div class="invoice-panel">
           <div class="invoice-panel__title">PAYMENT INSTRUCTIONS</div>
@@ -1521,13 +1757,11 @@ function renderPreview() {
         <div class="invoice-panel">
           <div class="invoice-panel__title">TOTAL</div>
           <div class="invoice-summary__totals">
-            <div class="invoice-summary__line"><span>SUBTOTAL:</span><span>${fmtMoney(
-              subtotal
-            )}</span></div>
-            <div class="invoice-summary__line"><span>TAX (0%):</span><span>$0.00</span></div>
-            <div class="invoice-summary__total"><span>TOTAL (${currencyValue}):</span><span>${fmtMoney(
-    subtotal
-  )}</span></div>
+            ${Object.keys(typeGroups).length > 0 ? Object.entries(typeGroups).sort((a, b) => a[0].localeCompare(b[0])).map(([type, amount]) =>
+              `<div class="invoice-summary__line"><span>${type}:</span><span>${fmtMoney(amount)}</span></div>`
+            ).join('') : ''}
+            ${uncategorizedTotal > 0 && Object.keys(typeGroups).length > 0 ? `<div class="invoice-summary__line"><span>Other:</span><span>${fmtMoney(uncategorizedTotal)}</span></div>` : ''}
+            <div class="invoice-summary__total"><span>TOTAL (${currencyValue}):</span><span>${fmtMoney(subtotal)}</span></div>
           </div>
         </div>
       </div>
@@ -1787,10 +2021,12 @@ async function downloadPDF() {
   )
   const dueDate = fmtDatePDF(document.getElementById('dueDate').value)
   const currency = document.getElementById('currency').value
-  const paymentInstructions = document.getElementById(
-    'paymentInstructions'
-  ).value
+  const paymentInstructions = document.getElementById('paymentInstructions').value
+  const invoiceNotes = document.getElementById('invoiceNotes')?.value || ''
+  const invoiceTitle = document.getElementById('invoiceTitle')?.value || ''
+  const notesPosition = getNotesPosition()
   const items = getItems()
+  const hasTypes = hasAnyTypes(items)
 
   const size = document.getElementById('paperSize').value
   const orientation =
@@ -1899,32 +2135,44 @@ async function downloadPDF() {
     doc.text('INVOICE', pageW - margin, 18, { align: 'right' })
 
     doc.setFontSize(11)
-    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 25, { align: 'right' })
+    doc.text(invoiceNumber.toUpperCase(), pageW - margin, 24, { align: 'right' })
+
+    // Invoice title/dates if present (same font size as invoice number)
+    if (invoiceTitle) {
+      doc.setFont(fonts.body, 'normal')
+      doc.setFontSize(9)
+      doc.text(invoiceTitle, pageW - margin, 28, { align: 'right' })
+    }
 
     // Separator line at condensed position (30mm - same as page 2)
     if (showB) doc.line(margin, HEADER_END_Y, pageW - margin, HEADER_END_Y)
   }
 
   // Dynamic payment section height calculation
-  function calculatePaymentHeight(doc, paymentInstructions, splitW) {
+  function calculatePaymentHeight(doc, paymentInstructions, splitW, items) {
     // Base measurements
-    const headerHeight = 5      // Header positioning from top
-    const headerPadding = 6     // Space after header before content
-    const lineHeight = 4        // Height per line of text
-    const bottomPadding = 4     // Bottom margin within section
+    const headerHeight = 5
+    const headerPadding = 6
+    const lineHeight = 4
+    const bottomPadding = 4
 
     // Calculate payment instruction lines
     let paymentLines = 0
     paymentInstructions.split('\n').forEach(line => {
-      if (line.trim()) { // Only count non-empty lines
-        const wrapped = doc.splitTextToSize(line, splitW - 4.2) // Account for padding
+      if (line.trim()) {
+        const wrapped = doc.splitTextToSize(line, splitW - 4.2)
         paymentLines += wrapped.length
       }
     })
 
-    // Total section has 3 lines (subtotal, tax, total line)
-    const totalLines = 3
-    const totalExtraSpacing = 5 // Extra space before final total
+    // Calculate total section lines DYNAMICALLY based on type subtotals
+    const { typeGroups, uncategorizedTotal, hasTypes } = calculateSubtotalsByType(items)
+    const typeCount = hasTypes ? Object.keys(typeGroups).length : 0
+    const uncatLine = uncategorizedTotal > 0 && hasTypes ? 1 : 0
+    const totalLine = 1  // Always have TOTAL line
+    const totalExtraSpacing = 5
+
+    const totalLines = typeCount + uncatLine + totalLine
 
     // Calculate heights for both sections
     const paymentSectionHeight = headerHeight + headerPadding +
@@ -1932,21 +2180,33 @@ async function downloadPDF() {
     const totalSectionHeight = headerHeight + headerPadding +
       (totalLines * lineHeight) + totalExtraSpacing + bottomPadding
 
-    // Return the larger of the two sections, with minimum height
-    return Math.max(paymentSectionHeight, totalSectionHeight, 20) // Minimum 20mm
+    // Return the larger of the two sections, with increased minimum for dynamic content
+    return Math.max(paymentSectionHeight, totalSectionHeight, 25)
   }
 
-  // Calculate dynamic payment height
-  const paymentH = calculatePaymentHeight(doc, paymentInstructions, splitW)
+  // Calculate dynamic payment height (now with items parameter)
+  const paymentH = calculatePaymentHeight(doc, paymentInstructions, splitW, items)
 
   // OPTION A - FORWARD CALCULATION with perfect alignment
+  // Calculate notes height (dynamic, can be 0)
+  const notesH = calculateNotesHeight(doc, invoiceNotes, contentW)
+
   // All pages: Content starts at CONTENT_START_Y = 35mm (perfect alignment!)
   const yDataTop = CONTENT_START_Y  // FROM/BILL TO grid at 35mm on page 1
-  const yItemsTop = yDataTop + DATA_GRID_HEIGHT + SECTION_SPACER  // Line items after grid
+
+  // Line items start after grid + notes (if notes above)
+  const notesOffset = notesPosition === 'above' && notesH > 0 ? notesH + SECTION_SPACER : 0
+  const yItemsTop = yDataTop + DATA_GRID_HEIGHT + SECTION_SPACER + notesOffset
 
   // Calculate space available for line items on page 1
   const yPaymentTop = pageH - BOTTOM_MARGIN - paymentH
-  const availableSpaceForItemsPage1 = yPaymentTop - SECTION_SPACER - yItemsTop
+  let availableSpaceForItemsPage1 = yPaymentTop - SECTION_SPACER - yItemsTop
+
+  // If notes below, subtract notes space from available items space
+  if (notesPosition === 'below' && notesH > 0) {
+    availableSpaceForItemsPage1 -= (notesH + SECTION_SPACER)
+  }
+
   const maxRowsFitFirstPage = Math.max(
     0,
     Math.floor((availableSpaceForItemsPage1 - TABLE_HEADER_HEIGHT) / ROW_HEIGHT)
@@ -2143,15 +2403,76 @@ async function downloadPDF() {
     doc.text('TERMS: NET 30', x0, y0)
   }
 
-  // Multi-page line items rendering
-  const descW = contentW * 0.5,
-    qtyW = contentW * 0.15,
-    rateW = contentW * 0.15,
-    amtW = contentW * 0.2
-  const xDesc = margin,
-    xQty = margin + descW,
-    xRate = xQty + qtyW,
+  // NOTES SECTION - Render ABOVE items if position is 'above'
+  const yNotesTop = yDataTop + DATA_GRID_HEIGHT + SECTION_SPACER
+
+  if (notesPosition === 'above' && notesH > 0) {
+    // Render notes box
+    if (showF && boxAlpha > 0) {
+      doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
+      doc.setGState(new doc.GState({ opacity: boxAlpha }))
+      doc.rect(margin, yNotesTop, contentW, notesH, 'F')
+      doc.setGState(new doc.GState({ opacity: 1 }))
+    }
+    if (showB) {
+      doc.rect(margin, yNotesTop, contentW, notesH)
+    }
+
+    // Notes header
+    doc.setFont(fonts.hdr, 'bold')
+    doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
+    doc.setFontSize(7)
+    doc.text('NOTES', margin + 2.1, yNotesTop + 5)
+
+    // Notes content
+    doc.setFont(fonts.body, 'normal')
+    doc.setFontSize(8)
+    let ny = yNotesTop + 11
+    invoiceNotes.split('\n').forEach(line => {
+      if (line.trim()) {
+        const lines = doc.splitTextToSize(line, contentW - 4.2)
+        lines.forEach(L => {
+          if (ny < yNotesTop + notesH - 2) {
+            doc.text(L, margin + 2.1, ny)
+            ny += 4
+          }
+        })
+      }
+    })
+  }
+
+  // Multi-page line items rendering - conditional column widths
+  let typeW, descW, qtyW, rateW, amtW
+  let xType, xDesc, xQty, xRate, xAmt
+
+  if (hasTypes) {
+    // With TYPE column - MUST ADD TO 100% for proper right alignment
+    typeW = contentW * 0.13   // 13% - TYPE (was 12%)
+    descW = contentW * 0.42   // 42% - DESCRIPTION (was 38%, increased for readability)
+    qtyW = contentW * 0.10    // 10% - QTY/HRS (was 12%, narrower for numbers)
+    rateW = contentW * 0.15   // 15% - RATE (was 13%, money needs space)
+    amtW = contentW * 0.20    // 20% - AMOUNT (was 15%, emphasized)
+    // Total: 13 + 42 + 10 + 15 + 20 = 100% ✓
+
+    xType = margin
+    xDesc = xType + typeW
+    xQty = xDesc + descW
+    xRate = xQty + qtyW
     xAmt = xRate + rateW
+    // Right edge of table: xAmt + amtW = margin + contentW ✓
+  } else {
+    // Without TYPE column - adds to 100% ✓
+    descW = contentW * 0.5    // 50%
+    qtyW = contentW * 0.15    // 15%
+    rateW = contentW * 0.15   // 15%
+    amtW = contentW * 0.2     // 20%
+    // Total: 100% ✓
+
+    xDesc = margin
+    xQty = xDesc + descW
+    xRate = xQty + qtyW
+    xAmt = xRate + rateW
+  }
 
   // Function to render line items table header
   function renderTableHeader(yTop) {
@@ -2173,26 +2494,26 @@ async function downloadPDF() {
       doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
 
       let currentY = yTop + 4
-      doc.text('DESCRIPTION', xDesc + 2, currentY)  // Left-aligned
+      if (hasTypes) doc.text('TYPE', xType + typeW/2, currentY, { align: 'center' })  // CENTER
+      doc.text('DESCRIPTION', xDesc + 2, currentY)  // LEFT
       doc.text('QTY', xQty + qtyW/2, currentY, { align: 'center' })  // CENTER
       doc.text('RATE', xRate + rateW - 2, currentY, { align: 'right' })  // RIGHT
       doc.text('AMOUNT', xAmt + amtW - 2, currentY, { align: 'right' })  // RIGHT
 
       currentY += 3
+      if (hasTypes) doc.text('----', xType + typeW/2, currentY, { align: 'center' })  // CENTER separator
       doc.text('-----------', xDesc + 2, currentY)
-      doc.text('---', xQty + qtyW/2, currentY, { align: 'center' })  // CENTER separator
-      doc.text('----', xRate + rateW - 2, currentY, { align: 'right' })  // RIGHT separator
-      doc.text('------', xAmt + amtW - 2, currentY, { align: 'right' })  // RIGHT separator
+      doc.text('---', xQty + qtyW/2, currentY, { align: 'center' })
+      doc.text('----', xRate + rateW - 2, currentY, { align: 'right' })
+      doc.text('------', xAmt + amtW - 2, currentY, { align: 'right' })
     } else {
-      doc.setFontSize(8) // CSS: font-size: 8px for table headers
-      const hY = yTop + 5 // Better vertical alignment to match CSS
-      doc.text('DESCRIPTION', xDesc + 1.3, hY) // Left-aligned with padding
-      doc.text('QTY/HRS', xQty + qtyW/2, hY, { align: 'center' }) // CENTER in column
-      doc.text('RATE', xRate + rateW - 1.3, hY, { align: 'right' }) // RIGHT align
-      doc.text('AMOUNT', xAmt + amtW - 1.3, hY, { align: 'right' }) // RIGHT align
-
-      // No dividers for table headers - cleaner look matching CSS
-      // Table headers are functional, not content separators
+      doc.setFontSize(8)
+      const hY = yTop + 5
+      if (hasTypes) doc.text('TYPE', xType + typeW/2, hY, { align: 'center' })  // CENTER TYPE header
+      doc.text('DESCRIPTION', xDesc + 1.3, hY)  // LEFT
+      doc.text('QTY/HRS', xQty + qtyW/2, hY, { align: 'center' })  // CENTER
+      doc.text('RATE', xRate + rateW - 1.3, hY, { align: 'right' })  // RIGHT
+      doc.text('AMOUNT', xAmt + amtW - 1.3, hY, { align: 'right' })  // RIGHT
     }
 
     if (showB) {
@@ -2207,6 +2528,7 @@ async function downloadPDF() {
 
     if (showB) {
       doc.rect(margin, yTop, contentW, tableH)
+      if (hasTypes) doc.line(xDesc, yTop, xDesc, yTop + tableH)  // TYPE column border
       doc.line(xQty, yTop, xQty, yTop + tableH)
       doc.line(xRate, yTop, xRate, yTop + tableH)
       doc.line(xAmt, yTop, xAmt, yTop + tableH)
@@ -2236,13 +2558,19 @@ async function downloadPDF() {
       const amt = '$' + amtVal.toFixed(2)
       pageSubtotal += amtVal
 
-      const dLine = doc.splitTextToSize(it.description, descW - 2.6)[0] || '' // Account for 5px padding on both sides
-      doc.text(dLine, xDesc + 1.3, y + 6) // 5px padding from left edge
-      doc.text(String(it.qty || ''), xQty + qtyW/2, y + 6, { align: 'center' }) // Center in padded column
-      doc.text(rate, xRate + rateW - 1.3, y + 6, { align: 'right' }) // Right align with 5px padding
+      // Render TYPE column if types exist (centered)
+      if (hasTypes) {
+        const typeLine = doc.splitTextToSize(it.type || '', typeW - 2.6)[0] || ''
+        doc.text(typeLine, xType + typeW/2, y + 6, { align: 'center' })  // CENTER TYPE data
+      }
 
-      doc.setFont(fonts.body, 'bold') // Bold amounts using Helvetica
-      doc.text(amt, xAmt + amtW - 1.3, y + 6, { align: 'right' }) // Right align with 5px padding
+      const dLine = doc.splitTextToSize(it.description, descW - 2.6)[0] || ''
+      doc.text(dLine, xDesc + 1.3, y + 6)  // LEFT DESCRIPTION
+      doc.text(String(it.qty || ''), xQty + qtyW/2, y + 6, { align: 'center' })  // CENTER QTY
+      doc.text(rate, xRate + rateW - 1.3, y + 6, { align: 'right' })  // RIGHT RATE (money)
+
+      doc.setFont(fonts.body, 'bold')
+      doc.text(amt, xAmt + amtW - 1.3, y + 6, { align: 'right' })  // RIGHT AMOUNT (money)
       doc.setFont(fonts.body, 'normal')
 
       y += rowH
@@ -2258,6 +2586,44 @@ async function downloadPDF() {
   const firstPageResult = renderLineItems(items, yItemsTop, rowsFirstPage)
   let totalSubtotal = firstPageResult.pageSubtotal
   let itemIndex = firstPageResult.renderedItems
+
+  // NOTES SECTION - Render BELOW items if position is 'below' (page 1 only)
+  if (notesPosition === 'below' && notesH > 0) {
+    const yNotesBelowItems = yPaymentTop - SECTION_SPACER - notesH
+
+    // Render notes box
+    if (showF && boxAlpha > 0) {
+      doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
+      doc.setGState(new doc.GState({ opacity: boxAlpha }))
+      doc.rect(margin, yNotesBelowItems, contentW, notesH, 'F')
+      doc.setGState(new doc.GState({ opacity: 1 }))
+    }
+    if (showB) {
+      doc.rect(margin, yNotesBelowItems, contentW, notesH)
+    }
+
+    // Notes header
+    doc.setFont(fonts.hdr, 'bold')
+    doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
+    doc.setFontSize(7)
+    doc.text('NOTES', margin + 2.1, yNotesBelowItems + 5)
+
+    // Notes content
+    doc.setFont(fonts.body, 'normal')
+    doc.setFontSize(8)
+    let ny = yNotesBelowItems + 11
+    invoiceNotes.split('\n').forEach(line => {
+      if (line.trim()) {
+        const lines = doc.splitTextToSize(line, contentW - 4.2)
+        lines.forEach(L => {
+          if (ny < yNotesBelowItems + notesH - 2) {
+            doc.text(L, margin + 2.1, ny)
+            ny += 4
+          }
+        })
+      }
+    })
+  }
 
   // Render continuation pages if needed
   while (itemIndex < items.length) {
@@ -2342,21 +2708,40 @@ async function downloadPDF() {
 
   // No dividing line under TOTAL header - clean design
 
-  doc.setFont(fonts.body, 'normal') // Use Helvetica font system
+  doc.setFont(fonts.body, 'normal')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
-  doc.setFontSize(8) // Helvetica font size for totals content
-  const rightX = margin + contentW - 2.1 // Right edge with 8px padding
-  let ty = yPayTop + 13 // Tighter spacing for better proportions
-  doc.text('SUBTOTAL:', xSplit + 2.1, ty) // 8px padding from left edge
-  doc.text('$' + totalSubtotal.toFixed(2), rightX, ty, { align: 'right' })
-  ty += 4 // Increased line spacing
-  doc.text('TAX (0%):', xSplit + 2.1, ty)
-  doc.text('$0.00', rightX, ty, { align: 'right' })
-  ty += 4
-  // No border line above total - clean design like reference
-  ty += 5 // Increased spacing before total
-  doc.setFont(fonts.body, 'bold') // Bold for total using Helvetica
-  doc.setFontSize(10) // Slightly larger font for total
+  doc.setFontSize(8)
+  const rightX = margin + contentW - 2.1
+  let ty = yPayTop + 13
+
+  // Show type subtotals ONLY if types exist
+  const { typeGroups, uncategorizedTotal, hasTypes: hasTypesForTotals } = calculateSubtotalsByType(items)
+
+  if (hasTypesForTotals && Object.keys(typeGroups).length > 0) {
+    // Type subtotals (sorted alphabetically)
+    Object.entries(typeGroups).sort((a, b) => a[0].localeCompare(b[0])).forEach(([type, amount]) => {
+      doc.text(`${type}:`, xSplit + 2.1, ty)
+      doc.text('$' + amount.toFixed(2), rightX, ty, { align: 'right' })
+      ty += 4
+    })
+
+    // Uncategorized items (if any)
+    if (uncategorizedTotal > 0) {
+      doc.text('Other:', xSplit + 2.1, ty)
+      doc.text('$' + uncategorizedTotal.toFixed(2), rightX, ty, { align: 'right' })
+      ty += 4
+    }
+
+    ty += 2  // Small spacer before total
+  }
+
+  // TAX LINE REMOVED - no longer used
+
+  ty += 5  // Spacing before total
+
+  // Final total
+  doc.setFont(fonts.body, 'bold')
+  doc.setFontSize(10)
   doc.text('TOTAL (' + currency + '): ', xSplit + 2.1, ty)
   doc.text('$' + totalSubtotal.toFixed(2), rightX, ty, { align: 'right' })
 

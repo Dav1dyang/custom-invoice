@@ -191,6 +191,10 @@
                 </div>
               </div>
               <div class="row2">
+                <div class="label">TITLE/DATES:</div>
+                <input id="invoiceTitle" type="text" placeholder="e.g., October Services, Q4 2025" />
+              </div>
+              <div class="row2">
                 <div class="label">DATE ISSUED:</div>
                 <input id="invoiceDate" type="date" value="" />
               </div>
@@ -216,6 +220,27 @@
               <div class="row2">
                 <div class="label">INSTRUCTIONS:</div>
                 <textarea id="paymentInstructions"></textarea>
+              </div>
+            </div>
+
+            <div class="section card">
+              <h3>Notes</h3>
+              <div class="row2">
+                <div class="label">POSITION:</div>
+                <div class="notes-position-controls">
+                  <label class="notes-position-option">
+                    <input type="radio" name="notesPosition" value="above" checked />
+                    <span>Above Items</span>
+                  </label>
+                  <label class="notes-position-option">
+                    <input type="radio" name="notesPosition" value="below" />
+                    <span>Below Items</span>
+                  </label>
+                </div>
+              </div>
+              <div class="row2">
+                <div class="label">NOTES:</div>
+                <textarea id="invoiceNotes" placeholder="Additional notes or special instructions..." rows="3"></textarea>
               </div>
             </div>
 
@@ -378,23 +403,37 @@
 
               <table id="itemsTable">
                 <colgroup>
-                  <col style="width: 40%" />
-                  <col style="width: 15%" />
-                  <col style="width: 15%" />
-                  <col style="width: 20%" />
-                  <col style="width: 10%" />
+                  <col style="width: 3%" />   <!-- DRAG HANDLE -->
+                  <col style="width: 12%" />  <!-- TYPE -->
+                  <col style="width: 34%" />  <!-- DESCRIPTION -->
+                  <col style="width: 10%" />  <!-- QTY/HRS -->
+                  <col style="width: 15%" />  <!-- RATE -->
+                  <col style="width: 21%" />  <!-- AMOUNT -->
+                  <col style="width: 5%" />   <!-- ACTION -->
                 </colgroup>
                 <thead>
                   <tr>
+                    <th></th>  <!-- Drag handle -->
+                    <th>TYPE</th>
                     <th>DESCRIPTION</th>
                     <th>QTY/HRS</th>
                     <th>RATE</th>
                     <th>AMOUNT</th>
-                    <th>ACTION</th>
+                    <th></th>  <!-- Action -->
                   </tr>
                 </thead>
                 <tbody id="itemsBody"></tbody>
               </table>
+
+              <!-- Type suggestions datalist -->
+              <datalist id="typeOptions">
+                <option value="Labor">
+                <option value="Materials">
+                <option value="Equipment">
+                <option value="Consulting">
+                <option value="Design">
+                <option value="Development">
+              </datalist>
 
               <!-- Items Footer: Add Button + Checkbox -->
               <div class="items-footer">

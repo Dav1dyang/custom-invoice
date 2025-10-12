@@ -1007,6 +1007,36 @@ textarea {
   text-align: center;
 }
 
+/* Notes position radio buttons */
+.notes-position-controls {
+  display: flex;
+  gap: 16px;
+}
+
+.notes-position-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-label);  /* 10px */
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.notes-position-option:hover {
+  opacity: 0.8;
+}
+
+.notes-position-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
 .items {
   padding: 16px;  /* Standardized */
   margin-bottom: 20px;
@@ -1075,29 +1105,127 @@ table#itemsTable {
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  text-align: left;
+  max-width: 0;
+  overflow: hidden;
+}
+
+/* Header alignment - match PDF exactly (with drag handle column) */
+#itemsTable thead th:nth-child(1) {
+  text-align: center;  /* DRAG HANDLE - empty */
+}
+
+#itemsTable thead th:nth-child(2) {
+  text-align: center;  /* TYPE - centered */
+}
+
+#itemsTable thead th:nth-child(3) {
+  text-align: left;  /* DESCRIPTION - left */
+}
+
+#itemsTable thead th:nth-child(4) {
+  text-align: center;  /* QTY/HRS - centered */
+}
+
+#itemsTable thead th:nth-child(5) {
+  text-align: right;  /* RATE - right */
+}
+
+#itemsTable thead th:nth-child(6) {
+  text-align: right;  /* AMOUNT - right */
+}
+
+#itemsTable thead th:nth-child(7) {
+  text-align: center;  /* ACTION - empty */
 }
 
 #itemsTable tbody td {
   border: 0.5px solid var(--grid);
   padding: 0;
+  max-width: 0;  /* Force column width constraints */
+  overflow: hidden;  /* Clip any overflow content */
 }
 
 #itemsTable tbody td input {
   border: none;
   width: 100%;
-  padding: 6px;
+  max-width: 100%;  /* Prevent overflow */
+  padding: 6px 4px;  /* Tighter horizontal padding */
   font-size: 11px;
   background: transparent;
   color: inherit;
+  box-sizing: border-box;  /* Include padding in width */
+  overflow: hidden;
+  text-overflow: ellipsis;  /* Show ... for long text */
+  margin: 0;
+}
+
+.type-cell {
+  padding: 0;
+  max-width: 12%;
+  overflow: hidden;
+}
+
+.item-type {
+  width: 100%;
+  max-width: 100%;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  box-sizing: border-box;
+  text-overflow: ellipsis;
+}
+
+.item-type:focus {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+  z-index: 10;
+}
+
+/* Specific input styling for each column */
+.item-desc {
+  width: 100%;
+  max-width: 100%;
+  padding: 6px;
+  box-sizing: border-box;
+  text-overflow: ellipsis;
+}
+
+.item-qty {
+  width: 100%;
+  max-width: 100%;
+  padding: 6px 4px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.item-rate {
+  width: 100%;
+  max-width: 100%;
+  padding: 6px 4px;
+  box-sizing: border-box;
+  text-align: right;
+}
+
+.item-amt {
+  width: 100%;
+  max-width: 100%;
+  padding: 6px 4px;
+  box-sizing: border-box;
+  text-align: right;
+  font-weight: 600;
+  cursor: default;
 }
 
 .center input {
   text-align: center;
+  box-sizing: border-box;
 }
 
 .right input {
   text-align: right;
+  box-sizing: border-box;
 }
 
 .rm {
@@ -1120,6 +1248,52 @@ table#itemsTable {
 
 .rm:hover {
   background: #dc2626;
+}
+
+/* === DRAG AND DROP REORDERING === */
+
+/* Drag handle column - clear visual indicator */
+.drag-handle {
+  padding: 0;
+  text-align: center;
+  cursor: grab;
+  background: var(--panel-bg);
+  user-select: none;
+  vertical-align: middle;
+  transition: background 0.2s;
+  border-right: 1px solid var(--grid);
+}
+
+.drag-handle:hover {
+  background: var(--border);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-icon {
+  font-size: 14px;
+  color: var(--ui-fg);
+  opacity: 0.4;
+  display: inline-block;
+  line-height: 44px;  /* Match row height */
+  font-weight: 700;
+  transition: opacity 0.2s;
+}
+
+.drag-handle:hover .drag-icon {
+  opacity: 0.8;
+}
+
+/* Visual feedback when dragging */
+#itemsTable tbody tr.dragging {
+  opacity: 0.4;
+}
+
+/* Drop target highlight */
+#itemsTable tbody tr.drag-over {
+  border-top: 3px solid var(--accent);
 }
 
 button {
@@ -1246,11 +1420,19 @@ button {
 .invoice-head__number {
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--preview-accent, inherit); /* Same accent color as title */
+  color: var(--preview-accent, inherit);
+}
+
+.invoice-head__subtitle {
+  font-size: 9px;
+  font-weight: 400;
+  opacity: 0.8;
+  margin-top: 4px;
+  color: var(--preview-accent, inherit);
 }
 
 .invoice-head__meta > div {
-  color: var(--preview-accent, inherit); /* All header meta elements use accent color */
+  color: var(--preview-accent, inherit);
 }
 
 .invoice-meta {
@@ -1312,6 +1494,21 @@ button {
   white-space: pre-line;
 }
 
+.invoice-notes-section {
+  margin-bottom: 16px;
+}
+
+.invoice-notes-section .invoice-panel {
+  border: 1px solid var(--preview-border, var(--border));
+  padding: 12px;
+  background: var(--accent-light, transparent);
+}
+
+.invoice-notes-section .invoice-panel__pre {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
 .invoice-table {
   width: 100%;
   border-collapse: collapse;
@@ -1321,42 +1518,75 @@ button {
   table-layout: fixed;
 }
 
-.invoice-table col:nth-child(1) {
-  width: 50%;
-}
-
-.invoice-table col:nth-child(2),
-.invoice-table col:nth-child(3) {
-  width: 15%;
-}
-
-.invoice-table col:nth-child(4) {
-  width: 20%;
-}
-
 .invoice-table th,
 .invoice-table td {
   border: 0.5px solid var(--preview-border, var(--grid));
-  padding: 5px;
+  padding: 5px 8px;
 }
 
-.invoice-table th:first-child,
-.invoice-table td:first-child {
+/* === COLUMN WIDTHS - Without TYPE column === */
+.invoice-table:not(.has-types) col:nth-child(1) { width: 50%; }  /* DESCRIPTION */
+.invoice-table:not(.has-types) col:nth-child(2) { width: 15%; }  /* QTY/HRS */
+.invoice-table:not(.has-types) col:nth-child(3) { width: 15%; }  /* RATE */
+.invoice-table:not(.has-types) col:nth-child(4) { width: 20%; }  /* AMOUNT */
+
+/* === COLUMN WIDTHS - With TYPE column === */
+.invoice-table.has-types col:nth-child(1) { width: 13%; }  /* TYPE */
+.invoice-table.has-types col:nth-child(2) { width: 42%; }  /* DESCRIPTION */
+.invoice-table.has-types col:nth-child(3) { width: 10%; }  /* QTY/HRS */
+.invoice-table.has-types col:nth-child(4) { width: 15%; }  /* RATE */
+.invoice-table.has-types col:nth-child(5) { width: 20%; }  /* AMOUNT */
+
+/* === COLUMN ALIGNMENT - Match PDF exactly === */
+
+/* TYPE column (first when has-types) - CENTER */
+.invoice-table.has-types th:nth-child(1),
+.invoice-table.has-types td:nth-child(1) {
+  text-align: center;
+  padding: 5px 4px;
+}
+
+/* DESCRIPTION column - LEFT */
+.invoice-table.has-types th:nth-child(2),
+.invoice-table.has-types td:nth-child(2),
+.invoice-table:not(.has-types) th:nth-child(1),
+.invoice-table:not(.has-types) td:nth-child(1) {
   text-align: left;
+  padding: 5px 8px;
+}
+
+/* QTY/HRS column - CENTER */
+.invoice-table.has-types th:nth-child(3),
+.invoice-table.has-types td:nth-child(3),
+.invoice-table:not(.has-types) th:nth-child(2),
+.invoice-table:not(.has-types) td:nth-child(2) {
+  text-align: center;
+  padding: 5px 6px;
+}
+
+/* RATE column - RIGHT (money) */
+.invoice-table.has-types th:nth-child(4),
+.invoice-table.has-types td:nth-child(4),
+.invoice-table:not(.has-types) th:nth-child(3),
+.invoice-table:not(.has-types) td:nth-child(3) {
+  text-align: right;
+  padding: 5px 8px;
+}
+
+/* AMOUNT column - RIGHT (money) + Emphasized */
+.invoice-table.has-types th:nth-child(5),
+.invoice-table.has-types td:nth-child(5),
+.invoice-table:not(.has-types) th:nth-child(4),
+.invoice-table:not(.has-types) td:nth-child(4) {
+  text-align: right;
+  padding: 5px 8px;
+  font-weight: 600;
 }
 
 .invoice-table th {
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: var(--box-header-color, #111111); /* Table headers use black like other box headers */
-}
-
-.invoice-cell--center {
-  text-align: center;
-}
-
-.invoice-cell--right {
-  text-align: right;
+  color: var(--box-header-color, #111111);
 }
 
 .invoice-cell--em {

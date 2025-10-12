@@ -96,13 +96,135 @@ Invoice numbers use a split field format: **IN-{ABBREVIATION}-{SEQUENCE}**
 - Fields are concatenated with "IN-" prefix in `renderPreview()` and `downloadPDF()`
 - Template system handles both new format and legacy single-field format for backwards compatibility
 
+### Auto-Abbreviation Generation (script.js:7-21)
+
+**Smart abbreviation from company name:**
+- `generateAbbreviation(name)` creates abbreviation from "BILL TO" company name
+- Removes common words (the, a, an, and, of, for, to, in, on, at, foundation)
+- Takes first letter of each significant word
+- Maximum 6 characters
+- Auto-fills on company name blur event (only if abbreviation field is empty)
+
+**Examples:**
+- "Can Art Change The World? Foundation" → "CACTW"
+- "Tech Client Inc." → "TCI"
+- "Sample Client" → "SC"
+
+## Invoice Title/Date Range Field
+
+**Purpose**: Add descriptive title or date range to invoice for reference
+
+**Field** (index.html:193-196):
+- Located in Invoice Details section, right after invoice number
+- Text input: "TITLE/DATES"
+- Placeholder: "e.g., October Services, Q4 2025"
+
+**Display:**
+- Appears in preview under invoice number (smaller font, 9px, opacity 0.8)
+- Appears in PDF under invoice number (9pt font)
+- Only shows if filled (conditional rendering)
+- Saves with template
+
+## Notes Section with Position Control
+
+**Purpose**: Add additional notes or special instructions to invoice
+
+**Field** (index.html:226-245):
+- Located after Payment Instructions, before PDF Settings
+- Position radio buttons: "Above Items" (default) or "Below Items"
+- Textarea input with 3 rows
+- Placeholder: "Additional notes or special instructions..."
+
+**Position Options:**
+- **Above Items**: Notes appear between FROM/BILL TO grid and line items
+- **Below Items**: Notes appear between line items and payment/totals section
+
+**Display:**
+- Preview: Notes position changes based on selected radio button
+- PDF: Notes render in selected position (page 1 only, not repeated on page 2+)
+- Only shows if filled (conditional rendering)
+- Saves position preference with template
+- Dynamic height calculation in PDF based on content
+- Multi-line support with proper wrapping
+
+**PDF Layout Impact:**
+- Above: Takes space after grid, reduces items on page 1
+- Below: Takes space before payment, reduces items on page 1
+- Long notes: Significantly fewer items on page 1 (~5-7 vs ~8-10)
+- Pagination automatically adjusts for either position
+
+## Type/Category Column (Conditional Display)
+
+**Purpose**: Categorize line items by type (Labor, Materials, Equipment, etc.)
+
+**Field** (index.html:402, script.js:75):
+- First column in line items table
+- Text input with datalist suggestions
+- Suggestions: Labor, Materials, Equipment, Consulting, Design, Development
+- Optional - can be left blank
+
+**Conditional Display Logic:**
+- `hasAnyTypes(items)` checks if any line item has a type filled
+- **If any type exists**: TYPE column shows in preview and PDF
+- **If no types**: TYPE column hidden, description column wider
+
+**Column Widths** (must total 100% for proper alignment):
+- **With TYPE**: TYPE 13%, DESC 42%, QTY 10%, RATE 15%, AMT 20% (Total: 100%)
+- **Without TYPE**: DESC 50%, QTY 15%, RATE 15%, AMT 20% (Total: 100%)
+
+**Column Alignment** (professional invoice standards):
+- **TYPE**: Center-aligned (categorical data, balanced in narrow column)
+- **DESCRIPTION**: Left-aligned (text content, natural reading flow)
+- **QTY/HRS**: Center-aligned (numeric but not money, balanced appearance)
+- **RATE**: Right-aligned (money/currency, financial standard for decimal alignment)
+- **AMOUNT**: Right-aligned + Bold (money/currency, emphasized totals)
+
+**Implementation:**
+- PDF: Alignment set with jsPDF `{ align: 'center' }` or `{ align: 'right' }` (script.js:2380-2442)
+- Preview: CSS nth-child selectors for conditional alignment (styles.css:1390-1434)
+- Both preview and PDF use identical alignment for consistency
+
+**Behavior:**
+- Saves with line items in templates
+- Restores when loading templates
+- Type field optional - works with or without categorization
+- Type dropdown constrained to column width (no overlap)
+
+## Type Subtotals Feature
+
+**Purpose**: Show subtotals grouped by type before final total
+
+**Logic** (script.js:1471-1492):
+- `calculateSubtotalsByType(items)` groups items by type
+- Returns: `typeGroups` (object), `uncategorizedTotal`, `hasTypes` (boolean)
+
+**Display:**
+- **Only shows if any items have types filled**
+- Subtotals sorted alphabetically by type name
+- Uncategorized items shown as "Other:" (if mixed typed/untyped items)
+- No subtotals if no types exist (just shows TOTAL)
+
+**Example output:**
+```
+Labor: $650.00
+Materials: $350.00
+Other: $100.00
+TOTAL (USD): $1100.00
+```
+
+**PDF Layout Impact:**
+- Payment section height dynamically adjusts based on number of type subtotals
+- More types = taller payment section = slightly fewer items on page 1
+- Fully flexible and adaptive
+
 ## Template System
 
 Templates store:
 - Sender/recipient information
-- Invoice details (including `companyAbbrev` and `invoiceSequence`) and payment instructions
+- Invoice details (including `companyAbbrev`, `invoiceSequence`, `invoiceTitle`) and payment instructions
+- Notes (`invoiceNotes`)
 - PDF settings (paper size, orientation, style mode, accent color)
-- **Optional line items** (controlled by checkbox)
+- **Optional line items with types** (controlled by checkbox)
 - Checkbox preference (`saveLineItems` boolean)
 - Logo data as base64 dataURL
 
@@ -256,6 +378,37 @@ Backwards compatibility: `loadTemplateData()` converts old `invoiceNumber` forma
 
 **Removed Elements:**
 - "REV: A" removed from all PDFs and preview (meaningless revision marker)
+- "TAX (0%): $0.00" removed from all PDFs and preview (unused, all amounts are final)
+
+## Flexible PDF Layout System
+
+**Dynamic Sections** (all adapt based on content):
+
+1. **Notes Section** (script.js:1495-1512, 2277-2313):
+   - `calculateNotesHeight()` computes height based on content
+   - 0 height if no notes (no section rendered)
+   - Up to ~30mm for long notes
+   - Automatically wraps text and calculates lines
+
+2. **Payment/Totals Section** (script.js:2028-2061):
+   - `calculatePaymentHeight()` dynamically sizes based on:
+     - Payment instruction length
+     - Number of type subtotals (0 to many)
+   - Minimum 25mm, grows as needed
+   - Returns larger of payment or totals section height
+
+3. **Pagination** (script.js:2066-2093):
+   - Calculates available space accounting for all dynamic sections
+   - Page 1: Grid + Notes + Line Items + Payment
+   - Page 2+: Line Items + Payment (no grid/notes)
+   - Automatically adjusts items per page
+
+**Robustness:**
+- No notes + no types: Maximum items on page 1 (~10-12)
+- Long notes: Fewer items on page 1 (~5-7), overflow to page 2
+- Many type subtotals: Larger payment section, auto-adjusts
+- All combinations work without layout breaking
+- Maintains consistent margins and spacing
 
 ## Mobile Responsiveness (styles.css:1443-1533)
 
