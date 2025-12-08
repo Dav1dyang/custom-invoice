@@ -1,110 +1,72 @@
 # Invoice Tool
 
-A professional invoice generator that creates clean, datasheet-style PDF invoices with dynamic color systems and technical drawing aesthetics.
+A professional invoice generator with authentication, Google Calendar integration, and AI-powered line item parsing.
 
 ## Features
 
-### 🎨 **Dual Style System**
-- **Clean Outline Mode**: Technical drawing style with no fills, pure outlines only
-- **Filled Background Mode**: Vibrant datasheet style with bright fills and color hierarchy
+- **Secure Authentication**: Magic link email or Google OAuth login via Supabase
+- **Template Management**: Save, star, and organize invoice templates with database persistence
+- **PDF Generation**: Professional invoices with multiple styles (Outline, Filled, ASCII)
+- **Google Calendar Integration**: Import events from your calendar
+- **AI-Powered Parsing**: Claude AI analyzes calendar events to generate intelligent line items
+- **Responsive Design**: Works on desktop and mobile
 
-### 🌈 **Smart Color System**
-- **Dynamic contrast calculation** - Text automatically adapts to background luminance
-- **6 curated color presets**: Technical Black, Blueprint Blue, Neon Green, Hi-Fi Orange, Tech Purple, Alert Red
-- **Intelligent text hierarchy**: Contrasting colors outside boxes, black text inside boxes for readability
+## Tech Stack
 
-### 👥 **Client Template Management**
-- Save and load client information templates
-- Store contact details, payment instructions, and company info
-- Local storage persistence across sessions
-
-### 📊 **CSV/Spreadsheet Import**
-- Import line items from CSV files or Google Sheets
-- Copy/paste support for direct spreadsheet data
-- Auto-detection of delimiters (comma, tab, semicolon)
-- Flexible formats: 2-column (description, amount) or 3-column (description, qty, rate)
-
-### 📄 **Professional PDF Output**
-- Embeddable custom fonts (Rubik Mono One headers, DM Mono Light body)
-- Logo upload with automatic aspect ratio preservation
-- Letter/A4 paper sizes with portrait/landscape orientation
-- High-quality technical typography
-
-### 📱 **Responsive Design**
-- Mobile-friendly interface
-- Touch-optimized controls
-- Adaptive layouts for all screen sizes
+- **Frontend**: Vue 3 + Vite + Pinia
+- **Backend**: Vercel Serverless Functions
+- **Database**: Supabase (PostgreSQL with Row Level Security)
+- **Authentication**: Supabase Auth
+- **PDF**: jsPDF
+- **AI**: Anthropic Claude API
 
 ## Quick Start
 
-1. **Open** `index.html` in your browser
-2. **Select style mode**: Choose between Clean Outline or Filled Background
-3. **Pick accent color**: Use presets or custom color picker
-4. **Fill in details**: Add sender/recipient information and invoice parameters
-5. **Add line items**: Manual entry or CSV import
-6. **Generate**: Preview and download your professional PDF
+```bash
+# Install dependencies
+npm install
 
-## File Structure
+# Copy environment variables
+cp .env.example .env.local
+# Edit .env.local with your credentials
 
-```
-├── index.html          # Main application interface
-├── styles.css          # Complete styling system
-├── script.js           # Core functionality and PDF generation
-└── README.md          # This file
+# Run development server
+npm run dev
 ```
 
-## Color System Logic
+## Deployment
 
-### Outline Mode (Technical Drawing)
-- White background, no fills
-- Accent-colored borders and headers
-- Black text throughout
-- Clean, minimal aesthetic
+See [SETUP.md](./SETUP.md) for detailed deployment instructions.
 
-### Filled Mode (Datasheet)
-- **Background**: User-selected accent color
-- **Text outside boxes**: Automatically calculated contrasting shade
-  - Dark backgrounds → Light text in same color family
-  - Light backgrounds → Dark text in same color family
-- **Text inside boxes**: Always black for maximum readability
-- **Box fills**: Bright version (60% lightness) for info panels
-- **Table fills**: Subtle version (85% lightness) for line items
+## Environment Variables
 
-## CSV Import Format
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `VITE_SUPABASE_URL` | Supabase project URL | Yes |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key | Yes |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-only) | Yes |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | Yes |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | Yes |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Claude | Yes |
 
-Supports multiple formats:
-```csv
-Description, Quantity, Rate
-Web Development, 40, 75.00
-Consulting, 5, 150.00
+## Project Structure
+
 ```
-
-Or simplified:
-```csv
-Description, Amount
-Project Setup, 500.00
-Monthly Maintenance, 200.00
+├── src/
+│   ├── components/      # Vue components
+│   ├── composables/     # Vue composables (usePdf, etc.)
+│   ├── stores/          # Pinia stores
+│   ├── views/           # Page views
+│   ├── router/          # Vue Router config
+│   └── utils/           # Utilities (Supabase client)
+├── api/                 # Vercel serverless functions
+│   ├── auth/            # OAuth callback
+│   ├── calendar/        # Google Calendar API
+│   └── ai/              # Claude AI parsing
+├── supabase/            # Database schema
+└── public/              # Static assets
 ```
-
-## Browser Compatibility
-
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Mobile browsers supported
-
-## Technical Details
-
-- **Pure JavaScript** - No framework dependencies
-- **jsPDF** - Professional PDF generation
-- **Local Storage** - Client template persistence
-- **Responsive CSS Grid** - Modern layout system
-- **Web Fonts** - IBM Plex Mono UI typography
 
 ## License
 
-Open source - feel free to modify and use for your invoicing needs.
-
----
-
-**Perfect for freelancers, agencies, and businesses who want professional, technical-style invoices with modern design and smart automation.**
+MIT
