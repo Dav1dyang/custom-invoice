@@ -2151,11 +2151,50 @@ async function downloadPDF() {
   const CONTENT_START_Y = 35          // Content starts here (all pages - ALIGNED!)
                                       // - Page 1: FROM/BILL TO grid at y=35mm
                                       // - Page 2+: Line items table at y=35mm (same position!)
-  const DATA_GRID_HEIGHT = 35         // Height of FROM/BILL TO/SPECS grid
+  const colW = contentW / 4           // Column width for 4-column grid (moved early for measurement)
   const SECTION_SPACER = 8            // Gap between sections
   const BOTTOM_MARGIN = 15            // Bottom page margin
   const ROW_HEIGHT = 10               // Line item row height
   const TABLE_HEADER_HEIGHT = 8       // Line items table header height
+
+  // Dynamic grid height based on actual content
+  function calculateGridHeight(doc, colTextWidth) {
+    const headerH = 11  // header text (5mm) + divider + gap to content
+    const lineH = 4     // line spacing
+    const padBottom = 2  // bottom padding
+
+    // Set font for measurement (8pt, matching rendering)
+    doc.setFontSize(8)
+
+    // Measure FROM column (bold for name, normal for rest)
+    doc.setFont(fonts.body, 'bold')
+    let fromLines = doc.splitTextToSize(fromName, colTextWidth).length
+    doc.setFont(fonts.body, 'normal')
+    if (fromWebsite) fromLines += doc.splitTextToSize(fromWebsite, colTextWidth).length
+    if (fromPhone) fromLines += doc.splitTextToSize('TEL: ' + fromPhone, colTextWidth).length
+    fromLines += doc.splitTextToSize(fromAddress, colTextWidth).length
+
+    // Measure BILL TO column (bold for company, normal for rest)
+    doc.setFont(fonts.body, 'bold')
+    let toLines = doc.splitTextToSize(toCompany, colTextWidth).length
+    doc.setFont(fonts.body, 'normal')
+    toLines += doc.splitTextToSize('ATTN: ' + toNames, colTextWidth).length
+    toLines += doc.splitTextToSize(toAddress, colTextWidth).length
+
+    // Measure RECIPIENT CONTACT column
+    let contactLines = 0
+    toContact.split('\n').slice(0, 4).forEach(line => {
+      contactLines += doc.splitTextToSize(line, colTextWidth).length
+    })
+
+    // SPECIFICATIONS is always 4 lines (ISSUED, DUE, CURRENCY, TERMS)
+    const specLines = 4
+
+    const maxLines = Math.max(fromLines, toLines, contactLines, specLines)
+    return Math.max(headerH + (maxLines * lineH) + padBottom, 25)  // 25mm minimum
+  }
+
+  const DATA_GRID_HEIGHT = calculateGridHeight(doc, colW - 4.2)
 
   // Legacy compatibility aliases
   const bottomMargin = BOTTOM_MARGIN
@@ -2288,7 +2327,6 @@ async function downloadPDF() {
   const rowsFirstPage = Math.min(items.length, maxRowsFitFirstPage)
 
   // Spec grid with optional fill/borders
-  const colW = contentW / 4
   if (showF && boxAlpha > 0) {
     doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
     doc.setGState(new doc.GState({ opacity: boxAlpha }))
@@ -2332,16 +2370,24 @@ async function downloadPDF() {
   // CSS padding alignment (8px ≈ 2.1mm) with breathing room
   let x0 = margin + 2.1,
     y0 = yDataTop + 11
+  const colTextW = colW - 4.2
   doc.setFont(fonts.body, 'bold')
-  doc.text(fromName, x0, y0)
+  doc.splitTextToSize(fromName, colTextW).forEach(line => {
+    if (y0 < yDataTop + dataGridH - 2) { doc.text(line, x0, y0); y0 += 4 }
+  })
   doc.setFont(fonts.body, 'normal')
-  y0 += 4
-  doc.text(fromWebsite, x0, y0)
-  y0 += 4
-  doc.text('TEL: ' + fromPhone, x0, y0)
-  y0 += 4
-  const fromAddressLines = doc.splitTextToSize(fromAddress, colW - 4.2)
-  fromAddressLines.forEach((line, index) => {
+  if (fromWebsite) {
+    doc.splitTextToSize(fromWebsite, colTextW).forEach(line => {
+      if (y0 < yDataTop + dataGridH - 2) { doc.text(line, x0, y0); y0 += 4 }
+    })
+  }
+  if (fromPhone) {
+    doc.splitTextToSize('TEL: ' + fromPhone, colTextW).forEach(line => {
+      if (y0 < yDataTop + dataGridH - 2) { doc.text(line, x0, y0); y0 += 4 }
+    })
+  }
+  const fromAddressLines = doc.splitTextToSize(fromAddress, colTextW)
+  fromAddressLines.forEach(line => {
     if (y0 < yDataTop + dataGridH - 2) {
       doc.text(line, x0, y0)
       y0 += 4
@@ -2352,13 +2398,15 @@ async function downloadPDF() {
   x0 = margin + colW + 2.1
   y0 = yDataTop + 11
   doc.setFont(fonts.body, 'bold')
-  doc.text(toCompany, x0, y0)
+  doc.splitTextToSize(toCompany, colTextW).forEach(line => {
+    if (y0 < yDataTop + dataGridH - 2) { doc.text(line, x0, y0); y0 += 4 }
+  })
   doc.setFont(fonts.body, 'normal')
-  y0 += 4
-  doc.text('ATTN: ' + toNames, x0, y0)
-  y0 += 4
-  const toAddressLines = doc.splitTextToSize(toAddress, colW - 4.2)
-  toAddressLines.forEach((line, index) => {
+  doc.splitTextToSize('ATTN: ' + toNames, colTextW).forEach(line => {
+    if (y0 < yDataTop + dataGridH - 2) { doc.text(line, x0, y0); y0 += 4 }
+  })
+  const toAddressLines = doc.splitTextToSize(toAddress, colTextW)
+  toAddressLines.forEach(line => {
     if (y0 < yDataTop + dataGridH - 2) {
       doc.text(line, x0, y0)
       y0 += 4
@@ -2412,6 +2460,11 @@ async function downloadPDF() {
     doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
     doc.setFontSize(7)
     doc.text('NOTES', margin + 2.1, yNotesTop + 5)
+
+    // Divider line under NOTES header (match grid panel headers)
+    if (showB) {
+      doc.line(margin + 2.1, yNotesTop + 7, margin + contentW - 2.1, yNotesTop + 7)
+    }
 
     // Notes content
     doc.setFont(fonts.body, 'normal')
@@ -2576,6 +2629,11 @@ async function downloadPDF() {
     doc.setFontSize(7)
     doc.text('NOTES', margin + 2.1, yNotesBelowItems + 5)
 
+    // Divider line under NOTES header (match grid panel headers)
+    if (showB) {
+      doc.line(margin + 2.1, yNotesBelowItems + 7, margin + contentW - 2.1, yNotesBelowItems + 7)
+    }
+
     // Notes content
     doc.setFont(fonts.body, 'normal')
     doc.setFontSize(8)
@@ -2651,7 +2709,10 @@ async function downloadPDF() {
   doc.setFontSize(7)
   doc.text('PAYMENT INSTRUCTIONS', margin + 2.1, yPayTop + 5)
 
-  // No dividing line under PAYMENT INSTRUCTIONS - clean design
+  // Divider line under PAYMENT INSTRUCTIONS header (match grid panel headers)
+  if (showB) {
+    doc.line(margin + 2.1, yPayTop + 7, margin + splitW - 2.1, yPayTop + 7)
+  }
 
   doc.setFont(fonts.body, 'normal')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
@@ -2674,7 +2735,10 @@ async function downloadPDF() {
   doc.setFontSize(7)
   doc.text('TOTAL', xSplit + 2.1, yPayTop + 5)
 
-  // No dividing line under TOTAL header - clean design
+  // Divider line under TOTAL header (match grid panel headers)
+  if (showB) {
+    doc.line(xSplit + 2.1, yPayTop + 7, margin + contentW - 2.1, yPayTop + 7)
+  }
 
   doc.setFont(fonts.body, 'normal')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
