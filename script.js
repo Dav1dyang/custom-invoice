@@ -370,24 +370,6 @@ function getComputedColors() {
       textOnTable: '#111111',
       textOnAccent: getReadableTextColor(accent)
     }
-  } else if (mode === 'ascii') {
-    // ASCII art style - retro terminal look
-    return {
-      paper: '#000000', // Black background like terminal
-      ink: accent, // Accent color for borders and ASCII art
-      text: accent, // Accent color for all text
-      accent: accent, // Accent color for highlights
-      fill: '#000000', // Black fills to maintain terminal look
-      tableFill: '#000000', // Black table fills
-      showBorders: true,
-      showFill: false, // No fills, just borders and text
-      textOnPaper: accent, // Accent color text on black background
-      textOnFill: accent, // Accent color text
-      textOnTable: accent, // Accent color text in tables
-      textOnAccent: '#000000', // Black text on accent areas
-      boxHeaders: accent, // Accent color for headers
-      isAscii: true // Flag to enable ASCII art rendering
-    }
   } else {
     // Filled background style - vibrant datasheet with bright fills
     const brightFillColor = createBrightFillColor(accent)
@@ -428,10 +410,6 @@ function updatePreviewColors() {
     root.style.setProperty('--accent-light', '#ffffff') // Pure white for outline
     root.style.setProperty('--table-light', '#ffffff') // Pure white for table
     root.style.setProperty('--lighter-text', '#111111') // Black text for outline
-  } else if (styleMode.value === 'ascii') {
-    root.style.setProperty('--accent-light', '#000000') // Black for ASCII art
-    root.style.setProperty('--table-light', '#000000') // Black for table
-    root.style.setProperty('--lighter-text', colors.text) // Accent color text for ASCII
   } else {
     root.style.setProperty('--accent-light', colors.fill) // Bright fill for datasheet
     root.style.setProperty('--table-light', colors.tableFill) // Lighter fill for table
@@ -489,99 +467,6 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 // Initialize with neon preset
 setAccentPreset('neon')
 updatePreviewColors()
-
-/* ------------------------- ASCII ART UTILITIES ----------------------- */
-// ASCII art utility functions for retro terminal style
-function createAsciiHeader(text, width = 50) {
-  const padding = Math.max(0, Math.floor((width - text.length - 4) / 2))
-  const paddingStr = '='.repeat(padding)
-  const totalWidth = paddingStr.length * 2 + text.length + 4
-  const adjustedPadding = '='.repeat(Math.max(0, width - text.length - 4))
-
-  return [
-    '=' + '='.repeat(width - 2) + '=',
-    '=' + ' '.repeat(width - 2) + '=',
-    `=  ${text.toUpperCase()}${' '.repeat(Math.max(0, width - text.length - 4))}  =`,
-    '=' + ' '.repeat(width - 2) + '=',
-    '=' + '='.repeat(width - 2) + '='
-  ]
-}
-
-function createAsciiBox(title, content, width = 40) {
-  const lines = [
-    '+' + '-'.repeat(width - 2) + '+',
-    `| ${title.toUpperCase()}${' '.repeat(Math.max(0, width - title.length - 4))} |`
-  ]
-
-  if (Array.isArray(content)) {
-    content.forEach(line => {
-      const trimmedLine = line.substring(0, width - 4)
-      lines.push(`| ${trimmedLine}${' '.repeat(Math.max(0, width - trimmedLine.length - 4))} |`)
-    })
-  } else {
-    const contentLines = content.split('\n')
-    contentLines.forEach(line => {
-      const trimmedLine = line.substring(0, width - 4)
-      lines.push(`| ${trimmedLine}${' '.repeat(Math.max(0, width - trimmedLine.length - 4))} |`)
-    })
-  }
-
-  lines.push('+' + '-'.repeat(width - 2) + '+')
-  return lines
-}
-
-function createAsciiTable(headers, rows, columnWidths) {
-  const lines = []
-  const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0) + columnWidths.length + 1
-
-  // Top border
-  lines.push('+' + columnWidths.map(w => '-'.repeat(w)).join('+') + '+')
-
-  // Headers
-  let headerLine = '|'
-  headers.forEach((header, i) => {
-    const paddedHeader = header.substring(0, columnWidths[i])
-    headerLine += paddedHeader + ' '.repeat(Math.max(0, columnWidths[i] - paddedHeader.length)) + '|'
-  })
-  lines.push(headerLine)
-
-  // Header separator
-  lines.push('+' + columnWidths.map(w => '-'.repeat(w)).join('+') + '+')
-
-  // Data rows
-  rows.forEach(row => {
-    let rowLine = '|'
-    row.forEach((cell, i) => {
-      const cellStr = String(cell || '').substring(0, columnWidths[i])
-      const isNumber = !isNaN(cell) && cell !== ''
-      if (isNumber) {
-        // Right align numbers
-        rowLine += ' '.repeat(Math.max(0, columnWidths[i] - cellStr.length)) + cellStr + '|'
-      } else {
-        // Left align text
-        rowLine += cellStr + ' '.repeat(Math.max(0, columnWidths[i] - cellStr.length)) + '|'
-      }
-    })
-    lines.push(rowLine)
-  })
-
-  // Bottom border
-  lines.push('+' + columnWidths.map(w => '-'.repeat(w)).join('+') + '+')
-
-  return lines
-}
-
-function createAsciiBanner(text) {
-  // Simple ASCII art banner for the main title
-  const banner = [
-    '####  #   # #   #  ###  ####  ###  #####',
-    '#     ##  # #   # #   #  #   #   # #    ',
-    '####  # # #  # #  #   #  #   #   # #### ',
-    '#     #  ##  # #  #   #  #   #   # #    ',
-    '####  #   #   #    ###  ####  ###  #####'
-  ]
-  return banner
-}
 
 /* ------------------------- TEMPLATE SYSTEM ----------------------- */
 // Global template state
@@ -1580,6 +1465,257 @@ function importFromPaste() {
   }
 }
 
+/* ----------------------- GOOGLE CALENDAR ------------------------- */
+let gcalAccessToken = null
+let gcalEvents = []
+
+function saveGcalClientId() {
+  const clientId = document.getElementById('gcalClientId').value.trim()
+  if (!clientId) {
+    alert('Please enter a Client ID')
+    return
+  }
+  localStorage.setItem('gcal_client_id', clientId)
+  alert('Client ID saved!')
+}
+
+function connectGoogleCalendar() {
+  const clientId = document.getElementById('gcalClientId').value.trim() ||
+    localStorage.getItem('gcal_client_id')
+
+  if (!clientId) {
+    alert('Please enter and save a Google Cloud Client ID first')
+    return
+  }
+
+  if (typeof google === 'undefined' || !google.accounts) {
+    alert('Google Identity Services not loaded. Check your internet connection and reload.')
+    return
+  }
+
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/calendar.readonly',
+    callback: async (tokenResponse) => {
+      if (tokenResponse.error) {
+        alert('Authorization failed: ' + tokenResponse.error)
+        return
+      }
+      gcalAccessToken = tokenResponse.access_token
+      document.getElementById('gcalConnectBtn').textContent = 'Connected'
+      document.getElementById('gcalPanel').style.display = 'block'
+      document.getElementById('gcalOptionsGroup').style.display = ''
+      document.getElementById('gcalFetchRow').style.display = ''
+      await loadCalendarList()
+    },
+  })
+
+  tokenClient.requestAccessToken()
+}
+
+async function loadCalendarList() {
+  if (!gcalAccessToken) return
+
+  try {
+    const res = await fetch(
+      'https://www.googleapis.com/calendar/v3/users/me/calendarList',
+      { headers: { Authorization: `Bearer ${gcalAccessToken}` } }
+    )
+
+    if (res.status === 401) {
+      gcalAccessToken = null
+      document.getElementById('gcalConnectBtn').textContent = 'Connect Google Calendar'
+      document.getElementById('gcalPanel').style.display = 'none'
+      document.getElementById('gcalOptionsGroup').style.display = 'none'
+      document.getElementById('gcalFetchRow').style.display = 'none'
+      alert('Session expired. Please reconnect.')
+      return
+    }
+
+    const data = await res.json()
+    const select = document.getElementById('gcalCalendarSelect')
+    select.innerHTML = ''
+    ;(data.items || []).forEach((cal) => {
+      const opt = document.createElement('option')
+      opt.value = cal.id
+      opt.textContent = cal.summary
+      if (cal.primary) opt.selected = true
+      select.appendChild(opt)
+    })
+  } catch (e) {
+    alert('Failed to load calendars: ' + e.message)
+  }
+}
+
+async function fetchGcalEvents() {
+  if (!gcalAccessToken) {
+    alert('Please connect Google Calendar first')
+    return
+  }
+
+  const calendarId = document.getElementById('gcalCalendarSelect').value
+  const dateFrom = document.getElementById('gcalDateFrom').value
+  const dateTo = document.getElementById('gcalDateTo').value
+  const filter = document.getElementById('gcalFilter').value.trim().toLowerCase()
+  const groupByTitle = document.getElementById('gcalGroupByTitle').checked
+
+  if (!calendarId || !dateFrom || !dateTo) {
+    alert('Please select a calendar and date range')
+    return
+  }
+
+  const timeMin = new Date(dateFrom).toISOString()
+  const timeMax = new Date(dateTo + 'T23:59:59').toISOString()
+
+  try {
+    const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`)
+    url.searchParams.set('timeMin', timeMin)
+    url.searchParams.set('timeMax', timeMax)
+    url.searchParams.set('singleEvents', 'true')
+    url.searchParams.set('orderBy', 'startTime')
+    url.searchParams.set('maxResults', '250')
+
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${gcalAccessToken}` },
+    })
+
+    if (res.status === 401) {
+      gcalAccessToken = null
+      document.getElementById('gcalConnectBtn').textContent = 'Connect Google Calendar'
+      document.getElementById('gcalPanel').style.display = 'none'
+      document.getElementById('gcalOptionsGroup').style.display = 'none'
+      document.getElementById('gcalFetchRow').style.display = 'none'
+      alert('Session expired. Please reconnect.')
+      return
+    }
+
+    const data = await res.json()
+    let events = (data.items || [])
+      .filter((e) => e.status !== 'cancelled')
+      .filter((e) => e.start?.dateTime && e.end?.dateTime)  // Skip all-day events
+      .map((e) => {
+        const start = new Date(e.start.dateTime)
+        const end = new Date(e.end.dateTime)
+        const hours = (end - start) / 3600000
+        return {
+          title: e.summary || '(No title)',
+          date: start.toLocaleDateString(),
+          hours: Math.round(hours * 100) / 100,
+          selected: true,
+        }
+      })
+
+    // Apply text filter
+    if (filter) {
+      events = events.filter((e) =>
+        e.title.toLowerCase().includes(filter)
+      )
+    }
+
+    // Group by title if requested
+    if (groupByTitle && events.length > 0) {
+      const grouped = {}
+      events.forEach((e) => {
+        if (!grouped[e.title]) {
+          grouped[e.title] = { ...e, hours: 0 }
+        }
+        grouped[e.title].hours += e.hours
+      })
+      events = Object.values(grouped).map((e) => ({
+        ...e,
+        hours: Math.round(e.hours * 100) / 100,
+        date: '(grouped)',
+      }))
+    }
+
+    gcalEvents = events
+    renderGcalEvents()
+  } catch (e) {
+    alert('Failed to fetch events: ' + e.message)
+  }
+}
+
+function renderGcalEvents() {
+  const container = document.getElementById('gcalEventsContainer')
+  const list = document.getElementById('gcalEventsList')
+  list.innerHTML = ''
+
+  if (gcalEvents.length === 0) {
+    list.innerHTML = '<div style="padding:12px;opacity:0.6">No events found</div>'
+    container.style.display = 'block'
+    return
+  }
+
+  gcalEvents.forEach((event, index) => {
+    const item = document.createElement('div')
+    item.className = 'gcal-event-item'
+    item.onclick = (e) => {
+      if (e.target.tagName !== 'INPUT') toggleGcalEvent(index)
+    }
+    item.innerHTML = `
+      <input type="checkbox" ${event.selected ? 'checked' : ''} onchange="toggleGcalEvent(${index})" />
+      <span class="gcal-event-title">${event.title}</span>
+      <span class="gcal-event-date">${event.date}</span>
+      <span class="gcal-event-duration">${event.hours}h</span>
+    `
+    list.appendChild(item)
+  })
+
+  container.style.display = 'block'
+}
+
+function toggleGcalEvent(index) {
+  gcalEvents[index].selected = !gcalEvents[index].selected
+  renderGcalEvents()
+}
+
+function gcalSelectAll() {
+  gcalEvents.forEach((e) => (e.selected = true))
+  renderGcalEvents()
+}
+
+function gcalDeselectAll() {
+  gcalEvents.forEach((e) => (e.selected = false))
+  renderGcalEvents()
+}
+
+function importGcalEvents() {
+  const rate = parseFloat(document.getElementById('gcalRate').value) || 0
+  const selected = gcalEvents.filter((e) => e.selected)
+
+  if (selected.length === 0) {
+    alert('No events selected')
+    return
+  }
+
+  selected.forEach((e) => {
+    addItem(e.title, String(e.hours), String(rate), '')
+  })
+
+  alert(`Imported ${selected.length} event(s) as line items!`)
+}
+
+// Initialize Google Calendar on load
+;(function initGcal() {
+  const savedClientId = localStorage.getItem('gcal_client_id')
+  const clientIdInput = document.getElementById('gcalClientId')
+  if (savedClientId && clientIdInput) {
+    clientIdInput.value = savedClientId
+  }
+
+  // Set default date range to current month
+  const now = new Date()
+  const fromDate = document.getElementById('gcalDateFrom')
+  const toDate = document.getElementById('gcalDateTo')
+  if (fromDate && toDate) {
+    const yyyy = now.getFullYear()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    fromDate.value = `${yyyy}-${mm}-01`
+    const lastDay = new Date(yyyy, now.getMonth() + 1, 0).getDate()
+    toDate.value = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`
+  }
+})()
+
 /* ---------------------------- PREVIEW ---------------------------- */
 // Calculate subtotals grouped by type
 function calculateSubtotalsByType(items) {
@@ -1805,26 +1941,22 @@ async function fetchFirst(urls, timeoutMs = 8000) {
 
 const FONT_TARGETS = {
   hdr: {
-    name: 'Helvetica-Bold',
-    vfs: 'Helvetica-Bold.ttf',
+    name: 'IBMPlexMono-Bold',
+    vfs: 'IBMPlexMono-Bold.ttf',
     input: 'fontHdr',
     status: 'fontHdrStatus',
-    localPath: './fonts/Helvetica/Helvetica-Bold.ttf',
-    urls: [
-      // Helvetica is a system font, no web URLs needed
-      // These would be custom uploads only
-    ],
+    localPath: './fonts/IBM_Plex_Mono/IBMPlexMono-Bold.ttf',
+    style: 'bold',
+    urls: [],
   },
   body: {
-    name: 'Helvetica',
-    vfs: 'Helvetica.ttf',
+    name: 'IBMPlexMono-Regular',
+    vfs: 'IBMPlexMono-Regular.ttf',
     input: 'fontBody',
     status: 'fontBodyStatus',
-    localPath: './fonts/Helvetica/Helvetica.ttf',
-    urls: [
-      // Helvetica is a system font, no web URLs needed
-      // These would be custom uploads only
-    ],
+    localPath: './fonts/IBM_Plex_Mono/IBMPlexMono-Regular.ttf',
+    style: 'normal',
+    urls: [],
   },
 }
 
@@ -1856,95 +1988,32 @@ Object.keys(FONT_TARGETS).forEach((k) => {
 async function ensureFonts() {
   if (fontsReady) return await fontsReady
 
-  if (!window.jspdf || !window.jspdf.jsPDF) {
-    throw new Error('jsPDF library not loaded')
-  }
-
-  const { jsPDF } = window.jspdf
-
-  // Simple, safe font loading function that avoids VFS errors
-  async function tryAddCustomFont(name, vfsName, b64) {
-    try {
-      if (!jsPDF.API || typeof jsPDF.API.addFileToVFS !== 'function') {
-        return false // VFS not available
-      }
-      jsPDF.API.addFileToVFS(vfsName, b64)
-      jsPDF.API.addFont(name, name, 'normal') // Fixed parameter order
-      return true
-    } catch (e) {
-      console.warn(`Failed to add custom font ${name} via VFS:`, e)
-      return false
-    }
-  }
-
-  // Use Helvetica system font
-  function setupSystemFonts() {
-    try {
-      console.log('Setting up Helvetica fonts for PDF generation')
-      return {
-        hdr: 'helvetica', // Helvetica for headers
-        body: 'helvetica', // Helvetica for body
-        ok: true,
-        method: 'system-helvetica'
-      }
-    } catch (e) {
-      console.warn('Failed to setup system fonts:', e)
-      return null
-    }
-  }
-
   fontsReady = (async () => {
-    let hdrFontName = 'helvetica'
-    let bodyFontName = 'helvetica' // Use helvetica as default
-    let fontMethod = 'system'
-
-    try {
-      // Step 1: Try user-uploaded fonts via VFS (if available)
-      if (window.__pdfFonts?.hdr) {
-        console.log('Attempting to load user-uploaded header font via VFS')
-        if (await tryAddCustomFont(FONT_TARGETS.hdr.name, FONT_TARGETS.hdr.vfs, window.__pdfFonts.hdr)) {
-          hdrFontName = FONT_TARGETS.hdr.name
-          setStatus('hdr', 'ok', 'Custom Font (VFS)')
-          fontMethod = 'custom-vfs'
-        }
+    // Step 1: Check user-uploaded fonts
+    for (const k of ['body', 'hdr']) {
+      if (window.__pdfFonts[k]) {
+        setStatus(k, 'ok', 'Custom Font')
+        continue
       }
 
-      if (window.__pdfFonts?.body) {
-        console.log('Attempting to load user-uploaded body font via VFS')
-        if (await tryAddCustomFont(FONT_TARGETS.body.name, FONT_TARGETS.body.vfs, window.__pdfFonts.body)) {
-          bodyFontName = FONT_TARGETS.body.name
-          setStatus('body', 'ok', 'Custom Font (VFS)')
-          fontMethod = 'custom-vfs'
-        }
+      // Step 2: Try auto-loading IBM Plex Mono from local files
+      try {
+        const ab = await fetchFirst([FONT_TARGETS[k].localPath])
+        window.__pdfFonts[k] = toB64(ab)
+        setStatus(k, 'ok', 'IBM Plex Mono')
+      } catch (e) {
+        console.warn(`Auto-load ${FONT_TARGETS[k].name} failed, will use Helvetica fallback`)
+        setStatus(k, 'warn', 'Helvetica (fallback)')
       }
+    }
 
-      // Step 2: If no custom fonts loaded, use Helvetica system font
-      if (fontMethod === 'system') {
-        console.log('VFS approach failed or unavailable, using Helvetica system font')
-        const systemFonts = setupSystemFonts()
-        if (systemFonts) {
-          hdrFontName = systemFonts.hdr
-          bodyFontName = systemFonts.body
-          fontMethod = systemFonts.method
-          setStatus('hdr', 'ok', 'System Font (Helvetica)')
-          setStatus('body', 'ok', 'System Font (Helvetica)')
-        } else {
-          setStatus('hdr', 'ok', 'Fallback Font (Helvetica)')
-          setStatus('body', 'ok', 'Fallback Font (Helvetica)')
-        }
-      }
-
-      return {
-        hdr: hdrFontName,
-        body: bodyFontName,
-        ok: true,
-        method: fontMethod
-      }
-    } catch (e) {
-      console.warn('Font initialization failed, using Helvetica fallback:', e)
-      setStatus('hdr', 'ok', 'Fallback Font (Helvetica)')
-      setStatus('body', 'ok', 'Fallback Font (Helvetica)')
-      return { hdr: 'helvetica', body: 'helvetica', ok: true, method: 'system' }
+    // Determine font names — if IBM Plex Mono loaded, use it; else Helvetica
+    const ibmLoaded = !!(window.__pdfFonts.body && window.__pdfFonts.hdr)
+    return {
+      hdr: ibmLoaded ? 'IBMPlexMono' : 'helvetica',
+      body: ibmLoaded ? 'IBMPlexMono' : 'helvetica',
+      ok: true,
+      method: ibmLoaded ? 'ibm-plex-mono' : 'system'
     }
   })()
   return fontsReady
@@ -2049,6 +2118,17 @@ async function downloadPDF() {
   const boxAlpha = showF ? 1.0 : 0 // Use full opacity for distinct boxes
 
   const doc = new jsPDF({ orientation, unit: 'mm', format: size })
+
+  // Register IBM Plex Mono on the doc instance (if loaded)
+  if (window.__pdfFonts.body) {
+    doc.addFileToVFS('IBMPlexMono-Regular.ttf', window.__pdfFonts.body)
+    doc.addFont('IBMPlexMono-Regular.ttf', 'IBMPlexMono', 'normal')
+  }
+  if (window.__pdfFonts.hdr) {
+    doc.addFileToVFS('IBMPlexMono-Bold.ttf', window.__pdfFonts.hdr)
+    doc.addFont('IBMPlexMono-Bold.ttf', 'IBMPlexMono', 'bold')
+  }
+
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
 
@@ -2088,30 +2168,7 @@ async function downloadPDF() {
   doc.setFont(fonts.hdr, 'bold')
   doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
 
-  if (colors.isAscii) {
-    // ASCII Art INVOICE header
-    doc.setFontSize(6)
-    const asciiBanner = [
-      '####  #   # #   #  ###  ####  ###  #####',
-      '#     ##  # #   # #   #  #   #   # #    ',
-      '####  # # #  # #  #   #  #   #   # #### ',
-      '#     #  ##  # #  #   #  #   #   # #    ',
-      '####  #   #   #    ###  ####  ###  #####'
-    ]
-
-    asciiBanner.forEach((line, i) => {
-      doc.text(line, pageW - margin - 120, 10 + (i * 3), { align: 'left' })
-    })
-
-    // Invoice details in ASCII style
-    doc.setFontSize(8)
-    doc.text(`>>> INVOICE NO: ${invoiceNumber.toUpperCase()} <<<`, pageW - margin, 25, { align: 'right' })
-
-    // ASCII line divider
-    const asciiLine = '=' + '='.repeat(Math.floor((pageW - 2 * margin) / 2)) + '='
-    doc.setFontSize(6)
-    doc.text(asciiLine, margin, HEADER_END_Y)
-  } else {
+  {
     // CONDENSED HEADER with visual distinction on page 1
     // Logo - compact size
     if (logoDataUrl) {
@@ -2247,161 +2304,93 @@ async function downloadPDF() {
   }
 
   // Grid headers (ALL CAPS) - use black for headers inside boxes
-  doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
-  doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use box text color (black)
+  doc.setFont(fonts.hdr, 'bold')
+  doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
 
-  if (colors.isAscii) {
-    // Pure ASCII text layout - no boxes, just structured text
-    doc.setFontSize(7)
-    doc.setFont(fonts.body, 'normal') // Use Helvetica font system
+  // Grid headers with CSS padding (8px ≈ 2.1mm)
+  doc.setFontSize(7)
+  doc.text('FROM', margin + 2.1, yDataTop + 5)
+  doc.text('BILL TO', margin + colW + 2.1, yDataTop + 5)
+  doc.text('RECIPIENT CONTACT', margin + 2 * colW + 2.1, yDataTop + 5)
+  doc.text('SPECIFICATIONS', margin + 3 * colW + 2.1, yDataTop + 5)
 
-    let currentY = yDataTop + 4
+  // Divider lines under grid panel headers (match preview border-bottom)
+  if (showB) {
+    const headerLineY = yDataTop + 7
+    for (let i = 0; i < 4; i++) {
+      const colStart = margin + i * colW + 2.1
+      const colEnd = margin + (i + 1) * colW - 2.1
+      doc.line(colStart, headerLineY, colEnd, headerLineY)
+    }
+  }
 
-    // ASCII headers with text beneath - structured like a table
-    doc.setTextColor(accRGB.r, accRGB.g, accRGB.b) // Headers in accent color
-    doc.text('FROM:', margin, currentY)
-    doc.text('BILL TO:', margin + colW, currentY)
-    doc.text('CONTACT:', margin + 2 * colW, currentY)
-    doc.text('SPECS:', margin + 3 * colW, currentY)
+  // Grid body
+  doc.setFont(fonts.body, 'normal')
+  doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
+  doc.setFontSize(8)
 
-    // Separator line using ASCII characters
-    currentY += 3
-    doc.text('----', margin, currentY)
-    doc.text('--------', margin + colW, currentY)
-    doc.text('-------', margin + 2 * colW, currentY)
-    doc.text('-----', margin + 3 * colW, currentY)
+  // CSS padding alignment (8px ≈ 2.1mm) with breathing room
+  let x0 = margin + 2.1,
+    y0 = yDataTop + 11
+  doc.setFont(fonts.body, 'bold')
+  doc.text(fromName, x0, y0)
+  doc.setFont(fonts.body, 'normal')
+  y0 += 4
+  doc.text(fromWebsite, x0, y0)
+  y0 += 4
+  doc.text('TEL: ' + fromPhone, x0, y0)
+  y0 += 4
+  const fromAddressLines = doc.splitTextToSize(fromAddress, colW - 4.2)
+  fromAddressLines.forEach((line, index) => {
+    if (y0 < yDataTop + dataGridH - 2) {
+      doc.text(line, x0, y0)
+      y0 += 4
+    }
+  })
 
-    // Content in normal color
-    doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
-    currentY += 3
+  // recipient
+  x0 = margin + colW + 2.1
+  y0 = yDataTop + 11
+  doc.setFont(fonts.body, 'bold')
+  doc.text(toCompany, x0, y0)
+  doc.setFont(fonts.body, 'normal')
+  y0 += 4
+  doc.text('ATTN: ' + toNames, x0, y0)
+  y0 += 4
+  const toAddressLines = doc.splitTextToSize(toAddress, colW - 4.2)
+  toAddressLines.forEach((line, index) => {
+    if (y0 < yDataTop + dataGridH - 2) {
+      doc.text(line, x0, y0)
+      y0 += 4
+    }
+  })
 
-    // FROM column
-    let yFrom = currentY
-    doc.text(fromName, margin, yFrom)
-    yFrom += 3
-    doc.text(fromWebsite, margin, yFrom)
-    yFrom += 3
-    doc.text(`TEL: ${fromPhone}`, margin, yFrom)
-    yFrom += 3
-    const fromAddressLines = doc.splitTextToSize(fromAddress, colW - 4)
-    fromAddressLines.forEach(line => {
-      doc.text(line, margin, yFrom)
-      yFrom += 3
-    })
-
-    // BILL TO column
-    let yBillTo = currentY
-    doc.text(toCompany, margin + colW, yBillTo)
-    yBillTo += 3
-    doc.text(`ATTN: ${toNames}`, margin + colW, yBillTo)
-    yBillTo += 3
-    const toAddressLines = doc.splitTextToSize(toAddress, colW - 4)
-    toAddressLines.forEach(line => {
-      doc.text(line, margin + colW, yBillTo)
-      yBillTo += 3
-    })
-
-    // CONTACT column
-    let yContact = currentY
-    const contactLines = toContact.split('\n').slice(0, 4)
-    contactLines.forEach(line => {
-      const contactLinesSplit = doc.splitTextToSize(line, colW - 4)
-      contactLinesSplit.forEach(splitLine => {
-        doc.text(splitLine, margin + 2 * colW, yContact)
-        yContact += 3
+  // contact
+  x0 = margin + 2 * colW + 2.1
+  y0 = yDataTop + 11
+  toContact
+    .split('\n')
+    .slice(0, 4)
+    .forEach((line) => {
+      const wrappedLines = doc.splitTextToSize(line, colW - 4.2)
+      wrappedLines.forEach((wrappedLine) => {
+        if (y0 < yDataTop + dataGridH - 2) {
+          doc.text(wrappedLine, x0, y0)
+          y0 += 4
+        }
       })
     })
 
-    // SPECS column
-    let ySpecs = currentY
-    doc.text(`ISSUED: ${invoiceDate}`, margin + 3 * colW, ySpecs)
-    ySpecs += 3
-    doc.text(`DUE: ${dueDate}`, margin + 3 * colW, ySpecs)
-    ySpecs += 3
-    doc.text(`CURR: ${currency}`, margin + 3 * colW, ySpecs)
-    ySpecs += 3
-    doc.text('TERMS: NET 30', margin + 3 * colW, ySpecs)
-  } else {
-    // Regular grid headers with CSS padding (8px ≈ 2.1mm)
-    doc.setFontSize(7) // CSS: font-size: 7px for panel titles
-    doc.text('FROM', margin + 2.1, yDataTop + 5) // 8px padding from left edge, increased top padding
-    doc.text('BILL TO', margin + colW + 2.1, yDataTop + 5)
-    doc.text('RECIPIENT CONTACT', margin + 2 * colW + 2.1, yDataTop + 5)
-    doc.text('SPECIFICATIONS', margin + 3 * colW + 2.1, yDataTop + 5)
-
-    // No dividing lines under headers - clean design like reference PDF
-    // Typography differentiation only (bold caps headers)
-  }
-
-  // Grid body for non-ASCII only
-  if (!colors.isAscii) {
-    doc.setFont(fonts.body, 'normal') // Use Helvetica font system
-    doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
-    doc.setFontSize(8) // Helvetica font size
-
-    // CSS padding alignment (8px ≈ 2.1mm) with breathing room
-    let x0 = margin + 2.1, // 8px padding from left edge to match headers
-      y0 = yDataTop + 11 // Adjusted for increased header top padding
-    doc.setFont(fonts.body, 'bold') // Bold for company names using Helvetica
-    doc.text(fromName, x0, y0)
-    doc.setFont(fonts.body, 'normal')
-    y0 += 4 // Increased line spacing
-    doc.text(fromWebsite, x0, y0)
-    y0 += 4
-    doc.text('TEL: ' + fromPhone, x0, y0)
-    y0 += 4
-    const fromAddressLines = doc.splitTextToSize(fromAddress, colW - 4.2) // Account for 8px padding on both sides
-    fromAddressLines.forEach((line, index) => {
-      if (y0 < yDataTop + dataGridH - 2) { // Check bounds
-        doc.text(line, x0, y0)
-        y0 += 4
-      }
-    })
-
-    // recipient - CSS padding alignment (8px ≈ 2.1mm)
-    x0 = margin + colW + 2.1 // 8px padding from left edge
-    y0 = yDataTop + 11 // Adjusted for increased header top padding
-    doc.setFont(fonts.body, 'bold') // Bold for company names using Helvetica
-    doc.text(toCompany, x0, y0)
-    doc.setFont(fonts.body, 'normal')
-    y0 += 4  // Increased spacing
-    doc.text('ATTN: ' + toNames, x0, y0)
-    y0 += 4
-    const toAddressLines = doc.splitTextToSize(toAddress, colW - 4.2) // Account for 8px padding on both sides
-    toAddressLines.forEach((line, index) => {
-      if (y0 < yDataTop + dataGridH - 2) { // Check bounds
-        doc.text(line, x0, y0)
-        y0 += 4
-      }
-    })
-
-    // contact - CSS padding alignment (8px ≈ 2.1mm)
-    x0 = margin + 2 * colW + 2.1 // 8px padding from left edge
-    y0 = yDataTop + 11 // Adjusted for increased header top padding
-    toContact
-      .split('\n')
-      .slice(0, 4) // Limit lines to prevent overflow
-      .forEach((line) => {
-        const wrappedLines = doc.splitTextToSize(line, colW - 4.2) // Account for 8px padding on both sides
-        wrappedLines.forEach((wrappedLine) => {
-          if (y0 < yDataTop + dataGridH - 2) {
-            doc.text(wrappedLine, x0, y0)
-            y0 += 4
-          }
-        })
-      })
-
-    // specs - CSS padding alignment (8px ≈ 2.1mm)
-    x0 = margin + 3 * colW + 2.1 // 8px padding from left edge
-    y0 = yDataTop + 11 // Adjusted for increased header top padding
-    doc.text('ISSUED: ' + invoiceDate, x0, y0)
-    y0 += 4  // Increased spacing
-    doc.text('DUE: ' + dueDate, x0, y0)
-    y0 += 4
-    doc.text('CURRENCY: ' + currency, x0, y0)
-    y0 += 4
-    doc.text('TERMS: NET 30', x0, y0)
-  }
+  // specs
+  x0 = margin + 3 * colW + 2.1
+  y0 = yDataTop + 11
+  doc.text('ISSUED: ' + invoiceDate, x0, y0)
+  y0 += 4
+  doc.text('DUE: ' + dueDate, x0, y0)
+  y0 += 4
+  doc.text('CURRENCY: ' + currency, x0, y0)
+  y0 += 4
+  doc.text('TERMS: NET 30', x0, y0)
 
   // NOTES SECTION - Render ABOVE items if position is 'above'
   const yNotesTop = yDataTop + DATA_GRID_HEIGHT + SECTION_SPACER
@@ -2485,36 +2474,16 @@ async function downloadPDF() {
       doc.setGState(new doc.GState({ opacity: 1 }))
     }
 
-    doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
+    doc.setFont(fonts.hdr, 'bold')
     doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
 
-    if (colors.isAscii) {
-      doc.setFontSize(7)
-      doc.setFont(fonts.body, 'normal') // Use Helvetica font system
-      doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
-
-      let currentY = yTop + 4
-      if (hasTypes) doc.text('TYPE', xType + typeW/2, currentY, { align: 'center' })  // CENTER
-      doc.text('DESCRIPTION', xDesc + 2, currentY)  // LEFT
-      doc.text('QTY', xQty + qtyW/2, currentY, { align: 'center' })  // CENTER
-      doc.text('RATE', xRate + rateW - 2, currentY, { align: 'right' })  // RIGHT
-      doc.text('AMOUNT', xAmt + amtW - 2, currentY, { align: 'right' })  // RIGHT
-
-      currentY += 3
-      if (hasTypes) doc.text('----', xType + typeW/2, currentY, { align: 'center' })  // CENTER separator
-      doc.text('-----------', xDesc + 2, currentY)
-      doc.text('---', xQty + qtyW/2, currentY, { align: 'center' })
-      doc.text('----', xRate + rateW - 2, currentY, { align: 'right' })
-      doc.text('------', xAmt + amtW - 2, currentY, { align: 'right' })
-    } else {
-      doc.setFontSize(8)
-      const hY = yTop + 5
-      if (hasTypes) doc.text('TYPE', xType + typeW/2, hY, { align: 'center' })  // CENTER TYPE header
-      doc.text('DESCRIPTION', xDesc + 1.3, hY)  // LEFT
-      doc.text('QTY/HRS', xQty + qtyW/2, hY, { align: 'center' })  // CENTER
-      doc.text('RATE', xRate + rateW - 1.3, hY, { align: 'right' })  // RIGHT
-      doc.text('AMOUNT', xAmt + amtW - 1.3, hY, { align: 'right' })  // RIGHT
-    }
+    doc.setFontSize(8)
+    const hY = yTop + 5
+    if (hasTypes) doc.text('TYPE', xType + typeW / 2, hY, { align: 'center' })
+    doc.text('DESCRIPTION', xDesc + 2, hY)
+    doc.text('QTY/HRS', xQty + qtyW / 2, hY, { align: 'center' })
+    doc.text('RATE', xRate + rateW - 2, hY, { align: 'right' })
+    doc.text('AMOUNT', xAmt + amtW - 2, hY, { align: 'right' })
 
     if (showB) {
       doc.line(margin, yTop + itemsHeaderH, margin + contentW, yTop + itemsHeaderH)
@@ -2536,10 +2505,9 @@ async function downloadPDF() {
 
     renderTableHeader(yTop)
 
-    doc.setFont(fonts.body, 'normal') // Use Helvetica font system
+    doc.setFont(fonts.body, 'normal')
     doc.setTextColor(tableTextRGB.r, tableTextRGB.g, tableTextRGB.b)
-    doc.setFontSize(8) // Helvetica font size for table content
-
+    doc.setFontSize(8)
     let y = yTop + itemsHeaderH
     let pageSubtotal = 0
 
@@ -2560,17 +2528,17 @@ async function downloadPDF() {
 
       // Render TYPE column if types exist (centered)
       if (hasTypes) {
-        const typeLine = doc.splitTextToSize(it.type || '', typeW - 2.6)[0] || ''
-        doc.text(typeLine, xType + typeW/2, y + 6, { align: 'center' })  // CENTER TYPE data
+        const typeLine = doc.splitTextToSize(it.type || '', typeW - 4)[0] || ''
+        doc.text(typeLine, xType + typeW / 2, y + 6, { align: 'center' })
       }
 
-      const dLine = doc.splitTextToSize(it.description, descW - 2.6)[0] || ''
-      doc.text(dLine, xDesc + 1.3, y + 6)  // LEFT DESCRIPTION
-      doc.text(String(it.qty || ''), xQty + qtyW/2, y + 6, { align: 'center' })  // CENTER QTY
-      doc.text(rate, xRate + rateW - 1.3, y + 6, { align: 'right' })  // RIGHT RATE (money)
+      const dLine = doc.splitTextToSize(it.description, descW - 4)[0] || ''
+      doc.text(dLine, xDesc + 2, y + 6)
+      doc.text(String(it.qty || ''), xQty + qtyW / 2, y + 6, { align: 'center' })
+      doc.text(rate, xRate + rateW - 2, y + 6, { align: 'right' })
 
       doc.setFont(fonts.body, 'bold')
-      doc.text(amt, xAmt + amtW - 1.3, y + 6, { align: 'right' })  // RIGHT AMOUNT (money)
+      doc.text(amt, xAmt + amtW - 2, y + 6, { align: 'right' })
       doc.setFont(fonts.body, 'normal')
 
       y += rowH
@@ -2678,17 +2646,17 @@ async function downloadPDF() {
     doc.line(xSplit, yPayTop, xSplit, yPayTop + paymentH)
   }
 
-  doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
-  doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use black for headers inside boxes
-  doc.setFontSize(7) // Helvetica font size for panel titles
-  doc.text('PAYMENT INSTRUCTIONS', margin + 2.1, yPayTop + 5) // 8px padding from left edge, consistent with other headers
+  doc.setFont(fonts.hdr, 'bold')
+  doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
+  doc.setFontSize(7)
+  doc.text('PAYMENT INSTRUCTIONS', margin + 2.1, yPayTop + 5)
 
   // No dividing line under PAYMENT INSTRUCTIONS - clean design
 
-  doc.setFont(fonts.body, 'normal') // Use Helvetica font system
+  doc.setFont(fonts.body, 'normal')
   doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
-  doc.setFontSize(8) // Helvetica font size for content
-  let py = yPayTop + 11 // Tighter spacing for better proportions
+  doc.setFontSize(8)
+  let py = yPayTop + 11
   paymentInstructions.split('\n').forEach((line) => {
     if (line.trim()) { // Only process non-empty lines
       const lines = doc.splitTextToSize(line, splitW - 4.2) // Account for 8px padding on both sides
@@ -2701,10 +2669,10 @@ async function downloadPDF() {
     }
   })
 
-  doc.setFont(fonts.hdr, 'bold') // Use Helvetica font system
-  doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b) // Use black for headers inside boxes
-  doc.setFontSize(7) // Helvetica font size for panel titles
-  doc.text('TOTAL', xSplit + 2.1, yPayTop + 5) // 8px padding from left edge, consistent with other headers
+  doc.setFont(fonts.hdr, 'bold')
+  doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
+  doc.setFontSize(7)
+  doc.text('TOTAL', xSplit + 2.1, yPayTop + 5)
 
   // No dividing line under TOTAL header - clean design
 
