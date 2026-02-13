@@ -2771,6 +2771,11 @@ async function downloadPDF() {
 
   ty += 5  // Spacing before total
 
+  // Divider line above grand total (match preview border-top on .invoice-summary__total)
+  if (showB) {
+    doc.line(xSplit + 2.1, ty - 3, margin + contentW - 2.1, ty - 3)
+  }
+
   // Final total
   doc.setFont(fonts.body, 'bold')
   doc.setFontSize(10)
