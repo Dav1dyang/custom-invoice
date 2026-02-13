@@ -1927,7 +1927,7 @@ async function fetchFirst(urls, timeoutMs = 8000) {
       const res = await fetch(u, {
         signal: controller.signal,
         cache: 'force-cache',
-        mode: 'cors',
+        mode: 'same-origin',
       })
       if (res.ok) {
         clearTimeout(t)
