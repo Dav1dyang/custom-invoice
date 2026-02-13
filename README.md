@@ -26,7 +26,7 @@ A professional invoice generator that creates clean, datasheet-style PDF invoice
 
 ### 📄 **Professional PDF Output**
 - Embeddable custom fonts (Rubik Mono One headers, DM Mono Light body)
-- Logo upload with automatic aspect ratio preservation
+- Logo upload with thumbnail preview, tint toggle, alignment, scale, and rotation controls
 - Letter/A4 paper sizes with portrait/landscape orientation
 - High-quality technical typography
 

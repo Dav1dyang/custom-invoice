@@ -35,6 +35,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Logo aspect ratio preservation
 - System font fallback (Helvetica) with optional custom font upload
 
+**Logo Upload UI** (index.html ~line 267-298, styles.css ~line 1026-1100)
+- Compact row layout: 40x40 thumbnail + stretch "Select Logo" button
+- Controls grid appears below upload row only when a logo is loaded
+- Tint toggle button (wraps hidden checkbox, inverts bg/fg when active — same style as align buttons)
+- Align buttons (Top/Mid/Bot), Scale %, Rotate ° in 2x2 grid
+- CSS classes: `.logo-upload-row`, `.logo-thumb`, `.logo-tint-btn`, `.logo-controls-grid`
+- Tint `.active` class synced on checkbox change and template load
+
 **CSV Import** (script.js:1101-1228)
 - Auto-delimiter detection (comma, tab, semicolon)
 - Two-column (description, amount) and three-column (description, qty, rate) formats

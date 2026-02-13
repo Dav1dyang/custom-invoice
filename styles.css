@@ -145,21 +145,6 @@
   min-height: 48px;
 }
 
-.preview-actions .dl-btn {
-  background: var(--border);
-  color: var(--fg);
-  border: 1px solid var(--border);
-  padding: 12px 24px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.preview-actions .dl-btn:hover {
-  background: var(--panel-bg);
-  border-color: var(--fg);
-}
-
 .preview-actions .go:hover {
   opacity: 0.8;
 }
@@ -1023,33 +1008,149 @@ input[type='text'] {
   background: #e74c3c;
 }
 
-.logo-box {
-  border: 0.5px dashed var(--border);
-  padding: 10px;
-  text-align: center;
+/* Upload row: thumb + button side by side */
+.logo-upload-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
 }
 
-.logo-box input[type='file'] {
+.logo-upload-row input[type='file'] {
   display: none;
 }
 
-.logo-btn {
-  cursor: pointer;
-  padding: 8px 15px;
-  background: #000;
-  color: #fff;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-size: 10px;
-  display: inline-block;
+/* 40×40 square thumbnail */
+.logo-thumb {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-bg);
+  overflow: hidden;
 }
 
 #logoPreview {
-  max-width: 180px;
-  max-height: 60px;
-  margin-top: 10px;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
   display: none;
+}
+
+/* Upload button: stretches to fill row */
+.logo-btn {
+  flex: 1;
+  min-height: 40px;
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: var(--font-size-label);
+}
+
+/* Override .setting-row label color for logo button */
+.setting-row .logo-btn {
+  color: var(--ui-bg);
+}
+
+.logo-controls {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.logo-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Tint toggle button (wraps hidden checkbox) */
+.logo-tint-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--ui-fg);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.logo-tint-btn input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.logo-tint-btn.active {
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+  border-color: var(--ui-fg);
+}
+
+.logo-control {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-label);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  gap: 4px;
+}
+
+.logo-control input[type="number"] {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: var(--font-size-body);
+  font-family: inherit;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+.logo-align-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.logo-align-btn {
+  flex: 1;
+  min-height: 30px;
+  padding: 4px 6px;
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--ui-fg);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.logo-align-btn.active {
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+  border-color: var(--ui-fg);
 }
 
 .editor {
@@ -1545,7 +1646,7 @@ button {
 }
 
 .preview {
-  display: none;
+  display: block;
 }
 
 .preview.filled {
@@ -1803,8 +1904,8 @@ button {
   display: flex;
   justify-content: space-between;
   border-top: 0.5px solid var(--border);
-  padding-top: 5px;
-  margin-top: 5px;
+  padding-top: 8px;
+  margin-top: 8px;
   font-size: 10px;
   font-weight: 700;
 }

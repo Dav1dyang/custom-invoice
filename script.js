@@ -45,27 +45,161 @@ function updateThemeIcon() {
 
 /* ----------------------------- LOGO ------------------------------ */
 let logoDataUrl = null,
-  logoNatural = null
+  logoNatural = null,
+  logoProcessedDataUrl = null,
+  logoProcessedNatural = null
+
+// Rasterize any image format to PNG via canvas (guarantees jsPDF compatibility)
 document.getElementById('logoUpload').addEventListener('change', (e) => {
   const f = e.target.files[0]
   if (!f) return
   const r = new FileReader()
   r.onload = (ev) => {
-    logoDataUrl = ev.target.result
+    const rawDataUrl = ev.target.result
     const img = new Image()
     img.onload = () => {
-      logoNatural = {
-        w: img.naturalWidth,
-        h: img.naturalHeight,
-        ratio: img.naturalWidth / img.naturalHeight,
-      }
+      // Get natural dimensions (SVG without explicit dims may report 0)
+      let w = img.naturalWidth || 400
+      let h = img.naturalHeight || 400
+      // Rasterize to PNG via canvas
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, w, h)
+      logoDataUrl = canvas.toDataURL('image/png')
+      logoNatural = { w, h, ratio: w / h }
+      logoProcessedDataUrl = null
+      logoProcessedNatural = null
       const pv = document.getElementById('logoPreview')
       pv.src = logoDataUrl
       pv.style.display = 'block'
+      document.getElementById('logoControls').style.display = ''
+      // Apply transforms if any are active
+      if (hasLogoTransforms()) processLogo()
     }
-    img.src = logoDataUrl
+    img.src = rawDataUrl
   }
   r.readAsDataURL(f)
+})
+
+function getLogoAlignment() {
+  const activeBtn = document.querySelector('.logo-align-btn.active')
+  return activeBtn ? activeBtn.dataset.align : 'top'
+}
+
+// Check if any logo transforms are active (monochrome or rotation)
+function hasLogoTransforms() {
+  const mono = document.getElementById('logoMonochrome')?.checked
+  const rot = parseInt(document.getElementById('logoRotation')?.value) || 0
+  return mono || rot !== 0
+}
+
+// Process logo: apply rotation and/or monochrome tint to logoDataUrl → logoProcessedDataUrl
+function processLogo() {
+  if (!logoDataUrl || !logoNatural) return
+  const img = new Image()
+  img.onload = () => {
+    const mono = document.getElementById('logoMonochrome')?.checked
+    const rot = (parseInt(document.getElementById('logoRotation')?.value) || 0) * Math.PI / 180
+    const w = logoNatural.w
+    const h = logoNatural.h
+
+    // Calculate bounding box after rotation
+    const cosA = Math.abs(Math.cos(rot))
+    const sinA = Math.abs(Math.sin(rot))
+    const newW = Math.ceil(w * cosA + h * sinA)
+    const newH = Math.ceil(w * sinA + h * cosA)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = newW
+    canvas.height = newH
+    const ctx = canvas.getContext('2d')
+
+    // Rotate around center
+    ctx.translate(newW / 2, newH / 2)
+    ctx.rotate(rot)
+    ctx.drawImage(img, -w / 2, -h / 2, w, h)
+
+    // Apply monochrome tint if enabled
+    if (mono) {
+      const rawAccent = document.getElementById('accentColor')?.value || '#CEFF00'
+      const mode = document.getElementById('styleMode')?.value || 'outline'
+      const accent = (mode === 'filled') ? createContrastingTextColor(rawAccent) : rawAccent
+      const aR = parseInt(accent.slice(1, 3), 16)
+      const aG = parseInt(accent.slice(3, 5), 16)
+      const aB = parseInt(accent.slice(5, 7), 16)
+      const imageData = ctx.getImageData(0, 0, newW, newH)
+      const d = imageData.data
+      for (let i = 0; i < d.length; i += 4) {
+        const gray = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]
+        d[i]     = Math.round(255 - ((255 - gray) * (255 - aR)) / 255)
+        d[i + 1] = Math.round(255 - ((255 - gray) * (255 - aG)) / 255)
+        d[i + 2] = Math.round(255 - ((255 - gray) * (255 - aB)) / 255)
+        // Alpha untouched
+      }
+      // Reset transform before putImageData (it ignores transforms but canvas size matters)
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.putImageData(imageData, 0, 0)
+    }
+
+    logoProcessedDataUrl = canvas.toDataURL('image/png')
+    logoProcessedNatural = { w: newW, h: newH, ratio: newW / newH }
+    updateLogoPreviewDisplay()
+    renderPreview()
+  }
+  img.src = logoDataUrl
+}
+
+// Update preview img src based on whether transforms are active
+function updateLogoPreviewDisplay() {
+  const pv = document.getElementById('logoPreview')
+  if (!pv) return
+  if (hasLogoTransforms() && logoProcessedDataUrl) {
+    pv.src = logoProcessedDataUrl
+  } else {
+    pv.src = logoDataUrl || ''
+  }
+}
+
+// Logo control event listeners
+document.getElementById('logoMonochrome').addEventListener('change', function() {
+  const tintBtn = this.closest('.logo-tint-btn')
+  if (tintBtn) tintBtn.classList.toggle('active', this.checked)
+  if (!logoDataUrl) return
+  if (hasLogoTransforms()) {
+    processLogo()
+  } else {
+    logoProcessedDataUrl = null
+    logoProcessedNatural = null
+    updateLogoPreviewDisplay()
+    renderPreview()
+  }
+})
+
+document.getElementById('logoRotation').addEventListener('input', () => {
+  if (!logoDataUrl) return
+  if (hasLogoTransforms()) {
+    processLogo()
+  } else {
+    logoProcessedDataUrl = null
+    logoProcessedNatural = null
+    updateLogoPreviewDisplay()
+    renderPreview()
+  }
+})
+
+document.getElementById('logoScale').addEventListener('input', () => {
+  if (!logoDataUrl) return
+  renderPreview()
+})
+
+document.querySelectorAll('.logo-align-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.logo-align-btn').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+    if (logoDataUrl) renderPreview()
+  })
 })
 
 /* ----------------------------- ITEMS ----------------------------- */
@@ -90,11 +224,14 @@ function addItem(desc = '', qty = '', rate = '', type = '') {
     rm = tr.querySelector('.rm')
   function calc() {
     amtEl.value = ((+qtyEl.value || 0) * (+rateEl.value || 0)).toFixed(2)
+    renderPreview()
   }
   qtyEl.addEventListener('input', calc)
   rateEl.addEventListener('input', calc)
   calc()
-  rm.onclick = () => tr.remove()
+  typeEl.addEventListener('input', () => renderPreview())
+  tr.querySelector('.item-desc').addEventListener('input', () => renderPreview())
+  rm.onclick = () => { tr.remove(); renderPreview() }
 
   // Enable drag and drop for reordering
   tr.setAttribute('draggable', 'true')
@@ -418,6 +555,11 @@ function updatePreviewColors() {
 
   // Update preview class
   preview.className = 'preview ' + styleMode.value
+
+  // Re-process logo tint when accent color changes (only if monochrome enabled)
+  if (document.getElementById('logoMonochrome')?.checked && logoDataUrl) {
+    processLogo()
+  }
 }
 
 // Event listeners
@@ -467,6 +609,22 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 // Initialize with neon preset
 setAccentPreset('neon')
 updatePreviewColors()
+
+// Auto-preview: re-render on any form input change (delegation)
+document.querySelector('.content-left')?.addEventListener('input', (e) => {
+  if (e.target.id === 'csvPasteArea' || e.target.closest('.gcal-section')) return
+  if (e.target.closest('#itemsBody')) return // handled by addItem listeners
+  renderPreview()
+})
+
+// Auto-preview for change events (selects, radios, checkboxes)
+document.querySelectorAll('select, input[type="radio"], input[type="checkbox"]').forEach(el => {
+  if (el.id === 'csvFileInput' || el.closest('.gcal-section') || el.id === 'saveLineItemsCheckbox') return
+  el.addEventListener('change', renderPreview)
+})
+
+// Initial preview render
+renderPreview()
 
 /* ------------------------- TEMPLATE SYSTEM ----------------------- */
 // Global template state
@@ -1257,7 +1415,11 @@ function getCurrentTemplateData() {
     accentColor: document.getElementById('accentColor').value,
     lineItems: saveLineItems ? getItems() : [],  // Conditional: save items or empty array
     saveLineItems: saveLineItems,
-    logoDataUrl: document.getElementById('logoPreview').src || null
+    logoDataUrl: document.getElementById('logoPreview').src || null,
+    logoMonochrome: document.getElementById('logoMonochrome')?.checked || false,
+    logoScale: parseInt(document.getElementById('logoScale')?.value) || 100,
+    logoRotation: parseInt(document.getElementById('logoRotation')?.value) || 0,
+    logoAlignment: getLogoAlignment()
   }
 }
 
@@ -1281,8 +1443,43 @@ function loadTemplateData(templateData) {
       // Special handling for logo
       const logoPreview = document.getElementById('logoPreview')
       if (logoPreview && templateData[key]) {
+        logoDataUrl = templateData[key]
+        // Derive natural dimensions from loaded image
+        const tmpImg = new Image()
+        tmpImg.onload = () => {
+          logoNatural = { w: tmpImg.naturalWidth, h: tmpImg.naturalHeight, ratio: tmpImg.naturalWidth / tmpImg.naturalHeight }
+          if (hasLogoTransforms()) processLogo()
+        }
+        tmpImg.src = logoDataUrl
         logoPreview.src = templateData[key]
         logoPreview.style.display = 'block'
+        document.getElementById('logoControls').style.display = ''
+      } else {
+        logoDataUrl = null
+        logoNatural = null
+        logoProcessedDataUrl = null
+        logoProcessedNatural = null
+        document.getElementById('logoControls').style.display = 'none'
+      }
+    } else if (key === 'logoMonochrome') {
+      const el = document.getElementById('logoMonochrome')
+      if (el) {
+        el.checked = !!templateData[key]
+        const tintBtn = el.closest('.logo-tint-btn')
+        if (tintBtn) tintBtn.classList.toggle('active', el.checked)
+      }
+    } else if (key === 'logoScale') {
+      const el = document.getElementById('logoScale')
+      if (el) el.value = templateData[key] || 100
+    } else if (key === 'logoRotation') {
+      const el = document.getElementById('logoRotation')
+      if (el) el.value = templateData[key] || 0
+    } else if (key === 'logoAlignment') {
+      document.querySelectorAll('.logo-align-btn').forEach(b => b.classList.remove('active'))
+      const target = document.querySelector(`.logo-align-btn[data-align="${templateData[key]}"]`)
+      if (target) target.classList.add('active')
+      if (!document.querySelector('.logo-align-btn.active')) {
+        document.querySelector('.logo-align-btn[data-align="top"]')?.classList.add('active')
       }
     } else if (key === 'invoiceNumber') {
       // Skip old invoiceNumber field - already converted above
@@ -1819,8 +2016,16 @@ function renderPreview() {
     )
     .join('')
 
-  const logoHTML = logoDataUrl
-    ? `<img class="invoice-logo" src="${logoDataUrl}" alt="Logo">`
+  const effectivePreviewLogo = (hasLogoTransforms() && logoProcessedDataUrl) ? logoProcessedDataUrl : logoDataUrl
+  const previewScale = parseInt(document.getElementById('logoScale')?.value) || 100
+  const logoAlign = getLogoAlignment()
+  const logoAlignSelf = logoAlign === 'middle' ? 'align-self: center'
+    : logoAlign === 'bottom' ? 'align-self: flex-end' : ''
+  const logoScaleCSS = previewScale !== 100 ? `max-height: ${57 * previewScale / 100}px; max-width: ${132 * previewScale / 100}px` : ''
+  const logoStyles = [logoScaleCSS, logoAlignSelf].filter(Boolean).join('; ')
+  const logoStyleAttr = logoStyles ? ` style="${logoStyles}"` : ''
+  const logoHTML = effectivePreviewLogo
+    ? `<img class="invoice-logo" src="${effectivePreviewLogo}" alt="Logo"${logoStyleAttr}>`
     : ''
 
   $('invoiceContent').innerHTML = `
@@ -1902,10 +2107,6 @@ function renderPreview() {
         </div>
       </div>
     </div>`
-  $('preview').style.display = 'block'
-  document
-    .getElementById('preview')
-    .scrollIntoView({ behavior: 'smooth' })
 }
 
 /* -------------------------- PDF FONTS --------------------------- */
@@ -2209,12 +2410,17 @@ async function downloadPDF() {
 
   {
     // CONDENSED HEADER with visual distinction on page 1
-    // Logo - compact size
-    if (logoDataUrl) {
-      const maxW = 35, maxH = 15  // Condensed logo
+    // Logo - compact size with scale, rotation, and tint support
+    const effectiveLogoUrl = (hasLogoTransforms() && logoProcessedDataUrl) ? logoProcessedDataUrl : logoDataUrl
+    const logoScale = parseInt(document.getElementById('logoScale')?.value) || 100
+    if (effectiveLogoUrl) {
+      const baseMaxW = 35, baseMaxH = 15
+      const maxW = Math.min(baseMaxW * (logoScale / 100), contentW * 0.5)
+      const maxH = Math.min(baseMaxH * (logoScale / 100), 18)
       let w = maxW, h = maxH
-      if (logoNatural && logoNatural.w && logoNatural.h) {
-        const r = logoNatural.w / logoNatural.h
+      const natural = (hasLogoTransforms() && logoProcessedNatural) ? logoProcessedNatural : logoNatural
+      if (natural && natural.w && natural.h) {
+        const r = natural.w / natural.h
         if (maxW / maxH > r) {
           h = maxH
           w = h * r
@@ -2223,7 +2429,14 @@ async function downloadPDF() {
           h = w / r
         }
       }
-      doc.addImage(logoDataUrl, 'PNG', margin, 10, w, h)
+      const logoAlign = getLogoAlignment()
+      let logoY = 10
+      if (logoAlign === 'middle') {
+        logoY = 19 - h / 2  // Center of 10-28mm zone
+      } else if (logoAlign === 'bottom') {
+        logoY = 28 - h
+      }
+      doc.addImage(effectiveLogoUrl, 'PNG', margin, logoY, w, h)
     }
 
     // INVOICE text - LARGER on page 1 for distinction
@@ -2250,7 +2463,7 @@ async function downloadPDF() {
     const headerHeight = 5
     const headerPadding = 6
     const lineHeight = 4
-    const bottomPadding = 4
+    const bottomPadding = 8
 
     // Calculate payment instruction lines
     let paymentLines = 0
@@ -2769,11 +2982,11 @@ async function downloadPDF() {
 
   // TAX LINE REMOVED - no longer used
 
-  ty += 5  // Spacing before total
+  ty += 8  // Spacing before total
 
   // Divider line above grand total (match preview border-top on .invoice-summary__total)
   if (showB) {
-    doc.line(xSplit + 2.1, ty - 3, margin + contentW - 2.1, ty - 3)
+    doc.line(xSplit + 2.1, ty - 5, margin + contentW - 2.1, ty - 5)
   }
 
   // Final total
