@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-theme="system">
   <head>
     <meta charset="UTF-8" />
@@ -20,7 +20,7 @@
                 <div class="header-text">
                   <h1>Invoice Tool</h1>
                   <div class="subtitle">
-                    Professional invoice creation with customizable styling
+                    David's freelancing invoice tool with customizable styling
                   </div>
                 </div>
                 <button
@@ -96,7 +96,11 @@
                     </div>
 
                     <!-- Custom dropdown (hidden by default) -->
-                    <div class="template-dropdown" id="templateDropdown" style="display: none;">
+                    <div
+                      class="template-dropdown"
+                      id="templateDropdown"
+                      style="display: none"
+                    >
                       <div class="template-dropdown-content">
                         <!-- Populated dynamically by JavaScript -->
                       </div>
@@ -179,14 +183,28 @@
                 <div class="label">INVOICE NO:</div>
                 <div class="invoice-number-group">
                   <span class="invoice-prefix">IN-</span>
-                  <input id="companyAbbrev" type="text" placeholder="CACTW" maxlength="10" />
+                  <input
+                    id="companyAbbrev"
+                    type="text"
+                    placeholder="CACTW"
+                    maxlength="10"
+                  />
                   <span class="invoice-separator">-</span>
-                  <input id="invoiceSequence" type="text" placeholder="01" maxlength="6" />
+                  <input
+                    id="invoiceSequence"
+                    type="text"
+                    placeholder="01"
+                    maxlength="6"
+                  />
                 </div>
               </div>
               <div class="row2">
                 <div class="label">TITLE/DATES:</div>
-                <input id="invoiceTitle" type="text" placeholder="e.g., October Services, Q4 2025" />
+                <input
+                  id="invoiceTitle"
+                  type="text"
+                  placeholder="e.g., October Services, Q4 2025"
+                />
               </div>
               <div class="row2">
                 <div class="label">DATE ISSUED:</div>
@@ -196,9 +214,30 @@
                 <div class="label">DUE DATE:</div>
                 <div class="due-date-controls">
                   <div class="due-date-buttons">
-                    <button type="button" class="due-date-btn" data-days="7" onclick="setDueDate(7)">1 Week</button>
-                    <button type="button" class="due-date-btn" data-days="15" onclick="setDueDate(15)">15 Days</button>
-                    <button type="button" class="due-date-btn active" data-days="30" onclick="setDueDate(30)">30 Days</button>
+                    <button
+                      type="button"
+                      class="due-date-btn"
+                      data-days="7"
+                      onclick="setDueDate(7)"
+                    >
+                      1 Week
+                    </button>
+                    <button
+                      type="button"
+                      class="due-date-btn"
+                      data-days="15"
+                      onclick="setDueDate(15)"
+                    >
+                      15 Days
+                    </button>
+                    <button
+                      type="button"
+                      class="due-date-btn active"
+                      data-days="30"
+                      onclick="setDueDate(30)"
+                    >
+                      30 Days
+                    </button>
                   </div>
                   <input id="dueDate" type="date" readonly />
                 </div>
@@ -223,7 +262,12 @@
                 <div class="label">POSITION:</div>
                 <div class="notes-position-controls">
                   <label class="notes-position-option">
-                    <input type="radio" name="notesPosition" value="above" checked />
+                    <input
+                      type="radio"
+                      name="notesPosition"
+                      value="above"
+                      checked
+                    />
                     <span>Above Items</span>
                   </label>
                   <label class="notes-position-option">
@@ -234,7 +278,11 @@
               </div>
               <div class="row2">
                 <div class="label">NOTES:</div>
-                <textarea id="invoiceNotes" placeholder="Additional notes or special instructions..." rows="3"></textarea>
+                <textarea
+                  id="invoiceNotes"
+                  placeholder="Additional notes or special instructions..."
+                  rows="3"
+                ></textarea>
               </div>
             </div>
 
@@ -269,28 +317,69 @@
                           <div class="logo-thumb">
                             <img id="logoPreview" alt="Logo preview" />
                           </div>
-                          <label class="logo-btn" for="logoUpload">Select Logo</label>
-                          <input id="logoUpload" type="file"
-                            accept=".jpg,.jpeg,.png,.svg,.ico,image/jpeg,image/png,image/svg+xml,image/x-icon" />
+                          <label class="logo-btn" for="logoUpload"
+                            >Select Logo</label
+                          >
+                          <input
+                            id="logoUpload"
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.svg,.ico,image/jpeg,image/png,image/svg+xml,image/x-icon"
+                          />
                         </div>
-                        <div class="logo-controls" id="logoControls" style="display: none;">
+                        <div
+                          class="logo-controls"
+                          id="logoControls"
+                          style="display: none"
+                        >
                           <div class="logo-controls-grid">
                             <label class="logo-tint-btn" for="logoMonochrome">
                               <input type="checkbox" id="logoMonochrome" />
                               <span>Tint</span>
                             </label>
                             <div class="logo-align-buttons">
-                              <button type="button" class="logo-align-btn active" data-align="top">Top</button>
-                              <button type="button" class="logo-align-btn" data-align="middle">Mid</button>
-                              <button type="button" class="logo-align-btn" data-align="bottom">Bot</button>
+                              <button
+                                type="button"
+                                class="logo-align-btn active"
+                                data-align="top"
+                              >
+                                Top
+                              </button>
+                              <button
+                                type="button"
+                                class="logo-align-btn"
+                                data-align="middle"
+                              >
+                                Mid
+                              </button>
+                              <button
+                                type="button"
+                                class="logo-align-btn"
+                                data-align="bottom"
+                              >
+                                Bot
+                              </button>
                             </div>
                             <label class="logo-control">
                               <span>Scale %</span>
-                              <input type="number" id="logoScale" value="100" min="10" max="300" step="10" />
+                              <input
+                                type="number"
+                                id="logoScale"
+                                value="100"
+                                min="10"
+                                max="300"
+                                step="10"
+                              />
                             </label>
                             <label class="logo-control">
                               <span>Rotate °</span>
-                              <input type="number" id="logoRotation" value="0" min="-360" max="360" step="90" />
+                              <input
+                                type="number"
+                                id="logoRotation"
+                                value="0"
+                                min="-360"
+                                max="360"
+                                step="90"
+                              />
                             </label>
                           </div>
                         </div>
@@ -384,10 +473,20 @@
                       <h4>File Upload</h4>
                       <div class="setting-row">
                         <label>CSV File</label>
-                        <input id="csvFileInput" type="file" accept=".csv,.tsv,.txt" />
+                        <input
+                          id="csvFileInput"
+                          type="file"
+                          accept=".csv,.tsv,.txt"
+                        />
                       </div>
                       <div class="setting-row">
-                        <button type="button" onclick="importFromFile()" class="import-btn">Import File</button>
+                        <button
+                          type="button"
+                          onclick="importFromFile()"
+                          class="import-btn"
+                        >
+                          Import File
+                        </button>
                       </div>
                     </div>
 
@@ -396,16 +495,31 @@
                       <h4>Paste Data</h4>
                       <div class="setting-row">
                         <label>CSV Data</label>
-                        <textarea id="csvPasteArea" placeholder="Description, Quantity, Rate" rows="3"></textarea>
+                        <textarea
+                          id="csvPasteArea"
+                          placeholder="Description, Quantity, Rate"
+                          rows="3"
+                        ></textarea>
                       </div>
                       <div class="setting-row">
-                        <button type="button" onclick="importFromPaste()" class="import-btn">Import Pasted</button>
+                        <button
+                          type="button"
+                          onclick="importFromPaste()"
+                          class="import-btn"
+                        >
+                          Import Pasted
+                        </button>
                       </div>
                     </div>
-
                   </div>
                   <div class="import-manage-row">
-                    <button type="button" onclick="clearAllItems()" class="clear-items-btn">Clear All Items</button>
+                    <button
+                      type="button"
+                      onclick="clearAllItems()"
+                      class="clear-items-btn"
+                    >
+                      Clear All Items
+                    </button>
                   </div>
                 </div>
               </details>
@@ -421,14 +535,31 @@
                       <div class="setting-row">
                         <label>Client ID</label>
                         <div class="gcal-client-id-row">
-                          <input id="gcalClientId" type="text" placeholder="your-client-id.apps.googleusercontent.com" />
-                          <button type="button" onclick="saveGcalClientId()" class="import-btn gcal-save-btn">Save</button>
+                          <input
+                            id="gcalClientId"
+                            type="text"
+                            placeholder="your-client-id.apps.googleusercontent.com"
+                          />
+                          <button
+                            type="button"
+                            onclick="saveGcalClientId()"
+                            class="import-btn gcal-save-btn"
+                          >
+                            Save
+                          </button>
                         </div>
                       </div>
                       <div class="setting-row">
-                        <button type="button" id="gcalConnectBtn" onclick="connectGoogleCalendar()" class="import-btn">Connect Google Calendar</button>
+                        <button
+                          type="button"
+                          id="gcalConnectBtn"
+                          onclick="connectGoogleCalendar()"
+                          class="import-btn"
+                        >
+                          Connect Google Calendar
+                        </button>
                       </div>
-                      <div id="gcalPanel" style="display: none;">
+                      <div id="gcalPanel" style="display: none">
                         <div class="setting-row">
                           <label>Calendar</label>
                           <select id="gcalCalendarSelect"></select>
@@ -436,7 +567,11 @@
                       </div>
                     </div>
                     <!-- Options Group (right) -->
-                    <div class="settings-group" id="gcalOptionsGroup" style="display: none;">
+                    <div
+                      class="settings-group"
+                      id="gcalOptionsGroup"
+                      style="display: none"
+                    >
                       <h4>Options</h4>
                       <div class="setting-row">
                         <label>Date Range</label>
@@ -447,11 +582,21 @@
                       </div>
                       <div class="setting-row">
                         <label>Filter (optional)</label>
-                        <input id="gcalFilter" type="text" placeholder="e.g., Meeting, Workshop..." />
+                        <input
+                          id="gcalFilter"
+                          type="text"
+                          placeholder="e.g., Meeting, Workshop..."
+                        />
                       </div>
                       <div class="setting-row">
                         <label>Default Hourly Rate</label>
-                        <input id="gcalRate" type="number" step="0.01" value="75.00" placeholder="75.00" />
+                        <input
+                          id="gcalRate"
+                          type="number"
+                          step="0.01"
+                          value="75.00"
+                          placeholder="75.00"
+                        />
                       </div>
                       <div class="setting-row">
                         <label class="gcal-checkbox-label">
@@ -462,18 +607,46 @@
                     </div>
                   </div>
                   <!-- Fetch button (full-width, below grid) -->
-                  <div class="gcal-fetch-row" id="gcalFetchRow" style="display: none;">
-                    <button type="button" onclick="fetchGcalEvents()" class="import-btn">Fetch Events</button>
+                  <div
+                    class="gcal-fetch-row"
+                    id="gcalFetchRow"
+                    style="display: none"
+                  >
+                    <button
+                      type="button"
+                      onclick="fetchGcalEvents()"
+                      class="import-btn"
+                    >
+                      Fetch Events
+                    </button>
                   </div>
                   <!-- Events container (full-width) -->
-                  <div id="gcalEventsContainer" style="display: none;">
+                  <div id="gcalEventsContainer" style="display: none">
                     <div class="gcal-select-actions">
-                      <button type="button" class="gcal-select-btn" onclick="gcalSelectAll()">Select All</button>
-                      <button type="button" class="gcal-select-btn" onclick="gcalDeselectAll()">Deselect All</button>
+                      <button
+                        type="button"
+                        class="gcal-select-btn"
+                        onclick="gcalSelectAll()"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        class="gcal-select-btn"
+                        onclick="gcalDeselectAll()"
+                      >
+                        Deselect All
+                      </button>
                     </div>
                     <div id="gcalEventsList" class="gcal-events-list"></div>
                     <div class="setting-row">
-                      <button type="button" onclick="importGcalEvents()" class="import-btn">Import Selected</button>
+                      <button
+                        type="button"
+                        onclick="importGcalEvents()"
+                        class="import-btn"
+                      >
+                        Import Selected
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -481,23 +654,32 @@
 
               <table id="itemsTable">
                 <colgroup>
-                  <col style="width: 3%" />   <!-- DRAG HANDLE -->
-                  <col style="width: 12%" />  <!-- TYPE -->
-                  <col style="width: 34%" />  <!-- DESCRIPTION -->
-                  <col style="width: 10%" />  <!-- QTY/HRS -->
-                  <col style="width: 15%" />  <!-- RATE -->
-                  <col style="width: 21%" />  <!-- AMOUNT -->
-                  <col style="width: 5%" />   <!-- ACTION -->
+                  <col style="width: 3%" />
+                  <!-- DRAG HANDLE -->
+                  <col style="width: 12%" />
+                  <!-- TYPE -->
+                  <col style="width: 34%" />
+                  <!-- DESCRIPTION -->
+                  <col style="width: 10%" />
+                  <!-- QTY/HRS -->
+                  <col style="width: 15%" />
+                  <!-- RATE -->
+                  <col style="width: 21%" />
+                  <!-- AMOUNT -->
+                  <col style="width: 5%" />
+                  <!-- ACTION -->
                 </colgroup>
                 <thead>
                   <tr>
-                    <th></th>  <!-- Drag handle -->
+                    <th></th>
+                    <!-- Drag handle -->
                     <th>TYPE</th>
                     <th>DESCRIPTION</th>
                     <th>QTY/HRS</th>
                     <th>RATE</th>
                     <th>AMOUNT</th>
-                    <th></th>  <!-- Action -->
+                    <th></th>
+                    <!-- Action -->
                   </tr>
                 </thead>
                 <tbody id="itemsBody"></tbody>
@@ -505,17 +687,25 @@
 
               <!-- Type suggestions datalist -->
               <datalist id="typeOptions">
-                <option value="Labor">
-                <option value="Materials">
-                <option value="Equipment">
-                <option value="Consulting">
-                <option value="Design">
-                <option value="Development">
+                <option value="Labor"></option>
+                <option value="Materials"></option>
+                <option value="Equipment"></option>
+                <option value="Consulting"></option>
+                <option value="Design"></option>
+                <option value="Development"></option>
               </datalist>
 
               <!-- Items Footer: Add Button + Checkbox -->
               <div class="items-footer">
-                <button class="add" onclick="addItem(); renderPreview()">+ ADD LINE ITEM</button>
+                <button
+                  class="add"
+                  onclick="
+                    addItem()
+                    renderPreview()
+                  "
+                >
+                  + ADD LINE ITEM
+                </button>
                 <label class="save-items-checkbox">
                   <input type="checkbox" id="saveLineItemsCheckbox" checked />
                   <span>Save with template</span>
