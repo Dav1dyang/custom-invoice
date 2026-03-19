@@ -203,6 +203,10 @@
                 <div class="label">ADDRESS:</div>
                 <input id="fromAddress" type="text" value="" />
               </div>
+              <div class="row2">
+                <div class="label">EIN (OPTIONAL):</div>
+                <input id="fromEIN" type="text" value="" placeholder="XX-XXXXXXX" />
+              </div>
             </div>
 
             <div class="section card">
@@ -704,7 +708,7 @@
                   <tr>
                     <th></th>
                     <!-- Drag handle -->
-                    <th>TYPE</th>
+                    <th>TYPE <button type="button" class="type-manage-btn" onclick="toggleTypeManager()" title="Manage types">✎</button></th>
                     <th>DESCRIPTION</th>
                     <th>QTY/HRS</th>
                     <th>RATE</th>
@@ -716,15 +720,18 @@
                 <tbody id="itemsBody"></tbody>
               </table>
 
-              <!-- Type suggestions datalist -->
-              <datalist id="typeOptions">
-                <option value="Labor"></option>
-                <option value="Materials"></option>
-                <option value="Equipment"></option>
-                <option value="Consulting"></option>
-                <option value="Design"></option>
-                <option value="Development"></option>
-              </datalist>
+              <!-- Type suggestions datalist (populated by JS from custom types) -->
+              <datalist id="typeOptions"></datalist>
+
+              <!-- Type manager popover -->
+              <div id="typeManager" class="type-manager" style="display: none">
+                <div class="type-manager-list" id="typeManagerList"></div>
+                <div class="type-manager-add">
+                  <input type="text" id="newTypeInput" placeholder="New type..." />
+                  <button type="button" onclick="handleAddType()">+</button>
+                </div>
+                <button type="button" class="type-manager-reset" onclick="handleResetTypes()">Reset defaults</button>
+              </div>
 
               <!-- Items Footer: Add Button + Checkbox -->
               <div class="items-footer">

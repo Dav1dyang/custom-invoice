@@ -810,6 +810,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize display
   initializeTemplateDisplay()
   updateActionButtons()
+
+  // Populate type datalist from custom types
+  refreshTypeDatalist()
+
+  // Close type manager on outside click
+  document.addEventListener('click', (e) => {
+    const manager = document.getElementById('typeManager')
+    if (manager && manager.style.display !== 'none' && !e.target.closest('.type-manager') && !e.target.closest('.type-manage-btn')) {
+      manager.style.display = 'none'
+    }
+  })
 })
 
 // Toggle dropdown visibility
@@ -996,8 +1007,8 @@ function updateTemplateChipSelection() {
 
 // Initialize template display
 function initializeTemplateDisplay() {
-  const starred = getStarredTemplates()
-  const recent = getRecentTemplate()
+  const starred = currentUser ? getStarredTemplates() : []
+  const recent = currentUser ? getRecentTemplate() : null
   const filterChips = document.querySelectorAll('.filter-chip')
 
   // Update template chips display
@@ -1080,7 +1091,7 @@ function loadQuickTemplate() {
   // Handle default
   if (selectedTemplate === 'default') {
     // Clear form to defaults
-    const fields = ['fromName', 'fromWebsite', 'fromPhone', 'fromAddress', 'toCompany', 'toNames', 'toAddress', 'toContact', 'paymentInstructions', 'currency']
+    const fields = ['fromName', 'fromWebsite', 'fromPhone', 'fromAddress', 'fromEIN', 'toCompany', 'toNames', 'toAddress', 'toContact', 'paymentInstructions', 'currency']
     fields.forEach(field => {
       const element = document.getElementById(field)
       if (element) element.value = ''
@@ -1358,6 +1369,91 @@ function showDeleteTemplateDialog() {
   showToast('Select a template and click the delete button to remove it.', 'info')
 }
 
+// Custom type management
+const DEFAULT_TYPES = ['Labor', 'Materials', 'Equipment', 'Consulting', 'Design', 'Development']
+const CUSTOM_TYPES_KEY = 'custom_types'
+
+function getCustomTypes() {
+  const stored = localStorage.getItem(CUSTOM_TYPES_KEY)
+  return stored ? JSON.parse(stored) : [...DEFAULT_TYPES]
+}
+
+function saveCustomTypes(types) {
+  localStorage.setItem(CUSTOM_TYPES_KEY, JSON.stringify(types))
+  refreshTypeDatalist()
+}
+
+function refreshTypeDatalist() {
+  const datalist = document.getElementById('typeOptions')
+  if (!datalist) return
+  datalist.innerHTML = ''
+  getCustomTypes().forEach(type => {
+    const option = document.createElement('option')
+    option.value = type
+    datalist.appendChild(option)
+  })
+}
+
+function addCustomType(typeName) {
+  const types = getCustomTypes()
+  const trimmed = typeName.trim()
+  if (!trimmed || types.includes(trimmed)) return false
+  types.push(trimmed)
+  saveCustomTypes(types)
+  saveTypesToCloud()
+  return true
+}
+
+function removeCustomType(typeName) {
+  const types = getCustomTypes().filter(t => t !== typeName)
+  saveCustomTypes(types)
+  saveTypesToCloud()
+}
+
+function resetTypesToDefaults() {
+  saveCustomTypes([...DEFAULT_TYPES])
+  saveTypesToCloud()
+}
+
+// Type manager popover
+function toggleTypeManager() {
+  const manager = document.getElementById('typeManager')
+  if (!manager) return
+  manager.style.display = manager.style.display === 'none' ? 'block' : 'none'
+  if (manager.style.display === 'block') renderTypeManager()
+}
+
+function renderTypeManager() {
+  const list = document.getElementById('typeManagerList')
+  if (!list) return
+  const types = getCustomTypes()
+  list.innerHTML = types.map(t => `
+    <div class="type-manager-item">
+      <span>${t}</span>
+      <button type="button" onclick="handleRemoveType('${t.replace(/'/g, "\\'")}')" class="type-manager-rm">×</button>
+    </div>
+  `).join('')
+}
+
+function handleAddType() {
+  const input = document.getElementById('newTypeInput')
+  if (!input) return
+  if (addCustomType(input.value)) {
+    input.value = ''
+    renderTypeManager()
+  }
+}
+
+function handleRemoveType(typeName) {
+  removeCustomType(typeName)
+  renderTypeManager()
+}
+
+function handleResetTypes() {
+  resetTypesToDefaults()
+  renderTypeManager()
+}
+
 // Starred templates management
 const STARRED_KEY = 'starred_templates'
 const RECENT_KEY = 'recent_template'
@@ -1456,6 +1552,7 @@ function getCurrentTemplateData() {
     fromWebsite: document.getElementById('fromWebsite').value,
     fromPhone: document.getElementById('fromPhone').value,
     fromAddress: document.getElementById('fromAddress').value,
+    fromEIN: document.getElementById('fromEIN')?.value || '',
     toCompany: document.getElementById('toCompany').value,
     toNames: document.getElementById('toNames').value,
     toAddress: document.getElementById('toAddress').value,
@@ -1661,6 +1758,38 @@ function parseCSV(text) {
   })
   
   return result
+}
+
+// Reset form to blank defaults (used on sign-out)
+function resetFormToDefaults() {
+  ;['fromName','fromWebsite','fromPhone','fromAddress','fromEIN',
+    'toCompany','toNames','toAddress','toContact',
+    'companyAbbrev','invoiceSequence','invoiceTitle',
+    'paymentInstructions','invoiceNotes'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.value = ''
+  })
+  const invoiceDateField = document.getElementById('invoiceDate')
+  if (invoiceDateField) {
+    const today = new Date()
+    invoiceDateField.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+  }
+  setDueDate(30)
+  const paperSize = document.getElementById('paperSize'); if (paperSize) paperSize.value = 'a4'
+  const orientation = document.getElementById('orientation'); if (orientation) orientation.value = 'portrait'
+  const styleMode = document.getElementById('styleMode'); if (styleMode) styleMode.value = 'outline'
+  const accentColor = document.getElementById('accentColor'); if (accentColor) accentColor.value = '#000000'
+  logoDataUrl = null; logoNatural = null
+  const logoPreview = document.getElementById('logoPreview')
+  if (logoPreview) { logoPreview.src = ''; logoPreview.style.display = 'none' }
+  const logoControls = document.getElementById('logoControls')
+  if (logoControls) logoControls.style.display = 'none'
+  const itemsBody = document.getElementById('itemsBody')
+  if (itemsBody) itemsBody.innerHTML = ''
+  addItem()
+  const templateInput = document.getElementById('templateInput')
+  if (templateInput) templateInput.value = ''
+  renderPreview()
 }
 
 // Clear all existing items
@@ -2027,6 +2156,16 @@ function initFirebase() {
         if (gcalOptionsGroup) gcalOptionsGroup.style.display = 'none'
         const gcalFetchRow = document.getElementById('gcalFetchRow')
         if (gcalFetchRow) gcalFetchRow.style.display = 'none'
+
+        // Clear local personal data on sign-out
+        localStorage.removeItem('invoice_templates')
+        localStorage.removeItem(STARRED_KEY)
+        localStorage.removeItem(RECENT_KEY)
+        localStorage.removeItem(CUSTOM_TYPES_KEY)
+        resetFormToDefaults()
+        refreshTypeDatalist()
+        initializeTemplateDisplay()
+        updateActionButtons()
       }
     })
 
@@ -2050,6 +2189,21 @@ async function loadStarredFromCloud() {
   const doc = await firebaseDb.collection('users').doc(currentUser.uid)
     .collection('meta').doc('preferences').get()
   return doc.exists ? (doc.data().starred || []) : null
+}
+
+// Custom types cloud sync
+async function saveTypesToCloud() {
+  if (!currentUser || !firebaseDb) return
+  const types = getCustomTypes()
+  await firebaseDb.collection('users').doc(currentUser.uid)
+    .collection('meta').doc('preferences').set({ customTypes: types }, { merge: true })
+}
+
+async function loadTypesFromCloud() {
+  if (!currentUser || !firebaseDb) return null
+  const doc = await firebaseDb.collection('users').doc(currentUser.uid)
+    .collection('meta').doc('preferences').get()
+  return doc.exists ? (doc.data().customTypes || null) : null
 }
 
 function updateAuthUI() {
@@ -2221,6 +2375,17 @@ async function syncTemplates() {
       await saveStarredToCloud()
     }
 
+    // Sync custom types
+    const cloudTypes = await loadTypesFromCloud()
+    const localTypes = getCustomTypes()
+    if (cloudTypes) {
+      const mergedTypes = [...new Set([...localTypes, ...cloudTypes])]
+      saveCustomTypes(mergedTypes)
+      if (mergedTypes.length !== localTypes.length) changes++
+    } else {
+      await saveTypesToCloud()
+    }
+
     initializeTemplateDisplay()
     updateActionButtons()
 
@@ -2377,6 +2542,7 @@ function renderPreview() {
   const fromWebsiteVal = $('fromWebsite').value
   const fromPhoneVal = $('fromPhone').value
   const fromAddressVal = $('fromAddress').value
+  const fromEINVal = $('fromEIN')?.value || ''
   const toCompanyVal = $('toCompany').value
   const toNamesVal = $('toNames').value
   const toAddressVal = $('toAddress').value
@@ -2434,7 +2600,7 @@ function renderPreview() {
       <div class="invoice-grid">
         <div class="invoice-panel">
           <div class="invoice-panel__title">FROM</div>
-          <div><strong>${fromNameVal}</strong><br>${fromWebsiteVal}<br>TEL: ${fromPhoneVal}<br>${fromAddressVal}</div>
+          <div><strong>${fromNameVal}</strong><br>${fromWebsiteVal}<br>TEL: ${fromPhoneVal}<br>${fromAddressVal}${fromEINVal ? `<br>EIN: ${fromEINVal}` : ''}</div>
         </div>
         <div class="invoice-panel">
           <div class="invoice-panel__title">BILL TO</div>
@@ -2668,6 +2834,7 @@ async function downloadPDF() {
   const fromWebsite = document.getElementById('fromWebsite').value
   const fromPhone = document.getElementById('fromPhone').value
   const fromAddress = document.getElementById('fromAddress').value
+  const fromEIN = document.getElementById('fromEIN')?.value || ''
   const toCompany = document.getElementById('toCompany').value
   const toNames = document.getElementById('toNames').value
   const toAddress = document.getElementById('toAddress').value
@@ -2780,6 +2947,7 @@ async function downloadPDF() {
     if (fromWebsite) fromLines += doc.splitTextToSize(fromWebsite, colTextWidth).length
     if (fromPhone) fromLines += doc.splitTextToSize('TEL: ' + fromPhone, colTextWidth).length
     fromLines += doc.splitTextToSize(fromAddress, colTextWidth).length
+    if (fromEIN) fromLines += doc.splitTextToSize('EIN: ' + fromEIN, colTextWidth).length
 
     // Measure BILL TO column (bold for company, normal for rest)
     doc.setFont(fonts.body, 'bold')
@@ -3012,6 +3180,11 @@ async function downloadPDF() {
       y0 += 4
     }
   })
+  if (fromEIN) {
+    doc.splitTextToSize('EIN: ' + fromEIN, colTextW).forEach(line => {
+      if (y0 < yDataTop + dataGridH - 2) { doc.text(line, x0, y0); y0 += 4 }
+    })
+  }
 
   // recipient
   x0 = margin + colW + 2.1

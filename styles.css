@@ -808,7 +808,6 @@ details.gcal-settings[open] summary {
 }
 
 .settings-group .setting-row:last-child {
-  margin-top: auto;
   margin-bottom: 0;
 }
 
@@ -842,8 +841,13 @@ details.gcal-settings[open] summary {
 
 .color-control {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
+}
+
+.color-control input[type="color"] {
+  min-height: 36px;
+  flex: 1;
 }
 
 .color-control input[type="text"] {
@@ -855,8 +859,18 @@ details.gcal-settings[open] summary {
   border: 1px solid var(--border);
   background: var(--ui-bg);
   color: var(--ui-fg);
-  width: 70px;
+  flex: 1;
+  min-width: 0;
   text-align: center;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+
+.color-control .swatch {
+  width: 36px;
+  height: auto;
+  min-height: 36px;
+  flex-shrink: 0;
 }
 
 /* Manual theme switching */
@@ -1051,10 +1065,9 @@ input[type='text'] {
 
 .swatch {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 36px;
+  height: 36px;
   border: 0.5px solid var(--border);
-  margin-left: 6px;
   vertical-align: middle;
 }
 
@@ -1098,11 +1111,11 @@ input[type='text'] {
   display: none;
 }
 
-/* 40×40 square thumbnail */
+/* Square thumbnail matching primary button height */
 .logo-thumb {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: var(--btn-primary-height);
+  height: var(--btn-primary-height);
+  min-width: var(--btn-primary-height);
   border: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -1121,11 +1134,13 @@ input[type='text'] {
 /* Upload button: stretches to fill row */
 .logo-btn {
   flex: 1;
-  min-height: 40px;
-  padding: 10px 15px;
+  min-height: var(--btn-primary-height);
+  max-height: var(--btn-primary-height);
+  padding: 0 15px;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   cursor: pointer;
   background: var(--ui-fg);
   color: var(--ui-bg);
@@ -1409,6 +1424,8 @@ textarea {
 .items-footer .pill-toggle {
   margin-left: auto;
   flex-shrink: 0;
+  min-height: var(--btn-primary-height);
+  max-height: var(--btn-primary-height);
 }
 
 table#itemsTable {
@@ -2032,8 +2049,8 @@ button {
 }
 
 .preset-btn {
-  min-height: 32px;
-  max-height: 32px;
+  min-height: var(--btn-primary-height);
+  max-height: var(--btn-primary-height);
   padding: 6px 12px;
   border: 1px solid var(--border);
   font-family: 'IBM Plex Mono', monospace;
@@ -2287,3 +2304,84 @@ button {
   /* === BUTTONS REMAIN SAME HEIGHT === */
   /* No height changes on mobile - 40px buttons remain 40px for easy tapping */
 }
+
+/* ========================= TYPE MANAGER ========================= */
+.type-manage-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 4px;
+  color: var(--ui-fg);
+  opacity: 0.5;
+}
+.type-manage-btn:hover { opacity: 1; }
+
+.type-manager {
+  position: absolute;
+  z-index: 100;
+  background: var(--ui-bg);
+  border: 1px solid var(--border);
+  padding: 12px;
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.type-manager-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: var(--font-size-body);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.type-manager-rm {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--ui-fg);
+  padding: 0 4px;
+}
+.type-manager-rm:hover { color: #dc2626; }
+
+.type-manager-add {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.type-manager-add input {
+  flex: 1;
+  min-height: 32px;
+  padding: 4px 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--font-size-body);
+  border: 1px solid var(--border);
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+}
+.type-manager-add button {
+  min-height: 32px;
+  min-width: 32px;
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+  border: 1px solid var(--border);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.type-manager-reset {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--font-size-label);
+  color: var(--ui-fg);
+  opacity: 0.6;
+  text-decoration: underline;
+  padding: 4px 0;
+}
+.type-manager-reset:hover { opacity: 1; }
