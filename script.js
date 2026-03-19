@@ -1896,8 +1896,25 @@ function connectGoogleCalendar() {
       showToast('Please sign in first using the button in the header', 'warning')
       return
     }
-    // Token expired but user is signed in — need to re-auth
-    handleGcalExpired()
+    // Re-authenticate to get a fresh OAuth token with calendar scope
+    const provider = new firebase.auth.GoogleAuthProvider()
+    provider.addScope('https://www.googleapis.com/auth/calendar.readonly')
+    firebaseAuth.signInWithPopup(provider).then((result) => {
+      if (result.credential && result.credential.accessToken) {
+        setGcalToken(result.credential.accessToken)
+        document.getElementById('gcalConnectBtn').textContent = 'Connected'
+        document.getElementById('gcalPanel').style.display = 'block'
+        document.getElementById('gcalOptionsGroup').style.display = ''
+        document.getElementById('gcalFetchRow').style.display = ''
+        loadCalendarList()
+      } else {
+        showToast('Could not obtain calendar access. Try signing out and back in.', 'warning', 5000)
+      }
+    }).catch((error) => {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        showToast('Calendar auth failed: ' + error.message, 'error', 5000)
+      }
+    })
     return
   }
 
@@ -1920,6 +1937,18 @@ async function loadCalendarList() {
 
     if (res.status === 401) {
       handleGcalExpired()
+      return
+    }
+
+    if (res.status === 403) {
+      const errData = await res.json().catch(() => ({}))
+      const reason = errData?.error?.message || 'Access forbidden'
+      showToast('Calendar API: ' + reason + '. Ensure Google Calendar API is enabled in Cloud Console.', 'error', 7000)
+      return
+    }
+
+    if (!res.ok) {
+      showToast('Calendar request failed: ' + res.status, 'error', 5000)
       return
     }
 
@@ -1972,6 +2001,18 @@ async function fetchGcalEvents() {
 
     if (res.status === 401) {
       handleGcalExpired()
+      return
+    }
+
+    if (res.status === 403) {
+      const errData = await res.json().catch(() => ({}))
+      const reason = errData?.error?.message || 'Access forbidden'
+      showToast('Calendar API: ' + reason + '. Ensure Google Calendar API is enabled in Cloud Console.', 'error', 7000)
+      return
+    }
+
+    if (!res.ok) {
+      showToast('Calendar events request failed: ' + res.status, 'error', 5000)
       return
     }
 
