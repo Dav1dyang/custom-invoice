@@ -24,7 +24,7 @@
                 <div class="header-text">
                   <h1>Invoice Tool</h1>
                   <div class="subtitle">
-                    David's freelance invoicing tool with customizable styling
+                    Freelance invoicing with custom styling
                   </div>
                 </div>
                 <div class="header-actions">
@@ -470,12 +470,6 @@
                         </div>
                       </div>
                       <div class="setting-row">
-                        <label class="pill-toggle active">
-                          <input type="checkbox" id="showWatermark" checked />
-                          <span>Watermark</span>
-                        </label>
-                      </div>
-                      <div class="setting-row">
                         <label>Quick Presets</label>
                         <div class="preset-grid">
                           <button
@@ -587,30 +581,13 @@
                     <div class="settings-group">
                       <h4>Setup</h4>
                       <div class="setting-row">
-                        <label>Client ID</label>
-                        <div class="gcal-client-id-row">
-                          <input
-                            id="gcalClientId"
-                            type="text"
-                            placeholder="your-client-id.apps.googleusercontent.com"
-                          />
-                          <button
-                            type="button"
-                            onclick="saveGcalClientId()"
-                            class="import-btn gcal-save-btn"
-                          >
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                      <div class="setting-row">
                         <button
                           type="button"
                           id="gcalConnectBtn"
                           onclick="connectGoogleCalendar()"
                           class="import-btn"
                         >
-                          Connect Google Calendar
+                          Connect Calendar
                         </button>
                       </div>
                       <div id="gcalPanel" style="display: none">
@@ -773,6 +750,10 @@
                 <span class="download-icon">⬇</span>
                 Download PDF
               </button>
+              <label class="pill-toggle active" for="showWatermark">
+                <input type="checkbox" id="showWatermark" checked />
+                <span>Watermark</span>
+              </label>
             </div>
 
             <!-- PREVIEW -->

@@ -124,6 +124,7 @@
   gap: 12px;
   margin-bottom: 16px;
   justify-content: flex-start;
+  align-items: center;
 }
 
 @media (max-width: 768px) {
@@ -278,21 +279,7 @@ details.gcal-settings[open] summary {
   width: 100%;
 }
 
-.gcal-client-id-row {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-}
-
-.gcal-client-id-row input {
-  flex: 1;
-}
-
-.gcal-client-id-row .gcal-save-btn {
-  min-width: 80px;
-  width: auto;
-  flex-shrink: 0;
-}
+/* gcal-client-id-row removed — auth handled by Firebase sign-in */
 
 .gcal-date-inputs {
   display: flex;
@@ -452,6 +439,7 @@ details.gcal-settings[open] summary {
 .template-export-btn {
   flex: 1;
   min-height: 40px;
+  max-height: 40px;
   padding: 10px 16px;
   font-size: var(--font-size-button);
   font-weight: 600;
@@ -467,6 +455,8 @@ details.gcal-settings[open] summary {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 0;
+  box-sizing: border-box;
 }
 
 .template-export-btn:hover,
@@ -726,10 +716,10 @@ details.gcal-settings[open] summary {
 }
 
 .action-icon {
-  min-width: 40px;
-  max-width: 40px;
-  min-height: 40px;
-  max-height: 40px;  /* Match all template section buttons */
+  min-width: 36px;
+  max-width: 36px;
+  min-height: 36px;
+  max-height: 36px;  /* Match input/dropdown height */
   padding: 0;
   background: transparent;
   border: 1px solid var(--border);
@@ -812,6 +802,16 @@ details.gcal-settings[open] summary {
   }
 }
 
+.settings-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-group .setting-row:last-child {
+  margin-top: auto;
+  margin-bottom: 0;
+}
+
 .settings-group h4 {
   font-size: var(--font-size-h4);  /* 11px */
   font-weight: 600;
@@ -833,6 +833,11 @@ details.gcal-settings[open] summary {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--ui-fg);
+}
+
+.setting-row label.pill-toggle {
+  display: inline-flex;
+  margin-bottom: 0;
 }
 
 .color-control {
@@ -1249,6 +1254,7 @@ input[type='text'] {
   align-items: center;
   gap: 4px;
   font-family: 'IBM Plex Mono', monospace;
+  width: 100%;
 }
 
 .invoice-prefix,
@@ -1259,21 +1265,16 @@ input[type='text'] {
 }
 
 .invoice-number-group input {
-  padding: 4px 6px;
-  border: 0.5px solid var(--grid);
+  padding: 8px 10px;
+  border: 1px solid var(--border);
   background: transparent;
   color: inherit;
   font-size: 11px;
   font-family: 'IBM Plex Mono', monospace;
   text-transform: uppercase;
-}
-
-.invoice-number-group #companyAbbrev {
-  width: 80px;
-}
-
-.invoice-number-group #invoiceSequence {
-  width: 60px;
+  min-height: 36px;
+  flex: 1;
+  min-width: 0;
 }
 
 input[type='text'],
@@ -1680,7 +1681,7 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   background: transparent;
   color: var(--ui-fg);
   font-family: 'IBM Plex Mono', monospace;

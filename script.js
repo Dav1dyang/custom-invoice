@@ -1131,6 +1131,7 @@ function handleStarAction() {
   if (starredTemplates.includes(selectedTemplate)) {
     // Remove star
     removeStarredTemplate(selectedTemplate)
+    saveStarredToCloud() // fire and forget
     showToast(`Removed star from "${selectedTemplate}"`, 'info')
   } else {
     // Add star
@@ -1139,6 +1140,7 @@ function handleStarAction() {
       return
     }
     addStarredTemplate(selectedTemplate)
+    saveStarredToCloud() // fire and forget
     showToast(`Added star to "${selectedTemplate}"`, 'success')
   }
 
@@ -1167,6 +1169,7 @@ function handleDeleteAction() {
     saveTemplates(savedTemplates)
     removeStarredTemplate(selectedTemplate)
     clearRecentTemplate(selectedTemplate)
+    saveStarredToCloud() // fire and forget
 
     // Clear input
     templateInput.value = ''
@@ -1733,50 +1736,48 @@ function importFromPaste() {
 
 /* ----------------------- GOOGLE CALENDAR ------------------------- */
 let gcalAccessToken = null
+let gcalAccessTokenTime = null
 let gcalEvents = []
 
-function saveGcalClientId() {
-  const clientId = document.getElementById('gcalClientId').value.trim()
-  if (!clientId) {
-    showToast('Please enter a Client ID', 'warning')
-    return
-  }
-  localStorage.setItem('gcal_client_id', clientId)
-  showToast('Client ID saved!', 'success')
+const GCAL_TOKEN_MAX_AGE = 55 * 60 * 1000 // 55 minutes (tokens expire at 60)
+
+function gcalTokenExpired() {
+  return !gcalAccessToken || !gcalAccessTokenTime ||
+    (Date.now() - gcalAccessTokenTime > GCAL_TOKEN_MAX_AGE)
+}
+
+function handleGcalExpired() {
+  gcalAccessToken = null
+  gcalAccessTokenTime = null
+  document.getElementById('gcalConnectBtn').textContent = 'Connect Calendar'
+  document.getElementById('gcalPanel').style.display = 'none'
+  document.getElementById('gcalOptionsGroup').style.display = 'none'
+  document.getElementById('gcalFetchRow').style.display = 'none'
+  showToast('Session expired — please sign in again via the header button', 'warning', 5000)
+}
+
+function setGcalToken(token) {
+  gcalAccessToken = token
+  gcalAccessTokenTime = Date.now()
 }
 
 function connectGoogleCalendar() {
-  const clientId = document.getElementById('gcalClientId').value.trim() ||
-    localStorage.getItem('gcal_client_id')
-
-  if (!clientId) {
-    showToast('Please enter and save a Google Cloud Client ID first', 'warning')
+  if (gcalTokenExpired()) {
+    if (!currentUser) {
+      showToast('Please sign in first using the button in the header', 'warning')
+      return
+    }
+    // Token expired but user is signed in — need to re-auth
+    handleGcalExpired()
     return
   }
 
-  if (typeof google === 'undefined' || !google.accounts) {
-    showToast('Google Identity Services not loaded. Check connection and reload.', 'error', 5000)
-    return
-  }
-
-  const tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: clientId,
-    scope: 'https://www.googleapis.com/auth/calendar.readonly',
-    callback: async (tokenResponse) => {
-      if (tokenResponse.error) {
-        showToast('Authorization failed: ' + tokenResponse.error, 'error', 5000)
-        return
-      }
-      gcalAccessToken = tokenResponse.access_token
-      document.getElementById('gcalConnectBtn').textContent = 'Connected'
-      document.getElementById('gcalPanel').style.display = 'block'
-      document.getElementById('gcalOptionsGroup').style.display = ''
-      document.getElementById('gcalFetchRow').style.display = ''
-      await loadCalendarList()
-    },
-  })
-
-  tokenClient.requestAccessToken()
+  // Already have a valid token — show calendar UI
+  document.getElementById('gcalConnectBtn').textContent = 'Connected'
+  document.getElementById('gcalPanel').style.display = 'block'
+  document.getElementById('gcalOptionsGroup').style.display = ''
+  document.getElementById('gcalFetchRow').style.display = ''
+  loadCalendarList()
 }
 
 async function loadCalendarList() {
@@ -1789,12 +1790,7 @@ async function loadCalendarList() {
     )
 
     if (res.status === 401) {
-      gcalAccessToken = null
-      document.getElementById('gcalConnectBtn').textContent = 'Connect Google Calendar'
-      document.getElementById('gcalPanel').style.display = 'none'
-      document.getElementById('gcalOptionsGroup').style.display = 'none'
-      document.getElementById('gcalFetchRow').style.display = 'none'
-      showToast('Session expired. Please reconnect.', 'error', 5000)
+      handleGcalExpired()
       return
     }
 
@@ -1814,8 +1810,8 @@ async function loadCalendarList() {
 }
 
 async function fetchGcalEvents() {
-  if (!gcalAccessToken) {
-    showToast('Please connect Google Calendar first', 'warning')
+  if (gcalTokenExpired()) {
+    handleGcalExpired()
     return
   }
 
@@ -1846,12 +1842,7 @@ async function fetchGcalEvents() {
     })
 
     if (res.status === 401) {
-      gcalAccessToken = null
-      document.getElementById('gcalConnectBtn').textContent = 'Connect Google Calendar'
-      document.getElementById('gcalPanel').style.display = 'none'
-      document.getElementById('gcalOptionsGroup').style.display = 'none'
-      document.getElementById('gcalFetchRow').style.display = 'none'
-      showToast('Session expired. Please reconnect.', 'error', 5000)
+      handleGcalExpired()
       return
     }
 
@@ -1963,12 +1954,6 @@ function importGcalEvents() {
 
 // Initialize Google Calendar on load
 ;(function initGcal() {
-  const savedClientId = localStorage.getItem('gcal_client_id')
-  const clientIdInput = document.getElementById('gcalClientId')
-  if (savedClientId && clientIdInput) {
-    clientIdInput.value = savedClientId
-  }
-
   // Set default date range to current month
   const now = new Date()
   const fromDate = document.getElementById('gcalDateFrom')
@@ -1983,14 +1968,18 @@ function importGcalEvents() {
 })()
 
 /* ----------------------- FIREBASE CLOUD TEMPLATES ----------------------- */
-// Firebase config - fill in your project details to enable cloud sync
-const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyBHpEcNdR_asdXqDXIi3vTmzHTT2VRIAzw',
-  authDomain: 'david-invoice-tool.firebaseapp.com',
-  projectId: 'david-invoice-tool',
-  storageBucket: 'david-invoice-tool.firebasestorage.app',
-  messagingSenderId: '987270064429',
-  appId: '1:987270064429:web:a7bf49325975cf66788ba4'
+// Firebase config - loaded from Vercel API route (/api/config)
+let FIREBASE_CONFIG = null
+
+async function loadFirebaseConfig() {
+  try {
+    const res = await fetch('/api/config')
+    if (!res.ok) return null
+    FIREBASE_CONFIG = await res.json()
+    return FIREBASE_CONFIG
+  } catch {
+    return null // graceful fallback — app works offline without Firebase
+  }
 }
 
 let firebaseApp = null
@@ -1999,7 +1988,7 @@ let firebaseDb = null
 let currentUser = null
 
 function isFirebaseConfigured() {
-  return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId
+  return FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId
 }
 
 function initFirebase() {
@@ -2026,6 +2015,18 @@ function initFirebase() {
       } else {
         const syncBtn = document.getElementById('syncBtn')
         if (syncBtn) syncBtn.style.display = 'none'
+
+        // Reset Google Calendar state on sign-out
+        gcalAccessToken = null
+        gcalAccessTokenTime = null
+        const gcalConnectBtn = document.getElementById('gcalConnectBtn')
+        if (gcalConnectBtn) gcalConnectBtn.textContent = 'Connect Calendar'
+        const gcalPanel = document.getElementById('gcalPanel')
+        if (gcalPanel) gcalPanel.style.display = 'none'
+        const gcalOptionsGroup = document.getElementById('gcalOptionsGroup')
+        if (gcalOptionsGroup) gcalOptionsGroup.style.display = 'none'
+        const gcalFetchRow = document.getElementById('gcalFetchRow')
+        if (gcalFetchRow) gcalFetchRow.style.display = 'none'
       }
     })
 
@@ -2034,6 +2035,21 @@ function initFirebase() {
     console.warn('Firebase init failed:', e.message)
     return false
   }
+}
+
+// Starred templates cloud sync
+async function saveStarredToCloud() {
+  if (!currentUser || !firebaseDb) return
+  const starred = getStarredTemplates()
+  await firebaseDb.collection('users').doc(currentUser.uid)
+    .collection('meta').doc('preferences').set({ starred }, { merge: true })
+}
+
+async function loadStarredFromCloud() {
+  if (!currentUser || !firebaseDb) return null
+  const doc = await firebaseDb.collection('users').doc(currentUser.uid)
+    .collection('meta').doc('preferences').get()
+  return doc.exists ? (doc.data().starred || []) : null
 }
 
 function updateAuthUI() {
@@ -2065,17 +2081,24 @@ function handleAuthClick() {
   }
 
   if (currentUser) {
-    showConfirmToast('Sign out?', () => {
-      firebaseAuth.signOut()
-      showToast('Signed out', 'info')
-    })
+    showConfirmToast('Sync templates to cloud before signing out?',
+      async () => {
+        await syncTemplates()
+        firebaseAuth.signOut()
+        showToast('Templates synced and signed out', 'success')
+      },
+      () => {
+        firebaseAuth.signOut()
+        showToast('Signed out', 'info')
+      }
+    )
   } else {
     const provider = new firebase.auth.GoogleAuthProvider()
     provider.addScope('https://www.googleapis.com/auth/calendar.readonly')
     firebaseAuth.signInWithPopup(provider).then((result) => {
       // Store OAuth access token for Calendar API
       if (result.credential) {
-        gcalAccessToken = result.credential.accessToken
+        setGcalToken(result.credential.accessToken)
         // Show calendar panel since we have access
         document.getElementById('gcalConnectBtn').textContent = 'Connected'
         document.getElementById('gcalPanel').style.display = 'block'
@@ -2179,6 +2202,25 @@ async function syncTemplates() {
 
     // Save merged result locally
     saveTemplates(merged)
+
+    // Sync starred templates
+    const cloudStarred = await loadStarredFromCloud()
+    const localStarred = getStarredTemplates()
+
+    if (cloudStarred) {
+      const allTemplates = merged
+      const mergedStarred = [...new Set([...localStarred, ...cloudStarred])]
+        .filter(name => allTemplates[name])
+        .slice(0, 3)
+      saveStarredTemplates(mergedStarred)
+      if (mergedStarred.length !== localStarred.length ||
+          !mergedStarred.every((v, i) => localStarred[i] === v)) {
+        changes++
+      }
+    } else {
+      await saveStarredToCloud()
+    }
+
     initializeTemplateDisplay()
     updateActionButtons()
 
@@ -2259,7 +2301,8 @@ saveCustomTemplate = function(name) {
 }
 
 // Initialize Firebase on load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadFirebaseConfig()
   initFirebase()
 })
 

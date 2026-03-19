@@ -550,7 +550,9 @@ When a template is deleted, both starred and recent references are cleared:
 - `loadTemplateFromCloud(name)` - Load single template from Firestore
 - `listCloudTemplates()` - List all user templates from Firestore
 - `deleteTemplateFromCloud(name)` - Delete template from Firestore
-- `syncTemplates()` - Merge local + cloud templates (adds missing from each side)
+- `syncTemplates()` - Merge local + cloud templates and starred list (adds missing from each side)
+- `saveStarredToCloud()` - Push starred templates list to Firestore (`users/{uid}/meta/preferences`)
+- `loadStarredFromCloud()` - Fetch starred templates list from Firestore
 - `exportTemplatesJSON()` - Download all templates as JSON file
 - `importTemplatesJSON(event)` - Upload and merge JSON template file
 
@@ -563,16 +565,28 @@ service cloud.firestore {
     match /users/{userId}/templates/{templateId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    match /users/{userId}/meta/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
 ```
+
+### Firebase Config via Vercel API
+
+Firebase config is **not** hardcoded in `script.js`. Instead:
+
+- `api/config.js` — Vercel serverless function that reads env vars and returns Firebase config as JSON
+- `loadFirebaseConfig()` — Fetches `/api/config` on page load before `initFirebase()`
+- **Graceful fallback**: If the API route is unavailable (local dev without Vercel), Firebase is simply disabled and the app works fully offline with localStorage
+- **Env vars** must be set in Vercel dashboard (Settings > Environment Variables): `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`
 
 ## Development Notes
 
 - No build process required - open index.html directly in browser
 - Uses jsPDF from CDN (version 2.4.0)
 - LocalStorage for all persistence - no backend required
-- Optional Firebase for cloud sync (graceful fallback when not configured)
+- Optional Firebase for cloud sync (config served via Vercel API route; graceful fallback when not configured)
 - Responsive design with mobile-optimized controls
 - Dark/light theme toggle stored in localStorage
 
