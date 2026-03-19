@@ -1961,15 +1961,12 @@ function importGcalEvents() {
 /* ----------------------- FIREBASE CLOUD TEMPLATES ----------------------- */
 // Firebase config - fill in your project details to enable cloud sync
 const FIREBASE_CONFIG = {
-  // To enable cloud templates, create a Firebase project at https://console.firebase.google.com
-  // Enable Google Sign-In in Authentication, and create a Firestore database
-  // Then fill in these values from your project settings:
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  storageBucket: '',
-  messagingSenderId: '',
-  appId: ''
+  apiKey: 'AIzaSyBHpEcNdR_asdXqDXIi3vTmzHTT2VRIAzw',
+  authDomain: 'david-invoice-tool.firebaseapp.com',
+  projectId: 'david-invoice-tool',
+  storageBucket: 'david-invoice-tool.firebasestorage.app',
+  messagingSenderId: '987270064429',
+  appId: '1:987270064429:web:a7bf49325975cf66788ba4'
 }
 
 let firebaseApp = null

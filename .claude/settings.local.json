@@ -12,7 +12,8 @@
       "Read(//private/tmp/**)",
       "WebFetch(domain:github.com)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
