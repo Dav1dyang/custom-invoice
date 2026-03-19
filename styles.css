@@ -808,6 +808,7 @@ details.gcal-settings[open] summary {
 }
 
 .settings-group .setting-row:last-child {
+  margin-top: auto;
   margin-bottom: 0;
 }
 
@@ -1103,8 +1104,9 @@ input[type='text'] {
 .logo-upload-row {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
+  height: var(--btn-primary-height);
 }
 
 .logo-upload-row input[type='file'] {
@@ -1134,9 +1136,11 @@ input[type='text'] {
 /* Upload button: stretches to fill row */
 .logo-btn {
   flex: 1;
+  height: var(--btn-primary-height);
   min-height: var(--btn-primary-height);
   max-height: var(--btn-primary-height);
   padding: 0 15px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
