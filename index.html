@@ -6,6 +6,10 @@
     <title>Invoice Tool</title>
     <script src="https://unpkg.com/jspdf@2.4.0/dist/jspdf.umd.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Firebase SDK (compat mode for simplicity) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -23,13 +27,25 @@
                     David's freelance invoicing tool with customizable styling
                   </div>
                 </div>
-                <button
-                  class="theme-toggle"
-                  onclick="toggleTheme()"
-                  title="Toggle light/dark theme"
-                >
-                  <span class="theme-icon">☀️</span>
-                </button>
+                <div class="header-actions">
+                  <div class="auth-section" id="authSection">
+                    <button
+                      class="auth-btn"
+                      id="authBtn"
+                      onclick="handleAuthClick()"
+                      title="Sign in with Google"
+                    >
+                      <span id="authLabel">Sign In</span>
+                    </button>
+                  </div>
+                  <button
+                    class="theme-toggle"
+                    onclick="toggleTheme()"
+                    title="Toggle light/dark theme"
+                  >
+                    <span class="theme-icon">☀️</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -133,6 +149,38 @@
                     </button>
                   </div>
                 </div>
+              </div>
+
+              <!-- Export/Import -->
+              <div class="template-export-row">
+                <button
+                  type="button"
+                  class="template-export-btn"
+                  onclick="exportTemplatesJSON()"
+                  title="Export all templates as JSON"
+                >
+                  Export JSON
+                </button>
+                <label class="template-export-btn template-import-label" for="importTemplatesFile">
+                  Import JSON
+                </label>
+                <input
+                  type="file"
+                  id="importTemplatesFile"
+                  accept=".json"
+                  style="display:none"
+                  onchange="importTemplatesJSON(event)"
+                />
+                <button
+                  type="button"
+                  class="template-export-btn"
+                  id="syncBtn"
+                  onclick="syncTemplates()"
+                  style="display:none"
+                  title="Sync templates with cloud"
+                >
+                  Sync Cloud
+                </button>
               </div>
             </div>
 
@@ -420,6 +468,12 @@
                             style="background: #ceff00"
                           ></span>
                         </div>
+                      </div>
+                      <div class="setting-row">
+                        <label class="gcal-checkbox-label">
+                          <input type="checkbox" id="showWatermark" checked />
+                          <span>Show PREVIEW watermark</span>
+                        </label>
                       </div>
                       <div class="setting-row">
                         <label>Quick Presets</label>
@@ -730,6 +784,7 @@
       </div>
     </div>
 
+    <div id="toastContainer" class="toast-container"></div>
     <script src="script.js"></script>
   </body>
 </html>

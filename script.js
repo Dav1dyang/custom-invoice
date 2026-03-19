@@ -20,6 +20,58 @@ function generateAbbreviation(name) {
   return words.map(w => w[0]).join('').slice(0, 6)
 }
 
+/* ----------------------------- TOASTS ---------------------------- */
+function showToast(message, type = 'info', duration = 3000) {
+  const container = document.getElementById('toastContainer')
+  if (!container) return
+
+  const toast = document.createElement('div')
+  toast.className = `toast toast--${type}`
+  toast.innerHTML = `
+    <span class="toast__message">${message}</span>
+    <button class="toast__close" onclick="dismissToast(this.parentElement)">×</button>
+  `
+  container.appendChild(toast)
+
+  if (duration > 0) {
+    setTimeout(() => dismissToast(toast), duration)
+  }
+  return toast
+}
+
+function showConfirmToast(message, onConfirm, onCancel) {
+  const container = document.getElementById('toastContainer')
+  if (!container) return
+
+  const toast = document.createElement('div')
+  toast.className = 'toast toast--warning'
+  toast.innerHTML = `
+    <span class="toast__message">${message}</span>
+    <div class="toast-actions">
+      <button class="toast-confirm">Yes</button>
+      <button class="toast-cancel">Cancel</button>
+    </div>
+  `
+
+  toast.querySelector('.toast-confirm').onclick = () => {
+    dismissToast(toast)
+    if (onConfirm) onConfirm()
+  }
+  toast.querySelector('.toast-cancel').onclick = () => {
+    dismissToast(toast)
+    if (onCancel) onCancel()
+  }
+
+  container.appendChild(toast)
+  return toast
+}
+
+function dismissToast(toast) {
+  if (!toast || !toast.parentElement) return
+  toast.classList.add('toast-out')
+  setTimeout(() => toast.remove(), 300)
+}
+
 /* ----------------------------- THEME ----------------------------- */
 let currentTheme = localStorage.getItem('theme') || 'light'
 document.documentElement.setAttribute('data-theme', currentTheme)
@@ -610,6 +662,19 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 setAccentPreset('neon')
 updatePreviewColors()
 
+// Watermark toggle
+function updateWatermark() {
+  const show = document.getElementById('showWatermark')?.checked ?? true
+  const outEl = document.getElementById('invoiceContent')
+  if (outEl) {
+    outEl.classList.toggle('show-watermark', show)
+  }
+}
+
+document.getElementById('showWatermark')?.addEventListener('change', updateWatermark)
+// Initialize watermark on load
+updateWatermark()
+
 // Auto-preview: re-render on any form input change (delegation)
 document.querySelector('.content-left')?.addEventListener('input', (e) => {
   if (e.target.id === 'csvPasteArea' || e.target.closest('.gcal-section')) return
@@ -980,7 +1045,7 @@ function loadQuickTemplate() {
   }
 
   if (!selectedTemplate) {
-    alert('Please select a template first')
+    showToast('Please select a template first', 'warning')
     return
   }
 
@@ -1010,7 +1075,7 @@ function loadQuickTemplate() {
     return
   }
 
-  alert('Template not found')
+  showToast('Template not found', 'error')
 }
 
 // Handle save action
@@ -1019,24 +1084,18 @@ function handleSaveAction() {
   const selectedTemplate = templateInput ? templateInput.value.trim() : ''
 
   if (!selectedTemplate) {
-    const templateName = prompt('Enter template name:')
-    if (templateName) {
-      saveCustomTemplate(templateName)
-      templateInput.value = templateName
-      updateActionButtons()
-      initializeTemplateDisplay()
-    }
+    showToast('Enter a template name in the input field first', 'warning')
     return
   }
 
   // Update existing or save new
   const savedTemplates = getTemplates()
   if (savedTemplates.hasOwnProperty(selectedTemplate)) {
-    if (confirm(`Update template "${selectedTemplate}"?`)) {
+    showConfirmToast(`Update template "${selectedTemplate}"?`, () => {
       saveCustomTemplate(selectedTemplate)
       updateActionButtons()
       initializeTemplateDisplay()
-    }
+    })
   } else {
     saveCustomTemplate(selectedTemplate)
     initializeTemplateDisplay()
@@ -1050,7 +1109,7 @@ function handleStarAction() {
   const selectedTemplate = templateInput ? templateInput.value.trim() : ''
 
   if (!selectedTemplate) {
-    alert('Please select a template first')
+    showToast('Please select a template first', 'warning')
     return
   }
 
@@ -1059,15 +1118,15 @@ function handleStarAction() {
   if (starredTemplates.includes(selectedTemplate)) {
     // Remove star
     removeStarredTemplate(selectedTemplate)
-    alert(`Removed star from "${selectedTemplate}"`)
+    showToast(`Removed star from "${selectedTemplate}"`, 'info')
   } else {
     // Add star
     if (starredTemplates.length >= 3) {
-      alert('You can only have 3 starred templates. Please remove a star first.')
+      showToast('You can only have 3 starred templates. Please remove a star first.', 'warning')
       return
     }
     addStarredTemplate(selectedTemplate)
-    alert(`Added star to "${selectedTemplate}"`)
+    showToast(`Added star to "${selectedTemplate}"`, 'success')
   }
 
   updateActionButtons()
@@ -1080,17 +1139,17 @@ function handleDeleteAction() {
   const selectedTemplate = templateInput ? templateInput.value.trim() : ''
 
   if (!selectedTemplate) {
-    alert('Please select a template first')
+    showToast('Please select a template first', 'warning')
     return
   }
 
   const savedTemplates = getTemplates()
   if (!savedTemplates.hasOwnProperty(selectedTemplate)) {
-    alert('Cannot delete: template not found or is a built-in template')
+    showToast('Cannot delete: template not found or is a built-in template', 'error')
     return
   }
 
-  if (confirm(`Are you sure you want to delete template "${selectedTemplate}"?`)) {
+  showConfirmToast(`Delete template "${selectedTemplate}"?`, () => {
     delete savedTemplates[selectedTemplate]
     saveTemplates(savedTemplates)
     removeStarredTemplate(selectedTemplate)
@@ -1101,8 +1160,8 @@ function handleDeleteAction() {
     updateActionButtons()
     initializeTemplateDisplay()
 
-    alert(`Template "${selectedTemplate}" deleted successfully!`)
-  }
+    showToast(`Template "${selectedTemplate}" deleted!`, 'success')
+  })
 }
 
 // Load template by ID
@@ -1207,9 +1266,12 @@ function loadTemplateById(templateId) {
 function handleTemplateAction(action) {
   switch (action) {
     case 'save':
-      const templateName = prompt('Enter template name:')
+      const templateInput2 = document.getElementById('templateInput')
+      const templateName = templateInput2 ? templateInput2.value.trim() : ''
       if (templateName) {
         saveCustomTemplate(templateName)
+      } else {
+        showToast('Enter a template name in the input field first', 'warning')
       }
       break
     case 'load':
@@ -1232,7 +1294,7 @@ function saveCustomTemplate(name) {
   const templates = getTemplates()
   templates[name] = getCurrentTemplateData()
   saveTemplates(templates)
-  alert(`Template "${name}" saved successfully!`)
+  showToast(`Template "${name}" saved!`, 'success')
 }
 
 function showLoadTemplateDialog() {
@@ -1240,45 +1302,31 @@ function showLoadTemplateDialog() {
   const templateNames = Object.keys(templates)
 
   if (templateNames.length === 0) {
-    alert('No saved templates found.')
+    showToast('No saved templates found.', 'info')
     return
   }
 
-  const templateName = prompt(`Available templates:\n${templateNames.join('\n')}\n\nEnter template name to load:`)
-  if (templateName && templates[templateName]) {
-    loadTemplateData(templates[templateName])
-    updateRecentTemplate(templateName)
-  } else if (templateName) {
-    alert('Template not found.')
-  }
+  showToast('Use the template dropdown to select and load a template.', 'info')
 }
 
 function showStarTemplateDialog() {
   const currentStarred = getStarredTemplates()
   if (currentStarred.length >= 3) {
-    alert('You can only have 3 starred templates. Please remove a star first.')
+    showToast('You can only have 3 starred templates. Please remove a star first.', 'warning')
     return
   }
 
-  const templateName = prompt('Enter template name to star:')
-  if (templateName) {
-    addStarredTemplate(templateName)
-    updateTemplateDisplay()
-  }
+  showToast('Enter a template name in the input field and click the star button.', 'info')
 }
 
 function showUnstarTemplateDialog() {
   const starred = getStarredTemplates()
   if (starred.length === 0) {
-    alert('No starred templates found.')
+    showToast('No starred templates found.', 'info')
     return
   }
 
-  const templateName = prompt(`Starred templates:\n${starred.join('\n')}\n\nEnter template name to unstar:`)
-  if (templateName && starred.includes(templateName)) {
-    removeStarredTemplate(templateName)
-    updateTemplateDisplay()
-  }
+  showToast('Select a starred template and click the star button to unstar it.', 'info')
 }
 
 function showDeleteTemplateDialog() {
@@ -1286,22 +1334,11 @@ function showDeleteTemplateDialog() {
   const templateNames = Object.keys(templates)
 
   if (templateNames.length === 0) {
-    alert('No saved templates found.')
+    showToast('No saved templates found.', 'info')
     return
   }
 
-  const templateName = prompt(`Saved templates:\n${templateNames.join('\n')}\n\nEnter template name to delete:`)
-  if (templateName && templates[templateName]) {
-    if (confirm(`Are you sure you want to delete template "${templateName}"?`)) {
-      delete templates[templateName]
-      saveTemplates(templates)
-      removeStarredTemplate(templateName) // Remove from starred if present
-      updateTemplateDisplay()
-      alert(`Template "${templateName}" deleted successfully!`)
-    }
-  } else if (templateName) {
-    alert('Template not found.')
-  }
+  showToast('Select a template and click the delete button to remove it.', 'info')
 }
 
 // Starred templates management
@@ -1419,7 +1456,8 @@ function getCurrentTemplateData() {
     logoMonochrome: document.getElementById('logoMonochrome')?.checked || false,
     logoScale: parseInt(document.getElementById('logoScale')?.value) || 100,
     logoRotation: parseInt(document.getElementById('logoRotation')?.value) || 0,
-    logoAlignment: getLogoAlignment()
+    logoAlignment: getLogoAlignment(),
+    showWatermark: document.getElementById('showWatermark')?.checked ?? true
   }
 }
 
@@ -1492,6 +1530,12 @@ function loadTemplateData(templateData) {
       const saveItemsCheckbox = document.getElementById('saveLineItemsCheckbox')
       if (saveItemsCheckbox) {
         saveItemsCheckbox.checked = templateData[key]
+      }
+    } else if (key === 'showWatermark') {
+      const el = document.getElementById('showWatermark')
+      if (el) {
+        el.checked = templateData[key] !== false  // default true
+        updateWatermark()
       }
     } else if (key === 'notesPosition') {
       // Restore notes position radio button
@@ -1594,16 +1638,17 @@ function parseCSV(text) {
 
 // Clear all existing items
 function clearAllItems() {
-  if (confirm('Are you sure you want to clear all line items?')) {
+  showConfirmToast('Clear all line items?', () => {
     document.getElementById('itemsBody').innerHTML = ''
     addItem() // Add one empty item
-  }
+    showToast('All items cleared', 'info')
+  })
 }
 
 // Import items from parsed data
 function importItems(items, replace = true) {
   if (items.length === 0) {
-    alert('No valid items found in the data. Expected format: Description, Quantity, Rate')
+    showToast('No valid items found. Expected: Description, Quantity, Rate', 'error')
     return
   }
   
@@ -1615,7 +1660,7 @@ function importItems(items, replace = true) {
     addItem(item.description, item.qty, item.rate)
   })
   
-  alert(`Successfully imported ${items.length} items!`)
+  showToast(`Imported ${items.length} items!`, 'success')
 }
 
 // Import from file
@@ -1624,7 +1669,7 @@ function importFromFile() {
   const file = fileInput.files[0]
   
   if (!file) {
-    alert('Please select a file to import')
+    showToast('Please select a file to import', 'warning')
     return
   }
   
@@ -1636,7 +1681,7 @@ function importFromFile() {
       importItems(items)
       fileInput.value = '' // Clear file input
     } catch (error) {
-      alert('Error reading file: ' + error.message)
+      showToast('Error reading file: ' + error.message, 'error', 5000)
     }
   }
   
@@ -1649,16 +1694,16 @@ function importFromPaste() {
   const text = textarea.value.trim()
   
   if (!text) {
-    alert('Please paste some CSV data first')
+    showToast('Please paste some CSV data first', 'warning')
     return
   }
-  
+
   try {
     const items = parseCSV(text)
     importItems(items)
     textarea.value = '' // Clear textarea
   } catch (error) {
-    alert('Error parsing CSV data: ' + error.message)
+    showToast('Error parsing CSV data: ' + error.message, 'error', 5000)
   }
 }
 
@@ -1669,11 +1714,11 @@ let gcalEvents = []
 function saveGcalClientId() {
   const clientId = document.getElementById('gcalClientId').value.trim()
   if (!clientId) {
-    alert('Please enter a Client ID')
+    showToast('Please enter a Client ID', 'warning')
     return
   }
   localStorage.setItem('gcal_client_id', clientId)
-  alert('Client ID saved!')
+  showToast('Client ID saved!', 'success')
 }
 
 function connectGoogleCalendar() {
@@ -1681,12 +1726,12 @@ function connectGoogleCalendar() {
     localStorage.getItem('gcal_client_id')
 
   if (!clientId) {
-    alert('Please enter and save a Google Cloud Client ID first')
+    showToast('Please enter and save a Google Cloud Client ID first', 'warning')
     return
   }
 
   if (typeof google === 'undefined' || !google.accounts) {
-    alert('Google Identity Services not loaded. Check your internet connection and reload.')
+    showToast('Google Identity Services not loaded. Check connection and reload.', 'error', 5000)
     return
   }
 
@@ -1695,7 +1740,7 @@ function connectGoogleCalendar() {
     scope: 'https://www.googleapis.com/auth/calendar.readonly',
     callback: async (tokenResponse) => {
       if (tokenResponse.error) {
-        alert('Authorization failed: ' + tokenResponse.error)
+        showToast('Authorization failed: ' + tokenResponse.error, 'error', 5000)
         return
       }
       gcalAccessToken = tokenResponse.access_token
@@ -1725,7 +1770,7 @@ async function loadCalendarList() {
       document.getElementById('gcalPanel').style.display = 'none'
       document.getElementById('gcalOptionsGroup').style.display = 'none'
       document.getElementById('gcalFetchRow').style.display = 'none'
-      alert('Session expired. Please reconnect.')
+      showToast('Session expired. Please reconnect.', 'error', 5000)
       return
     }
 
@@ -1740,13 +1785,13 @@ async function loadCalendarList() {
       select.appendChild(opt)
     })
   } catch (e) {
-    alert('Failed to load calendars: ' + e.message)
+    showToast('Failed to load calendars: ' + e.message, 'error', 5000)
   }
 }
 
 async function fetchGcalEvents() {
   if (!gcalAccessToken) {
-    alert('Please connect Google Calendar first')
+    showToast('Please connect Google Calendar first', 'warning')
     return
   }
 
@@ -1757,7 +1802,7 @@ async function fetchGcalEvents() {
   const groupByTitle = document.getElementById('gcalGroupByTitle').checked
 
   if (!calendarId || !dateFrom || !dateTo) {
-    alert('Please select a calendar and date range')
+    showToast('Please select a calendar and date range', 'warning')
     return
   }
 
@@ -1782,7 +1827,7 @@ async function fetchGcalEvents() {
       document.getElementById('gcalPanel').style.display = 'none'
       document.getElementById('gcalOptionsGroup').style.display = 'none'
       document.getElementById('gcalFetchRow').style.display = 'none'
-      alert('Session expired. Please reconnect.')
+      showToast('Session expired. Please reconnect.', 'error', 5000)
       return
     }
 
@@ -1828,7 +1873,7 @@ async function fetchGcalEvents() {
     gcalEvents = events
     renderGcalEvents()
   } catch (e) {
-    alert('Failed to fetch events: ' + e.message)
+    showToast('Failed to fetch events: ' + e.message, 'error', 5000)
   }
 }
 
@@ -1881,7 +1926,7 @@ function importGcalEvents() {
   const selected = gcalEvents.filter((e) => e.selected)
 
   if (selected.length === 0) {
-    alert('No events selected')
+    showToast('No events selected', 'warning')
     return
   }
 
@@ -1889,7 +1934,7 @@ function importGcalEvents() {
     addItem(e.title, String(e.hours), String(rate), '')
   })
 
-  alert(`Imported ${selected.length} event(s) as line items!`)
+  showToast(`Imported ${selected.length} event(s) as line items!`, 'success')
 }
 
 // Initialize Google Calendar on load
@@ -1912,6 +1957,290 @@ function importGcalEvents() {
     toDate.value = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`
   }
 })()
+
+/* ----------------------- FIREBASE CLOUD TEMPLATES ----------------------- */
+// Firebase config - fill in your project details to enable cloud sync
+const FIREBASE_CONFIG = {
+  // To enable cloud templates, create a Firebase project at https://console.firebase.google.com
+  // Enable Google Sign-In in Authentication, and create a Firestore database
+  // Then fill in these values from your project settings:
+  apiKey: '',
+  authDomain: '',
+  projectId: '',
+  storageBucket: '',
+  messagingSenderId: '',
+  appId: ''
+}
+
+let firebaseApp = null
+let firebaseAuth = null
+let firebaseDb = null
+let currentUser = null
+
+function isFirebaseConfigured() {
+  return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId
+}
+
+function initFirebase() {
+  if (!isFirebaseConfigured()) return false
+  if (typeof firebase === 'undefined') return false
+
+  try {
+    firebaseApp = firebase.initializeApp(FIREBASE_CONFIG)
+    firebaseAuth = firebase.auth()
+    firebaseDb = firebase.firestore()
+
+    // Listen for auth state changes
+    firebaseAuth.onAuthStateChanged((user) => {
+      currentUser = user
+      updateAuthUI()
+      if (user) {
+        // Store OAuth token for Calendar API if available
+        user.getIdToken().then(() => {
+          const syncBtn = document.getElementById('syncBtn')
+          if (syncBtn) syncBtn.style.display = ''
+        })
+        // Auto-sync on sign in
+        syncTemplates()
+      } else {
+        const syncBtn = document.getElementById('syncBtn')
+        if (syncBtn) syncBtn.style.display = 'none'
+      }
+    })
+
+    return true
+  } catch (e) {
+    console.warn('Firebase init failed:', e.message)
+    return false
+  }
+}
+
+function updateAuthUI() {
+  const btn = document.getElementById('authBtn')
+  const label = document.getElementById('authLabel')
+  if (!btn || !label) return
+
+  if (currentUser) {
+    const name = currentUser.displayName || currentUser.email || 'User'
+    const photo = currentUser.photoURL
+    if (photo) {
+      label.innerHTML = `<img class="auth-avatar" src="${photo}" alt="" />${name.split(' ')[0]}`
+    } else {
+      label.textContent = name.split(' ')[0]
+    }
+    btn.classList.add('signed-in')
+    btn.title = `Signed in as ${currentUser.email}. Click to sign out.`
+  } else {
+    label.textContent = 'Sign In'
+    btn.classList.remove('signed-in')
+    btn.title = 'Sign in with Google for cloud templates'
+  }
+}
+
+function handleAuthClick() {
+  if (!isFirebaseConfigured()) {
+    showToast('Firebase not configured. Add your config in script.js to enable cloud sync.', 'info', 5000)
+    return
+  }
+
+  if (currentUser) {
+    showConfirmToast('Sign out?', () => {
+      firebaseAuth.signOut()
+      showToast('Signed out', 'info')
+    })
+  } else {
+    const provider = new firebase.auth.GoogleAuthProvider()
+    provider.addScope('https://www.googleapis.com/auth/calendar.readonly')
+    firebaseAuth.signInWithPopup(provider).then((result) => {
+      // Store OAuth access token for Calendar API
+      if (result.credential) {
+        gcalAccessToken = result.credential.accessToken
+        // Show calendar panel since we have access
+        document.getElementById('gcalConnectBtn').textContent = 'Connected'
+        document.getElementById('gcalPanel').style.display = 'block'
+        document.getElementById('gcalOptionsGroup').style.display = ''
+        document.getElementById('gcalFetchRow').style.display = ''
+        loadCalendarList()
+      }
+      showToast(`Signed in as ${result.user.displayName || result.user.email}`, 'success')
+    }).catch((error) => {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        showToast('Sign-in failed: ' + error.message, 'error', 5000)
+      }
+    })
+  }
+}
+
+// Firestore CRUD
+async function saveTemplateToCloud(name, data) {
+  if (!currentUser || !firebaseDb) return false
+  try {
+    await firebaseDb.collection('users').doc(currentUser.uid)
+      .collection('templates').doc(name).set({
+        ...data,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      })
+    return true
+  } catch (e) {
+    console.warn('Cloud save failed:', e.message)
+    return false
+  }
+}
+
+async function loadTemplateFromCloud(name) {
+  if (!currentUser || !firebaseDb) return null
+  try {
+    const doc = await firebaseDb.collection('users').doc(currentUser.uid)
+      .collection('templates').doc(name).get()
+    return doc.exists ? doc.data() : null
+  } catch (e) {
+    console.warn('Cloud load failed:', e.message)
+    return null
+  }
+}
+
+async function listCloudTemplates() {
+  if (!currentUser || !firebaseDb) return {}
+  try {
+    const snapshot = await firebaseDb.collection('users').doc(currentUser.uid)
+      .collection('templates').get()
+    const templates = {}
+    snapshot.forEach(doc => {
+      templates[doc.id] = doc.data()
+    })
+    return templates
+  } catch (e) {
+    console.warn('Cloud list failed:', e.message)
+    return {}
+  }
+}
+
+async function deleteTemplateFromCloud(name) {
+  if (!currentUser || !firebaseDb) return false
+  try {
+    await firebaseDb.collection('users').doc(currentUser.uid)
+      .collection('templates').doc(name).delete()
+    return true
+  } catch (e) {
+    console.warn('Cloud delete failed:', e.message)
+    return false
+  }
+}
+
+// Sync: merge local + cloud (newer wins)
+async function syncTemplates() {
+  if (!currentUser || !firebaseDb) return
+
+  try {
+    const localTemplates = getTemplates()
+    const cloudTemplates = await listCloudTemplates()
+
+    const merged = { ...localTemplates }
+    let changes = 0
+
+    // Merge cloud into local (cloud wins if newer or not in local)
+    Object.entries(cloudTemplates).forEach(([name, cloudData]) => {
+      if (!merged[name]) {
+        // Cloud-only template: add to local
+        const { updatedAt, ...data } = cloudData
+        merged[name] = data
+        changes++
+      }
+    })
+
+    // Upload local-only templates to cloud
+    for (const [name, localData] of Object.entries(localTemplates)) {
+      if (!cloudTemplates[name]) {
+        await saveTemplateToCloud(name, localData)
+        changes++
+      }
+    }
+
+    // Save merged result locally
+    saveTemplates(merged)
+    initializeTemplateDisplay()
+    updateActionButtons()
+
+    if (changes > 0) {
+      showToast(`Synced ${changes} template(s) with cloud`, 'success')
+    } else {
+      showToast('Templates are up to date', 'info')
+    }
+  } catch (e) {
+    showToast('Sync failed: ' + e.message, 'error', 5000)
+  }
+}
+
+// Export/Import JSON
+function exportTemplatesJSON() {
+  const templates = getTemplates()
+  const starred = getStarredTemplates()
+  const exportData = { templates, starred, exportedAt: new Date().toISOString() }
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `invoice-templates-${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  showToast('Templates exported!', 'success')
+}
+
+function importTemplatesJSON(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result)
+      if (!data.templates || typeof data.templates !== 'object') {
+        showToast('Invalid template file format', 'error')
+        return
+      }
+
+      const existing = getTemplates()
+      const merged = { ...existing, ...data.templates }
+      saveTemplates(merged)
+
+      // Merge starred
+      if (data.starred && Array.isArray(data.starred)) {
+        const currentStarred = getStarredTemplates()
+        const mergedStarred = [...new Set([...currentStarred, ...data.starred])].slice(0, 3)
+        saveStarredTemplates(mergedStarred)
+      }
+
+      initializeTemplateDisplay()
+      updateActionButtons()
+
+      const count = Object.keys(data.templates).length
+      showToast(`Imported ${count} template(s)!`, 'success')
+    } catch (err) {
+      showToast('Error parsing file: ' + err.message, 'error', 5000)
+    }
+    event.target.value = '' // Reset file input
+  }
+  reader.readAsText(file)
+}
+
+// Patch saveCustomTemplate to also save to cloud
+const _originalSaveCustomTemplate = saveCustomTemplate
+saveCustomTemplate = function(name) {
+  _originalSaveCustomTemplate(name)
+
+  // Async cloud save (fire and forget)
+  if (currentUser && firebaseDb) {
+    const templates = getTemplates()
+    saveTemplateToCloud(name, templates[name]).then(ok => {
+      if (ok) showToast('Synced to cloud', 'info', 2000)
+    })
+  }
+}
+
+// Initialize Firebase on load
+document.addEventListener('DOMContentLoaded', () => {
+  initFirebase()
+})
 
 /* ---------------------------- PREVIEW ---------------------------- */
 // Calculate subtotals grouped by type
@@ -2263,7 +2592,7 @@ async function downloadPDF() {
   }
 
   if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert('jsPDF library failed to load. Please check your internet connection and refresh the page.')
+    showToast('jsPDF library failed to load. Check your connection and refresh.', 'error', 5000)
     return
   }
 
@@ -2336,6 +2665,19 @@ async function downloadPDF() {
   // Paper
   doc.setFillColor(paperRGB.r, paperRGB.g, paperRGB.b)
   doc.rect(0, 0, pageW, pageH, 'F')
+
+  // PREVIEW watermark on page 1
+  const showWatermark = document.getElementById('showWatermark')?.checked ?? true
+  function renderPDFWatermark() {
+    if (!showWatermark) return
+    doc.setGState(new doc.GState({ opacity: 0.06 }))
+    doc.setFont(fonts.hdr, 'bold')
+    doc.setFontSize(60)
+    doc.setTextColor(0, 0, 0)
+    doc.text('PREVIEW', pageW / 2, pageH / 2, { align: 'center', angle: 45 })
+    doc.setGState(new doc.GState({ opacity: 1 }))
+  }
+  renderPDFWatermark()
 
   // Colors & stroke - consistent thin lines throughout
   doc.setDrawColor(inkRGB.r, inkRGB.g, inkRGB.b)
@@ -2871,6 +3213,9 @@ async function downloadPDF() {
     // Set up page background for new page
     doc.setFillColor(paperRGB.r, paperRGB.g, paperRGB.b)
     doc.rect(0, 0, pageW, pageH, 'F')
+
+    // PREVIEW watermark on continuation pages
+    renderPDFWatermark()
 
     // CONDENSED continuation page header (matches page 1 height)
     doc.setFont(fonts.hdr, 'bold')
