@@ -671,9 +671,22 @@ function updateWatermark() {
   }
 }
 
-document.getElementById('showWatermark')?.addEventListener('change', updateWatermark)
+document.getElementById('showWatermark')?.addEventListener('change', function() {
+  const toggle = this.closest('.pill-toggle')
+  if (toggle) toggle.classList.toggle('active', this.checked)
+  updateWatermark()
+})
 // Initialize watermark on load
 updateWatermark()
+
+// Pill toggle active sync for all pill-toggle checkboxes
+document.querySelectorAll('.pill-toggle input[type="checkbox"]').forEach(el => {
+  if (el.id === 'showWatermark' || el.id === 'logoMonochrome') return // handled separately
+  el.addEventListener('change', function() {
+    const toggle = this.closest('.pill-toggle')
+    if (toggle) toggle.classList.toggle('active', this.checked)
+  })
+})
 
 // Auto-preview: re-render on any form input change (delegation)
 document.querySelector('.content-left')?.addEventListener('input', (e) => {
@@ -1153,6 +1166,7 @@ function handleDeleteAction() {
     delete savedTemplates[selectedTemplate]
     saveTemplates(savedTemplates)
     removeStarredTemplate(selectedTemplate)
+    clearRecentTemplate(selectedTemplate)
 
     // Clear input
     templateInput.value = ''
@@ -1371,6 +1385,12 @@ function removeStarredTemplate(templateName) {
   }
 }
 
+function clearRecentTemplate(templateName) {
+  if (localStorage.getItem(RECENT_KEY) === templateName) {
+    localStorage.removeItem(RECENT_KEY)
+  }
+}
+
 function updateRecentTemplate(templateName) {
   localStorage.setItem(RECENT_KEY, templateName)
   updateTemplateDisplay()
@@ -1530,11 +1550,15 @@ function loadTemplateData(templateData) {
       const saveItemsCheckbox = document.getElementById('saveLineItemsCheckbox')
       if (saveItemsCheckbox) {
         saveItemsCheckbox.checked = templateData[key]
+        const toggle = saveItemsCheckbox.closest('.pill-toggle')
+        if (toggle) toggle.classList.toggle('active', saveItemsCheckbox.checked)
       }
     } else if (key === 'showWatermark') {
       const el = document.getElementById('showWatermark')
       if (el) {
         el.checked = templateData[key] !== false  // default true
+        const toggle = el.closest('.pill-toggle')
+        if (toggle) toggle.classList.toggle('active', el.checked)
         updateWatermark()
       }
     } else if (key === 'notesPosition') {

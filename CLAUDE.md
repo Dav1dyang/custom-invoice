@@ -43,9 +43,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Compact row layout: 40x40 thumbnail + stretch "Select Logo" button
 - Controls grid appears below upload row only when a logo is loaded
-- Tint toggle button (wraps hidden checkbox, inverts bg/fg when active — same style as align buttons)
+- Tint pill toggle (`.pill-toggle.logo-tint-btn`, wraps hidden checkbox, inverts bg/fg when active)
 - Align buttons (Top/Mid/Bot), Scale %, Rotate ° in 2x2 grid
-- CSS classes: `.logo-upload-row`, `.logo-thumb`, `.logo-tint-btn`, `.logo-controls-grid`
+- CSS classes: `.logo-upload-row`, `.logo-thumb`, `.pill-toggle.logo-tint-btn`, `.logo-controls-grid`
 - Tint `.active` class synced on checkbox change and template load
 
 **CSV Import** (script.js:1101-1228)
@@ -275,11 +275,11 @@ Storage keys:
 
 ### Optional Line Items Feature
 
-**Checkbox Control** (index.html:337-342):
+**Pill Toggle Control** (index.html, items footer):
 
-- Located in Line Items section header
-- Checked by default
-- Label: "Save items with template"
+- Located in Line Items footer (far right)
+- Checked by default, uses `.pill-toggle.active` pattern
+- Label: "Save items"
 
 **Behavior:**
 
@@ -362,28 +362,47 @@ Backwards compatibility: `loadTemplateData()` converts old `invoiceNumber` forma
 - Monospace font (IBM Plex Mono) throughout entire app
 - Increased from previous scale for better readability on all devices
 
-### Button Height System
+### Two-Tier Button Height System
 
-**Unified 40px height system** (improved from previous multi-tier):
+**CSS Variables**: `--btn-primary-height: 40px`, `--btn-compact-height: 32px`
 
-- **All buttons**: 40px height (primary, tertiary)
-- **Template action icons**: 40px × 40px (square buttons)
-- **Exception - Secondary**: Template icons slightly smaller for visual balance
+**PRIMARY (40px)** — main action buttons:
 
-**Includes**:
-
-- "+ ADD LINE ITEM", "Preview Invoice", "Download PDF" → 40px
-- "Import File", "Import Pasted", "Clear All Items" → 40px
-- "Load", "1 Week", "15 Days", "30 Days" → 40px
-- Template chips (APOSSIBLE, MORAKANA, etc.) → 40px
+- "+ ADD LINE ITEM", "Download PDF", "Load", "1 Week / 15 Days / 30 Days"
+- "Import File", "Import Pasted", "Clear All Items"
 - Template action icons (💾 ⭐ 🗑️) → 40px × 40px
+- Export/Import JSON buttons
+- Auth button, theme toggle
 
-**Standardization**:
+**COMPACT (32px)** — secondary/filter controls:
 
-- Primary buttons: `min-height: 40px`, `max-height: 40px`, `padding: 10px 20px`
-- All use `font-size: var(--font-size-button)` (11px)
-- Consistent typography, spacing, and hover states
-- Touch-friendly on mobile (40px minimum target)
+- Template chips (starred/recent)
+- Color preset buttons
+- Google Calendar select/deselect buttons
+- Logo tint, align, scale/rotate controls
+- Pill toggles (see below)
+
+### Pill Toggle Pattern
+
+**`.pill-toggle`** — unified on/off control replacing all checkbox labels:
+
+- 32px height, rounded pill shape (`border-radius: 16px`)
+- `.active` class inverts bg/fg when checked
+- Hidden checkbox inside (`position: absolute; opacity: 0`)
+- JS syncs `.active` class on `change` event and template load
+
+**Used for**: "Save items", "Watermark", "Group titles", Logo "Tint"
+
+### Border System
+
+- **UI chrome** (cards, buttons, section borders): `1px solid var(--border)`
+- **Invoice preview** elements (`.out`, `.invoice-grid`, `.invoice-table`, `.invoice-summary`): `0.5px` — mimics PDF aesthetics
+
+### Template Deletion Cleanup
+
+When a template is deleted, both starred and recent references are cleared:
+- `removeStarredTemplate(name)` — removes from starred array
+- `clearRecentTemplate(name)` — removes from recent if it matches
 
 ### Input Dimensions
 
@@ -424,7 +443,7 @@ Backwards compatibility: `loadTemplateData()` converts old `invoiceNumber` forma
 **Line Items Footer** (index.html:400-406):
 
 - "+ ADD LINE ITEM" button on left
-- "Save with template" checkbox on far right (`margin-left: auto`)
+- "Save items" pill toggle on far right (`margin-left: auto`)
 - Flex layout with space-between
 - Stacks vertically on mobile (button first, checkbox centered)
 
@@ -502,7 +521,7 @@ Backwards compatibility: `loadTemplateData()` converts old `invoiceNumber` forma
 
 - **HTML**: CSS `::after` pseudo-element on `.out.show-watermark`, rotated -45deg, semi-transparent
 - **PDF**: `renderPDFWatermark()` called on every page, uses jsPDF GState for opacity 0.06, 60pt text at 45 degrees
-- **Toggle**: Checkbox `#showWatermark` in PDF Settings (default: checked). Preference saved with template.
+- **Toggle**: Pill toggle `#showWatermark` in PDF Settings (default: checked/active). Preference saved with template.
 
 ## Cloud Template System (Firebase)
 

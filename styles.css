@@ -57,6 +57,8 @@
   --font-size-body: 12px;    /* Input fields, normal text, form content */
   --font-size-label: 10px;   /* Form labels, helper text - MINIMUM READABLE SIZE */
   --font-size-button: 11px;  /* Buttons, interactive elements */
+  --btn-primary-height: 40px;
+  --btn-compact-height: 32px;
 }
 
 /* ====================== RESPONSIVE LAYOUT ====================== */
@@ -134,7 +136,7 @@
   background: var(--accent);
   color: var(--bg);
   border: none;
-  padding: 16px 32px;
+  padding: 10px 24px;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s;
@@ -142,7 +144,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
+  min-height: 40px;
 }
 
 .preview-actions .go:hover {
@@ -168,7 +170,7 @@ details.gcal-settings summary {
   border: 1px solid var(--border);
   cursor: pointer;
   text-transform: uppercase;
-  font-size: var(--font-size-h3);  /* 11px */
+  font-size: var(--font-size-h3);  /* 12px */
   font-weight: 600;
   letter-spacing: 1px;
   font-family: 'IBM Plex Mono', monospace;
@@ -203,7 +205,7 @@ details.gcal-settings[open] summary {
   width: 100%;
   min-height: 40px;
   padding: 10px 20px;
-  font-size: var(--font-size-button);  /* 10px */
+  font-size: var(--font-size-button);  /* 11px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -226,7 +228,7 @@ details.gcal-settings[open] summary {
   width: 100%;
   min-height: 40px;
   padding: 10px 20px;
-  font-size: var(--font-size-button);  /* 10px */
+  font-size: var(--font-size-button);  /* 11px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -247,13 +249,13 @@ details.gcal-settings[open] summary {
 
 .csv-import-content input[type="file"] {
   padding: 8px;
-  font-size: var(--font-size-body);  /* 11px */
+  font-size: var(--font-size-body);  /* 12px */
   font-family: 'IBM Plex Mono', monospace;
 }
 
 .csv-import-content textarea {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--font-size-body);  /* 11px */
+  font-size: var(--font-size-body);  /* 12px */
   min-height: 80px;
   line-height: 1.4;
 }
@@ -261,7 +263,7 @@ details.gcal-settings[open] summary {
 /* === IMPORT MANAGE ROW === */
 .import-manage-row {
   margin-top: 16px;
-  padding-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 
@@ -301,23 +303,7 @@ details.gcal-settings[open] summary {
   flex: 1;
 }
 
-.gcal-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-size-label);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-}
-
-.gcal-checkbox-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  min-width: 16px;
-  cursor: pointer;
-}
+/* gcal-checkbox-label removed — replaced by .pill-toggle */
 
 .gcal-select-actions {
   display: flex;
@@ -326,7 +312,9 @@ details.gcal-settings[open] summary {
 }
 
 .gcal-select-btn {
-  padding: 4px 12px;
+  min-height: 32px;
+  max-height: 32px;
+  padding: 6px 12px;
   font-size: var(--font-size-label);
   font-weight: 600;
   text-transform: uppercase;
@@ -458,14 +446,14 @@ details.gcal-settings[open] summary {
   gap: 6px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 0.5px solid var(--border);
+  border-top: 1px solid var(--border);
 }
 
 .template-export-btn {
   flex: 1;
-  min-height: 32px;
-  padding: 6px 10px;
-  font-size: var(--font-size-label);
+  min-height: 40px;
+  padding: 10px 16px;
+  font-size: var(--font-size-button);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -518,11 +506,11 @@ details.gcal-settings[open] summary {
 }
 
 .templates h3 {
-  font-size: var(--font-size-h3);  /* 11px */
+  font-size: var(--font-size-h3);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 2px;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 8px;
   margin-bottom: 15px;
 }
@@ -547,10 +535,10 @@ details.gcal-settings[open] summary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  max-height: 40px;  /* Prevent growing */
-  padding: 10px 16px;
-  font-size: var(--font-size-button);  /* 11px */
+  min-height: 32px;
+  max-height: 32px;
+  padding: 6px 12px;
+  font-size: var(--font-size-label);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -604,7 +592,7 @@ details.gcal-settings[open] summary {
 /* Management Section */
 .template-manage-section {
   padding-top: 16px;
-  border-top: 0.5px solid var(--border);
+  border-top: 1px solid var(--border);
   margin-top: 4px;
 }
 
@@ -713,7 +701,7 @@ details.gcal-settings[open] summary {
 
 /* Dropdown items */
 .template-dropdown-item {
-  font-size: var(--font-size-button);  /* 10px */
+  font-size: var(--font-size-button);  /* 11px */
   padding: 9px 18px;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -809,7 +797,7 @@ details.gcal-settings[open] summary {
 .pdf-content {
   border: 1px solid var(--border);
   border-top: none;
-  padding: 16px;
+  padding: 20px 16px;
   background: var(--panel-bg);
 }
 
@@ -825,7 +813,7 @@ details.gcal-settings[open] summary {
 }
 
 .settings-group h4 {
-  font-size: var(--font-size-h4);  /* 10px */
+  font-size: var(--font-size-h4);  /* 11px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -839,7 +827,7 @@ details.gcal-settings[open] summary {
 
 .setting-row label {
   display: block;
-  font-size: var(--font-size-label);  /* 9px */
+  font-size: var(--font-size-label);  /* 10px */
   font-weight: 500;
   margin-bottom: 4px;
   text-transform: uppercase;
@@ -914,7 +902,7 @@ body {
 
 .card {
   background: var(--panel-bg);
-  border: 0.5px solid var(--border);
+  border: 1px solid var(--border);
   padding: 16px;  /* Standardized base padding */
 }
 
@@ -978,7 +966,7 @@ body {
 
 fieldset.panel {
   grid-column: span 12;
-  border: 0.5px solid var(--border);
+  border: 1px solid var(--border);
   padding: 12px;
 }
 
@@ -1158,36 +1146,10 @@ input[type='text'] {
   gap: 8px;
 }
 
-/* Tint toggle button (wraps hidden checkbox) */
+/* Tint pill toggle — width override (other styles from .pill-toggle) */
 .logo-tint-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  padding: 4px 10px;
-  font-size: var(--font-size-label);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border: 1px solid var(--border);
-  background: var(--panel-bg);
-  color: var(--ui-fg);
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.logo-tint-btn input[type="checkbox"] {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
-.logo-tint-btn.active {
-  background: var(--ui-fg);
-  color: var(--ui-bg);
-  border-color: var(--ui-fg);
+  min-height: 32px;
+  width: 100%;
 }
 
 .logo-control {
@@ -1203,7 +1165,7 @@ input[type='text'] {
   width: 100%;
   box-sizing: border-box;
   text-align: center;
-  min-height: 30px;
+  min-height: 32px;
   padding: 4px 8px;
   font-size: var(--font-size-body);
   font-family: inherit;
@@ -1219,7 +1181,7 @@ input[type='text'] {
 
 .logo-align-btn {
   flex: 1;
-  min-height: 30px;
+  min-height: 32px;
   padding: 4px 6px;
   font-size: var(--font-size-label);
   font-weight: 600;
@@ -1257,11 +1219,11 @@ input[type='text'] {
 }
 
 .section h3 {
-  font-size: var(--font-size-h3);  /* 11px */
+  font-size: var(--font-size-h3);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 2px;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 8px;
   margin-bottom: 15px;
 }
@@ -1274,7 +1236,7 @@ input[type='text'] {
 }
 
 .label {
-  font-size: var(--font-size-label);  /* 9px */
+  font-size: var(--font-size-label);  /* 10px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1351,7 +1313,7 @@ textarea {
   flex: 1;
   min-height: 40px;  /* Standardized with all primary buttons */
   padding: 10px 16px;
-  font-size: var(--font-size-button);  /* 10px */
+  font-size: var(--font-size-button);  /* 11px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1420,12 +1382,12 @@ textarea {
 }
 
 .items h3 {
-  font-size: var(--font-size-h3);  /* 11px */
+  font-size: var(--font-size-h3);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 2px;
   margin: 0 0 16px 0;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 8px;
 }
 
@@ -1443,31 +1405,9 @@ textarea {
   margin-top: 0;  /* Override default margin */
 }
 
-.items-footer .save-items-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-size-label);  /* 10px */
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  user-select: none;
-  transition: opacity 0.2s;
-  white-space: nowrap;
-  margin-left: auto;  /* Force to far right */
-  flex-shrink: 0;     /* Prevent shrinking */
-}
-
-.items-footer .save-items-checkbox:hover {
-  opacity: 0.8;
-}
-
-.items-footer .save-items-checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--accent);
+.items-footer .pill-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 table#itemsTable {
@@ -1678,12 +1618,12 @@ button {
   font-weight: 600;
   text-transform: uppercase;
   padding: 8px 16px;
-  background: #000;
-  color: #fff;
-  border: 0.5px solid var(--border);
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+  border: 1px solid var(--border);
   cursor: pointer;
   letter-spacing: 1px;
-  font-size: 11px;
+  font-size: var(--font-size-button);
 }
 
 @media (max-width: 768px) {
@@ -1693,15 +1633,15 @@ button {
     border-width: 1px;
   }
   .go {
-    font-size: 16px !important;
-    padding: 16px 24px !important;
+    font-size: 14px;
+    padding: 14px 24px;
   }
 }
 
 .add {
   min-height: 40px;
   padding: 10px 20px;
-  font-size: var(--font-size-button);  /* 10px */
+  font-size: var(--font-size-button);  /* 11px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1722,12 +1662,45 @@ button {
 .go {
   min-height: 40px;
   padding: 10px 24px;
-  font-size: var(--font-size-button);  /* 10px */
+  font-size: var(--font-size-button);  /* 11px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   width: 100%;
   font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ====================== PILL TOGGLE ====================== */
+.pill-toggle {
+  min-height: var(--btn-compact-height);
+  max-height: var(--btn-compact-height);
+  padding: 6px 12px;
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--ui-fg);
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  user-select: none;
+}
+.pill-toggle:hover { background: var(--border); }
+.pill-toggle.active {
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+  border-color: var(--ui-fg);
+}
+.pill-toggle input[type="checkbox"] {
+  position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
 }
 
 .preview {
@@ -2058,10 +2031,12 @@ button {
 }
 
 .preset-btn {
-  padding: 8px 12px;
-  border: 0.5px solid var(--border);
+  min-height: 32px;
+  max-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
+  font-size: var(--font-size-label);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -2282,8 +2257,8 @@ button {
     width: 100%;
   }
 
-  .items-footer .save-items-checkbox {
-    justify-content: center;
+  .items-footer .pill-toggle {
+    align-self: center;
   }
 
   /* === PREVIEW ACTIONS === */
