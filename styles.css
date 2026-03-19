@@ -525,8 +525,8 @@ details.gcal-settings[open] summary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
-  max-height: 32px;
+  min-height: var(--btn-primary-height);
+  max-height: var(--btn-primary-height);
   padding: 6px 12px;
   font-size: var(--font-size-label);
   font-weight: 600;
