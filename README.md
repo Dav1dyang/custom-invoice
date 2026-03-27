@@ -1,89 +1,94 @@
 # Invoice Tool
 
-A professional invoice generator that creates clean, datasheet-style PDF invoices with dynamic color systems and technical drawing aesthetics.
+A professional invoice generator that creates technical-style PDF invoices with dynamic color systems, multiple rendering modes, and smart automation. Built with vanilla JavaScript and jsPDF -- runs entirely in the browser.
 
 ## Features
 
-### 🎨 **Dual Style System**
-- **Clean Outline Mode**: Technical drawing style with no fills, pure outlines only
-- **Filled Background Mode**: Vibrant datasheet style with bright fills and color hierarchy
+### Triple Style System
+- **Outline Mode**: Technical drawing style -- white background, accent-colored borders, black text
+- **Filled Mode**: Datasheet style -- colored backgrounds with automatic contrast text
+- **ASCII Mode**: Retro terminal aesthetic -- black background, accent-colored text and borders
 
-### 🌈 **Smart Color System**
-- **Dynamic contrast calculation** - Text automatically adapts to background luminance
-- **6 curated color presets**: Technical Black, Blueprint Blue, Neon Green, Hi-Fi Orange, Tech Purple, Alert Red
-- **Intelligent text hierarchy**: Contrasting colors outside boxes, black text inside boxes for readability
+### Smart Color System
+- Dynamic WCAG-compliant contrast calculation for text readability
+- 3 curated color presets: Technical Black, Blueprint Blue, Alert Red
+- Custom accent color picker with hex input
+- Automatic text hierarchy: contrasting colors outside boxes, black text inside for readability
 
-### 👥 **Client Template Management**
-- Save and load client information templates
-- Store contact details, payment instructions, and company info
-- Local storage persistence across sessions
+### Client Template Management
+- Save/load client templates with all form data
+- Star up to 3 templates for quick access via chips
+- Recent template tracking
+- Optional Firebase cloud sync with Google Sign-In
+- Export/import templates as JSON files
+- Optional line item persistence per template (pill toggle)
 
-### 📊 **CSV/Spreadsheet Import**
-- Import line items from CSV files or Google Sheets
-- Copy/paste support for direct spreadsheet data
-- Auto-detection of delimiters (comma, tab, semicolon)
+### Invoice Features
+- Split invoice number format: IN-{ABBREVIATION}-{SEQUENCE}
+- Auto-abbreviation from company name (filters common words, max 6 chars)
+- Title/date range field for descriptive reference
+- Due date calculator with quick buttons (1 Week, 15 Days, 30 Days)
+- Notes section with position control (above or below items)
+- Type/category column with conditional display and subtotals
+- Custom type management (add/remove/reset categories)
+
+### Line Item Import
+- **CSV Import**: File upload or paste, auto-delimiter detection (comma, tab, semicolon)
+- **Google Calendar**: Import events as billable line items with configurable hourly rate
 - Flexible formats: 2-column (description, amount) or 3-column (description, qty, rate)
+- Drag-to-reorder rows
 
-### 📄 **Professional PDF Output**
-- Embeddable custom fonts (Rubik Mono One headers, DM Mono Light body)
-- Logo upload with thumbnail preview, tint toggle, alignment, scale, and rotation controls
-- Letter/A4 paper sizes with portrait/landscape orientation
-- High-quality technical typography
+### Invoice Attachments
+- Attach PDFs and images (PNG, JPG) to append after the generated invoice
+- Upload local files or browse Google Drive via Google Picker
+- Drag-to-reorder attachments, preview thumbnails
+- Merged into final PDF download using pdf-lib
+- 10 MB per file limit, session-only (not saved with templates)
 
-### 📱 **Responsive Design**
-- Mobile-friendly interface
-- Touch-optimized controls
+### Professional PDF Output
+- IBM Plex Mono typography with Helvetica fallback
+- Logo upload with tint, alignment (top/mid/bot), scale, and rotation controls
+- Letter/A4 paper sizes, portrait/landscape orientation
+- Multi-page support with intelligent pagination and perfect page alignment
+- PREVIEW watermark toggle
+- Dynamic payment section with type subtotals
+
+### Cloud Features (Optional)
+- Firebase Authentication with Google Sign-In
+- Firestore cloud template sync (merge local + cloud)
+- Google Calendar event import
+- Google Drive file picker for attachments
+- Graceful offline fallback -- app works fully without Firebase
+
+### Responsive Design
+- Mobile-friendly interface with touch-optimized controls
 - Adaptive layouts for all screen sizes
+- Dark/light theme toggle
 
 ## Quick Start
 
-1. **Open** `index.html` in your browser
-2. **Select style mode**: Choose between Clean Outline or Filled Background
-3. **Pick accent color**: Use presets or custom color picker
-4. **Fill in details**: Add sender/recipient information and invoice parameters
-5. **Add line items**: Manual entry or CSV import
-6. **Generate**: Preview and download your professional PDF
+1. Open `index.html` in your browser (or deploy to Vercel)
+2. Select a style mode and accent color in PDF Settings
+3. Fill in sender/recipient information
+4. Add line items manually, via CSV import, or from Google Calendar
+5. Optionally attach supporting documents (receipts, orders)
+6. Preview and download your PDF
 
 ## File Structure
 
 ```
-├── index.html          # Main application interface
-├── styles.css          # Complete styling system
-├── script.js           # Core functionality and PDF generation
-└── README.md          # This file
-```
-
-## Color System Logic
-
-### Outline Mode (Technical Drawing)
-- White background, no fills
-- Accent-colored borders and headers
-- Black text throughout
-- Clean, minimal aesthetic
-
-### Filled Mode (Datasheet)
-- **Background**: User-selected accent color
-- **Text outside boxes**: Automatically calculated contrasting shade
-  - Dark backgrounds → Light text in same color family
-  - Light backgrounds → Dark text in same color family
-- **Text inside boxes**: Always black for maximum readability
-- **Box fills**: Bright version (60% lightness) for info panels
-- **Table fills**: Subtle version (85% lightness) for line items
-
-## CSV Import Format
-
-Supports multiple formats:
-```csv
-Description, Quantity, Rate
-Web Development, 40, 75.00
-Consulting, 5, 150.00
-```
-
-Or simplified:
-```csv
-Description, Amount
-Project Setup, 500.00
-Monthly Maintenance, 200.00
+├── index.html              # Main application interface
+├── script.js               # Core logic, PDF generation, integrations
+├── styles.css              # Complete styling system with theme support
+├── api/
+│   └── config.js           # Vercel serverless function for Firebase config
+├── fonts/
+│   ├── IBM_Plex_Mono/      # Bold and Regular TTF
+│   ├── Rubik/              # Multiple weight variants
+│   └── DM_Mono/            # Multiple weight variants
+├── CLAUDE.md               # Technical documentation for developers
+├── README.md               # This file
+└── vercel.json             # Deployment config with font caching
 ```
 
 ## Browser Compatibility
@@ -95,16 +100,18 @@ Monthly Maintenance, 200.00
 
 ## Technical Details
 
-- **Pure JavaScript** - No framework dependencies
-- **jsPDF** - Professional PDF generation
-- **Local Storage** - Client template persistence
-- **Responsive CSS Grid** - Modern layout system
-- **Web Fonts** - IBM Plex Mono UI typography
+- **Pure JavaScript** -- No framework dependencies
+- **jsPDF 2.4.0** -- Invoice PDF generation
+- **pdf-lib 1.17.1** -- PDF merging for attachments
+- **Firebase 10.12.0** -- Optional cloud sync and Google Auth
+- **LocalStorage** -- Client template persistence
+- **Responsive CSS Grid** -- Modern layout system
+- **IBM Plex Mono** -- Monospace typography throughout
 
 ## License
 
-Open source - feel free to modify and use for your invoicing needs.
+Open source -- feel free to modify and use for your invoicing needs.
 
 ---
 
-**Perfect for freelancers, agencies, and businesses who want professional, technical-style invoices with modern design and smart automation.**
+**Built for freelancers, agencies, and businesses who want professional, technical-style invoices with modern design and smart automation.**

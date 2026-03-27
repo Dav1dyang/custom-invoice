@@ -523,6 +523,83 @@ When a template is deleted, both starred and recent references are cleared:
 - **PDF**: `renderPDFWatermark()` called on every page, uses jsPDF GState for opacity 0.06, 60pt text at 45 degrees
 - **Toggle**: Pill toggle `#showWatermark` in PDF Settings (default: checked/active). Preference saved with template.
 
+## Invoice Attachments
+
+**Purpose**: Attach supporting documents (receipts, order confirmations, etc.) that get appended as additional pages after the generated invoice in the final PDF download.
+
+### Architecture
+
+- **pdf-lib 1.17.1** (CDN) handles merging — jsPDF 2.4.0 cannot merge existing PDFs
+- **Flow**: jsPDF generates invoice → `doc.output('arraybuffer')` → pdf-lib loads invoice → appends attachments → saves merged PDF
+- **Google Picker API** (`apis.google.com/js/api.js`) for Drive file selection
+- **Session-only**: Attachments are NOT saved with templates (too large for localStorage/Firestore)
+
+### UI Section (index.html, between Notes and PDF Settings)
+
+- Collapsible `<details class="attachment-settings">` matching existing pattern
+- Two-column grid: Local Upload (file input, multi-select) | Google Drive (Browse Drive button)
+- Attachment list with drag-to-reorder, thumbnails, file size, type badges, remove buttons
+- Clear All button with confirm toast
+- File count and total size display
+
+### Supported File Types
+
+- **PDF** (application/pdf): All pages copied and appended
+- **PNG** (image/png): Embedded on a new page, centered and scaled to fit
+- **JPG** (image/jpeg): Embedded on a new page, centered and scaled to fit
+- **Max size**: 10 MB per file
+
+### Key Functions (script.js)
+
+- `handleAttachmentUpload(event)` — Process local file input, validate, generate thumbnails for images
+- `addAttachmentFromData(name, mimeType, arrayBuffer, thumbnailUrl)` — Add to `invoiceAttachments[]` array
+- `renderAttachmentList()` — Build attachment list DOM with drag-to-reorder
+- `removeAttachment(id)` / `clearAllAttachments()` — Remove with confirm toast
+- `openDrivePicker()` — Open Google Picker for Drive file selection (requires sign-in)
+- `downloadDriveFile(fileId, name, mimeType, sizeBytes)` — Download file from Drive API
+- `mergeAttachmentsIntoPDF(invoiceBytes)` — Core merge function using pdf-lib
+- `validateAttachment(file)` — Check type and size constraints
+
+### Google Drive Integration
+
+- Reuses existing Firebase OAuth token (`gcalAccessToken`)
+- Added `drive.readonly` scope to both auth entry points (main sign-in and calendar connect)
+- Uses Firebase API key as Picker developer key (`FIREBASE_CONFIG.apiKey`)
+- Google Picker handles folder navigation, search, multi-select
+- Files downloaded via Drive API v3 (`/files/{id}?alt=media`)
+
+### PDF Merge Logic (downloadPDF modification)
+
+```
+1. doc.output('arraybuffer') → invoiceBytes
+2. PDFLib.PDFDocument.load(invoiceBytes) → mergedPdf
+3. For each attachment:
+   - PDF: PDFDocument.load(data) → copyPages → addPage
+   - Image: embedPng/embedJpg → addPage → drawImage (centered, scaled to fit with margins)
+4. mergedPdf.save() → Blob → download
+5. Fallback: if merge fails, download invoice without attachments
+```
+
+### CSS Classes
+
+- `.attachment-settings` — Collapsible details (same pattern as pdf-settings, csv-import-settings)
+- `.attachment-content` — Content area (same pattern as pdf-content)
+- `.attachment-list` — Flex column container for attachment items
+- `.attachment-item` — Individual attachment row (draggable)
+- `.attachment-thumb` / `.attachment-pdf-icon` — 36x36 thumbnail or PDF text icon
+- `.attachment-name` / `.attachment-size` / `.attachment-type-badge` — Item metadata
+- `.attachment-remove` — 28x28 remove button (red on hover)
+- `.attachment-drag-handle` — Drag handle indicator
+
+### Error Handling
+
+- File too large: Toast with size limit
+- Invalid file type: Toast with accepted types
+- PDF parse failure: Per-attachment try/catch, skips failed files, continues others
+- Drive auth expired: Toast prompting re-auth
+- pdf-lib not loaded: Falls back to invoice-only download with warning toast
+- Merge failure: Falls back to invoice-only download with warning toast
+
 ## Cloud Template System (Firebase)
 
 **Optional** Firebase integration for cloud template sync and unified Google Sign-In.

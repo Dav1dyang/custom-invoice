@@ -95,6 +95,422 @@ function updateThemeIcon() {
   }
 }
 
+/* ----------------------------- ATTACHMENTS ------------------------------ */
+let invoiceAttachments = []  // { id, name, mimeType, size, data: ArrayBuffer, thumbnailUrl?: string }
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  // 10 MB
+let attachDraggedItem = null
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+function validateAttachment(file) {
+  const allowed = ['application/pdf', 'image/png', 'image/jpeg']
+  if (!allowed.includes(file.type)) {
+    return { valid: false, error: `"${file.name}" is not a supported file type. Use PDF, PNG, or JPG.` }
+  }
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    return { valid: false, error: `"${file.name}" exceeds 10 MB limit (${formatFileSize(file.size)}).` }
+  }
+  return { valid: true }
+}
+
+function addAttachmentFromData(name, mimeType, arrayBuffer, thumbnailUrl) {
+  const entry = {
+    id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    name,
+    mimeType,
+    size: arrayBuffer.byteLength,
+    data: arrayBuffer,
+    thumbnailUrl: thumbnailUrl || null
+  }
+  invoiceAttachments.push(entry)
+  renderAttachmentList()
+}
+
+function handleAttachmentUpload(event) {
+  const files = Array.from(event.target.files)
+  if (!files.length) return
+
+  let added = 0
+  let pending = files.length
+
+  files.forEach(file => {
+    const validation = validateAttachment(file)
+    if (!validation.valid) {
+      showToast(validation.error, 'warning', 4000)
+      pending--
+      if (pending === 0 && added > 0) showToast(`Added ${added} attachment(s)`, 'success')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const arrayBuffer = reader.result
+
+      if (file.type.startsWith('image/')) {
+        // Generate thumbnail for images
+        const blob = new Blob([arrayBuffer], { type: file.type })
+        const url = URL.createObjectURL(blob)
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const size = 72
+          canvas.width = size
+          canvas.height = size
+          const ctx = canvas.getContext('2d')
+          const scale = Math.min(size / img.width, size / img.height)
+          const w = img.width * scale
+          const h = img.height * scale
+          ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
+          const thumbUrl = canvas.toDataURL('image/png')
+          URL.revokeObjectURL(url)
+          addAttachmentFromData(file.name, file.type, arrayBuffer, thumbUrl)
+          added++
+          pending--
+          if (pending === 0 && added > 0) showToast(`Added ${added} attachment(s)`, 'success')
+        }
+        img.onerror = () => {
+          URL.revokeObjectURL(url)
+          addAttachmentFromData(file.name, file.type, arrayBuffer, null)
+          added++
+          pending--
+          if (pending === 0 && added > 0) showToast(`Added ${added} attachment(s)`, 'success')
+        }
+        img.src = url
+      } else {
+        // PDF — no thumbnail
+        addAttachmentFromData(file.name, file.type, arrayBuffer, null)
+        added++
+        pending--
+        if (pending === 0 && added > 0) showToast(`Added ${added} attachment(s)`, 'success')
+      }
+    }
+    reader.onerror = () => {
+      showToast(`Failed to read "${file.name}"`, 'error')
+      pending--
+    }
+    reader.readAsArrayBuffer(file)
+  })
+
+  event.target.value = ''  // Reset for re-selection
+}
+
+function removeAttachment(id) {
+  invoiceAttachments = invoiceAttachments.filter(a => a.id !== id)
+  renderAttachmentList()
+}
+
+function clearAllAttachments() {
+  if (invoiceAttachments.length === 0) return
+  showConfirmToast(
+    `Remove all ${invoiceAttachments.length} attachment(s)?`,
+    () => {
+      invoiceAttachments = []
+      renderAttachmentList()
+      showToast('Attachments cleared', 'info')
+    }
+  )
+}
+
+function renderAttachmentList() {
+  const listEl = document.getElementById('attachmentList')
+  const actionsEl = document.getElementById('attachmentActions')
+  const countEl = document.getElementById('attachmentCount')
+  if (!listEl) return
+
+  listEl.innerHTML = ''
+
+  if (invoiceAttachments.length === 0) {
+    if (actionsEl) actionsEl.style.display = 'none'
+    return
+  }
+
+  if (actionsEl) actionsEl.style.display = ''
+  const totalSize = invoiceAttachments.reduce((s, a) => s + a.size, 0)
+  if (countEl) countEl.textContent = `${invoiceAttachments.length} file(s) \u00b7 ${formatFileSize(totalSize)}`
+
+  invoiceAttachments.forEach((att, idx) => {
+    const row = document.createElement('div')
+    row.className = 'attachment-item'
+    row.draggable = true
+    row.dataset.index = idx
+
+    // Drag handle
+    const handle = document.createElement('span')
+    handle.className = 'attachment-drag-handle'
+    handle.textContent = '\u22ee\u22ee'
+
+    // Thumbnail or PDF icon
+    let thumb
+    if (att.thumbnailUrl) {
+      thumb = document.createElement('img')
+      thumb.className = 'attachment-thumb'
+      thumb.src = att.thumbnailUrl
+      thumb.alt = att.name
+    } else {
+      thumb = document.createElement('div')
+      thumb.className = 'attachment-pdf-icon'
+      thumb.textContent = 'PDF'
+    }
+
+    // Name
+    const nameEl = document.createElement('span')
+    nameEl.className = 'attachment-name'
+    nameEl.textContent = att.name
+    nameEl.title = att.name
+
+    // Size
+    const sizeEl = document.createElement('span')
+    sizeEl.className = 'attachment-size'
+    sizeEl.textContent = formatFileSize(att.size)
+
+    // Type badge
+    const badge = document.createElement('span')
+    badge.className = 'attachment-type-badge'
+    badge.textContent = att.mimeType === 'application/pdf' ? 'PDF' : 'IMG'
+
+    // Remove button
+    const rmBtn = document.createElement('button')
+    rmBtn.type = 'button'
+    rmBtn.className = 'attachment-remove'
+    rmBtn.textContent = '\u00d7'
+    rmBtn.onclick = () => removeAttachment(att.id)
+
+    row.append(handle, thumb, nameEl, sizeEl, badge, rmBtn)
+
+    // Drag-to-reorder
+    row.addEventListener('dragstart', (e) => {
+      attachDraggedItem = idx
+      row.classList.add('dragging')
+      e.dataTransfer.effectAllowed = 'move'
+    })
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging')
+      attachDraggedItem = null
+      listEl.querySelectorAll('.attachment-item').forEach(el => el.classList.remove('drag-over'))
+    })
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      row.classList.add('drag-over')
+    })
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('drag-over')
+    })
+    row.addEventListener('drop', (e) => {
+      e.preventDefault()
+      row.classList.remove('drag-over')
+      const from = attachDraggedItem
+      const to = parseInt(row.dataset.index, 10)
+      if (from !== null && from !== to) {
+        const [item] = invoiceAttachments.splice(from, 1)
+        invoiceAttachments.splice(to, 0, item)
+        renderAttachmentList()
+      }
+    })
+
+    listEl.appendChild(row)
+  })
+}
+
+// Google Drive Picker
+let pickerApiLoaded = false
+
+function loadPickerApi() {
+  return new Promise((resolve) => {
+    if (pickerApiLoaded) { resolve(); return }
+    if (typeof gapi === 'undefined') {
+      showToast('Google API not loaded. Check your connection.', 'error')
+      resolve()
+      return
+    }
+    gapi.load('picker', () => {
+      pickerApiLoaded = true
+      resolve()
+    })
+  })
+}
+
+async function openDrivePicker() {
+  if (!currentUser) {
+    showToast('Please sign in first using the button in the header', 'warning')
+    return
+  }
+  if (gcalTokenExpired()) {
+    // Re-auth with drive scope
+    const provider = new firebase.auth.GoogleAuthProvider()
+    provider.addScope('https://www.googleapis.com/auth/drive.readonly')
+    try {
+      const result = await firebaseAuth.signInWithPopup(provider)
+      if (result.credential && result.credential.accessToken) {
+        setGcalToken(result.credential.accessToken)
+      } else {
+        showToast('Could not obtain Drive access. Try signing out and back in.', 'warning', 5000)
+        return
+      }
+    } catch (error) {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        showToast('Drive auth failed: ' + error.message, 'error', 5000)
+      }
+      return
+    }
+  }
+
+  await loadPickerApi()
+  if (!pickerApiLoaded) return
+
+  const apiKey = FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey ? FIREBASE_CONFIG.apiKey : null
+  if (!apiKey) {
+    showToast('API key not configured. Use local file upload instead.', 'warning', 5000)
+    return
+  }
+
+  try {
+    const docsView = new google.picker.DocsView()
+      .setMimeTypes('application/pdf,image/png,image/jpeg')
+      .setMode(google.picker.DocsViewMode.LIST)
+
+    const picker = new google.picker.PickerBuilder()
+      .addView(docsView)
+      .setOAuthToken(gcalAccessToken)
+      .setDeveloperKey(apiKey)
+      .setCallback(handlePickerResult)
+      .setTitle('Select attachments')
+      .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+      .build()
+    picker.setVisible(true)
+  } catch (error) {
+    showToast('Failed to open Drive picker: ' + error.message, 'error', 5000)
+  }
+}
+
+async function handlePickerResult(data) {
+  if (data.action !== google.picker.Action.PICKED) return
+
+  for (const doc of data.docs) {
+    try {
+      await downloadDriveFile(doc.id, doc.name, doc.mimeType, doc.sizeBytes || 0)
+    } catch (error) {
+      showToast(`Failed to download "${doc.name}": ${error.message}`, 'error', 5000)
+    }
+  }
+}
+
+async function downloadDriveFile(fileId, name, mimeType, sizeBytes) {
+  if (sizeBytes > MAX_ATTACHMENT_SIZE) {
+    showToast(`"${name}" exceeds 10 MB limit.`, 'warning', 4000)
+    return
+  }
+
+  const allowed = ['application/pdf', 'image/png', 'image/jpeg']
+  if (!allowed.includes(mimeType)) {
+    showToast(`"${name}" is not a supported file type.`, 'warning', 4000)
+    return
+  }
+
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    { headers: { Authorization: `Bearer ${gcalAccessToken}` } }
+  )
+  if (res.status === 401) {
+    showToast('Drive access expired. Please sign in again.', 'warning')
+    return
+  }
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`)
+  }
+
+  const arrayBuffer = await res.arrayBuffer()
+  if (arrayBuffer.byteLength > MAX_ATTACHMENT_SIZE) {
+    showToast(`"${name}" exceeds 10 MB limit.`, 'warning', 4000)
+    return
+  }
+
+  // Generate thumbnail for images
+  let thumbnailUrl = null
+  if (mimeType.startsWith('image/')) {
+    try {
+      const blob = new Blob([arrayBuffer], { type: mimeType })
+      const url = URL.createObjectURL(blob)
+      thumbnailUrl = await new Promise((resolve) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const size = 72
+          canvas.width = size
+          canvas.height = size
+          const ctx = canvas.getContext('2d')
+          const scale = Math.min(size / img.width, size / img.height)
+          const w = img.width * scale
+          const h = img.height * scale
+          ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
+          URL.revokeObjectURL(url)
+          resolve(canvas.toDataURL('image/png'))
+        }
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+        img.src = url
+      })
+    } catch { thumbnailUrl = null }
+  }
+
+  addAttachmentFromData(name, mimeType, arrayBuffer, thumbnailUrl)
+  showToast(`Added "${name}" from Drive`, 'success')
+}
+
+// Merge attachments into PDF using pdf-lib
+async function mergeAttachmentsIntoPDF(invoiceBytes) {
+  if (invoiceAttachments.length === 0) return invoiceBytes
+
+  const { PDFDocument } = PDFLib
+  const mergedPdf = await PDFDocument.load(invoiceBytes)
+  const firstPage = mergedPdf.getPage(0)
+  const { width: pageWidth, height: pageHeight } = firstPage.getSize()
+
+  for (const attachment of invoiceAttachments) {
+    try {
+      if (attachment.mimeType === 'application/pdf') {
+        const attachedPdf = await PDFDocument.load(attachment.data, { ignoreEncryption: true })
+        const pages = await mergedPdf.copyPages(attachedPdf, attachedPdf.getPageIndices())
+        pages.forEach(page => mergedPdf.addPage(page))
+      } else {
+        // Image attachment — add on a new page, centered and scaled to fit
+        const page = mergedPdf.addPage([pageWidth, pageHeight])
+
+        let img
+        if (attachment.mimeType === 'image/png') {
+          img = await mergedPdf.embedPng(attachment.data)
+        } else {
+          img = await mergedPdf.embedJpg(attachment.data)
+        }
+
+        const margin = 28.35  // ~10mm in points
+        const maxW = pageWidth - 2 * margin
+        const maxH = pageHeight - 2 * margin
+        const scale = Math.min(maxW / img.width, maxH / img.height, 1)
+        const w = img.width * scale
+        const h = img.height * scale
+        const x = (pageWidth - w) / 2
+        const y = (pageHeight - h) / 2
+
+        page.drawImage(img, { x, y, width: w, height: h })
+      }
+    } catch (error) {
+      showToast(`Could not attach "${attachment.name}": ${error.message}`, 'error', 5000)
+    }
+  }
+
+  return await mergedPdf.save()
+}
+
+// Initialize attachment file input listener
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('attachmentFileInput')
+  if (input) input.addEventListener('change', handleAttachmentUpload)
+})
+
 /* ----------------------------- LOGO ------------------------------ */
 let logoDataUrl = null,
   logoNatural = null,
@@ -1896,9 +2312,10 @@ function connectGoogleCalendar() {
       showToast('Please sign in first using the button in the header', 'warning')
       return
     }
-    // Re-authenticate to get a fresh OAuth token with calendar scope
+    // Re-authenticate to get a fresh OAuth token with calendar + drive scope
     const provider = new firebase.auth.GoogleAuthProvider()
     provider.addScope('https://www.googleapis.com/auth/calendar.readonly')
+    provider.addScope('https://www.googleapis.com/auth/drive.readonly')
     firebaseAuth.signInWithPopup(provider).then((result) => {
       if (result.credential && result.credential.accessToken) {
         setGcalToken(result.credential.accessToken)
@@ -2290,8 +2707,9 @@ function handleAuthClick() {
   } else {
     const provider = new firebase.auth.GoogleAuthProvider()
     provider.addScope('https://www.googleapis.com/auth/calendar.readonly')
+    provider.addScope('https://www.googleapis.com/auth/drive.readonly')
     firebaseAuth.signInWithPopup(provider).then((result) => {
-      // Store OAuth access token for Calendar API
+      // Store OAuth access token for Calendar & Drive API
       if (result.credential) {
         setGcalToken(result.credential.accessToken)
         // Show calendar panel since we have access
@@ -3618,5 +4036,26 @@ async function downloadPDF() {
   doc.text('TOTAL (' + currency + '): ', xSplit + 2.1, ty)
   doc.text('$' + totalSubtotal.toFixed(2), rightX, ty, { align: 'right' })
 
-  doc.save(`invoice-${invoiceNumber}.pdf`)
+  // Merge attachments (if any) and save
+  if (invoiceAttachments.length > 0 && window.PDFLib && window.PDFLib.PDFDocument) {
+    try {
+      const invoiceBytes = doc.output('arraybuffer')
+      const finalBytes = await mergeAttachmentsIntoPDF(invoiceBytes)
+      const blob = new Blob([finalBytes], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `invoice-${invoiceNumber}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      showToast('Attachment merge failed, downloading invoice only: ' + error.message, 'warning', 5000)
+      doc.save(`invoice-${invoiceNumber}.pdf`)
+    }
+  } else {
+    if (invoiceAttachments.length > 0) {
+      showToast('pdf-lib not loaded — downloading invoice without attachments', 'warning', 5000)
+    }
+    doc.save(`invoice-${invoiceNumber}.pdf`)
+  }
 }

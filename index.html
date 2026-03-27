@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Invoice Tool</title>
     <script src="https://unpkg.com/jspdf@2.4.0/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Firebase SDK (compat mode for simplicity) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -336,6 +338,40 @@
                   rows="3"
                 ></textarea>
               </div>
+            </div>
+
+            <!-- INVOICE ATTACHMENTS -->
+            <div class="settings card">
+              <details class="attachment-settings">
+                <summary>Invoice Attachments</summary>
+                <div class="attachment-content">
+                  <p class="attachment-hint">Attach supporting documents (receipts, orders, etc.) to append after the invoice.</p>
+                  <div class="settings-grid">
+                    <div class="settings-group">
+                      <h4>Local Upload</h4>
+                      <input
+                        type="file"
+                        id="attachmentFileInput"
+                        multiple
+                        accept=".pdf,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf"
+                        style="display: none"
+                      />
+                      <label class="import-btn" for="attachmentFileInput">Select Files</label>
+                    </div>
+                    <div class="settings-group">
+                      <h4>Google Drive</h4>
+                      <button type="button" class="import-btn" id="attachFromDriveBtn" onclick="openDrivePicker()">
+                        Browse Drive
+                      </button>
+                    </div>
+                  </div>
+                  <div id="attachmentList" class="attachment-list"></div>
+                  <div id="attachmentActions" class="attachment-actions" style="display: none">
+                    <button type="button" class="clear-items-btn" onclick="clearAllAttachments()">Clear All</button>
+                    <span class="attachment-count" id="attachmentCount"></span>
+                  </div>
+                </div>
+              </details>
             </div>
 
             <!-- PDF SETTINGS -->
