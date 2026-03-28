@@ -564,7 +564,7 @@ When a template is deleted, both starred and recent references are cleared:
 
 - Reuses existing Firebase OAuth token (`gcalAccessToken`)
 - Added `drive.readonly` scope to both auth entry points (main sign-in and calendar connect)
-- Uses Firebase API key as Picker developer key (`FIREBASE_CONFIG.apiKey`)
+- Uses optional dedicated Picker API key (`FIREBASE_CONFIG.googlePickerApiKey` from `GOOGLE_PICKER_API_KEY` env var); OAuth token alone is sufficient when no key is configured
 - Google Picker handles folder navigation, search, multi-select
 - Files downloaded via Drive API v3 (`/files/{id}?alt=media`)
 
