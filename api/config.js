@@ -7,5 +7,6 @@ export default function handler(req, res) {
     storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
     messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.FIREBASE_APP_ID,
+    googlePickerApiKey: process.env.GOOGLE_PICKER_API_KEY || null,
   })
 }

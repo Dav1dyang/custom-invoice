@@ -362,25 +362,26 @@ async function openDrivePicker() {
   await loadPickerApi()
   if (!pickerApiLoaded) return
 
-  const apiKey = FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey ? FIREBASE_CONFIG.apiKey : null
-  if (!apiKey) {
-    showToast('API key not configured. Use local file upload instead.', 'warning', 5000)
-    return
-  }
-
   try {
     const docsView = new google.picker.DocsView()
       .setMimeTypes('application/pdf,image/png,image/jpeg')
       .setMode(google.picker.DocsViewMode.LIST)
 
-    const picker = new google.picker.PickerBuilder()
+    const pickerApiKey = FIREBASE_CONFIG && FIREBASE_CONFIG.googlePickerApiKey
+      ? FIREBASE_CONFIG.googlePickerApiKey : null
+
+    const builder = new google.picker.PickerBuilder()
       .addView(docsView)
       .setOAuthToken(gcalAccessToken)
-      .setDeveloperKey(apiKey)
       .setCallback(handlePickerResult)
       .setTitle('Select attachments')
       .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-      .build()
+
+    if (pickerApiKey) {
+      builder.setDeveloperKey(pickerApiKey)
+    }
+
+    const picker = builder.build()
     picker.setVisible(true)
   } catch (error) {
     showToast('Failed to open Drive picker: ' + error.message, 'error', 5000)
