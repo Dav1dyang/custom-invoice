@@ -412,15 +412,36 @@ async function downloadDriveFile(fileId, name, mimeType, sizeBytes) {
     return
   }
 
-  const res = await fetch(
+  let res = await fetch(
     `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
     { headers: { Authorization: `Bearer ${gcalAccessToken}` } }
   )
-  if (res.status === 401) {
-    showToast('Drive access expired. Please sign in again.', 'warning')
-    return
+
+  // 401 or 403: token expired or missing drive scope — re-auth once and retry
+  if (res.status === 401 || res.status === 403) {
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider()
+      provider.addScope('https://www.googleapis.com/auth/drive.readonly')
+      const result = await firebaseAuth.signInWithPopup(provider)
+      if (result.credential && result.credential.accessToken) {
+        setGcalToken(result.credential.accessToken)
+        res = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+          { headers: { Authorization: `Bearer ${gcalAccessToken}` } }
+        )
+      }
+    } catch (authError) {
+      if (authError.code !== 'auth/popup-closed-by-user') {
+        showToast('Drive re-auth failed: ' + authError.message, 'error', 5000)
+      }
+      return
+    }
   }
+
   if (!res.ok) {
+    if (res.status === 403) {
+      throw new Error('Access denied — file may have download restrictions')
+    }
     throw new Error(`HTTP ${res.status}`)
   }
 
