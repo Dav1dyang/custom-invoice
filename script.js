@@ -413,12 +413,12 @@ async function downloadDriveFile(fileId, name, mimeType, sizeBytes) {
   }
 
   let res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
     { headers: { Authorization: `Bearer ${gcalAccessToken}` } }
   )
 
-  // 401 or 403: token expired or missing drive scope — re-auth once and retry
-  if (res.status === 401 || res.status === 403) {
+  // 401: token expired — re-auth once and retry
+  if (res.status === 401) {
     try {
       const provider = new firebase.auth.GoogleAuthProvider()
       provider.addScope('https://www.googleapis.com/auth/drive.readonly')
@@ -426,7 +426,7 @@ async function downloadDriveFile(fileId, name, mimeType, sizeBytes) {
       if (result.credential && result.credential.accessToken) {
         setGcalToken(result.credential.accessToken)
         res = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+          `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
           { headers: { Authorization: `Bearer ${gcalAccessToken}` } }
         )
       }
@@ -439,10 +439,18 @@ async function downloadDriveFile(fileId, name, mimeType, sizeBytes) {
   }
 
   if (!res.ok) {
-    if (res.status === 403) {
-      throw new Error('Access denied — file may have download restrictions')
-    }
-    throw new Error(`HTTP ${res.status}`)
+    // Parse Google API error for a specific reason
+    let reason = `HTTP ${res.status}`
+    try {
+      const errBody = await res.json()
+      const msg = errBody.error && errBody.error.message ? errBody.error.message : ''
+      if (msg.includes('has not been used in project') || msg.includes('it is disabled')) {
+        reason = 'Google Drive API is not enabled. Enable it at console.cloud.google.com under APIs & Services.'
+      } else if (msg) {
+        reason = msg
+      }
+    } catch { /* non-JSON response, use default reason */ }
+    throw new Error(reason)
   }
 
   const arrayBuffer = await res.arrayBuffer()
