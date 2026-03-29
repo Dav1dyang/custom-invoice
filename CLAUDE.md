@@ -564,9 +564,19 @@ When a template is deleted, both starred and recent references are cleared:
 
 - Reuses existing Firebase OAuth token (`gcalAccessToken`)
 - Added `drive.readonly` scope to both auth entry points (main sign-in and calendar connect)
-- Uses optional dedicated Picker API key (`FIREBASE_CONFIG.googlePickerApiKey` from `GOOGLE_PICKER_API_KEY` env var); OAuth token alone is sufficient when no key is configured
+- **Picker API key**: Uses optional dedicated Picker API key (`FIREBASE_CONFIG.googlePickerApiKey` from `GOOGLE_PICKER_API_KEY` env var); OAuth token alone is sufficient when no key is configured. **Do NOT pass the Firebase API key** (`FIREBASE_CONFIG.apiKey`) to the Picker — it causes an uncatchable "The API developer key is invalid" error dialog because Firebase keys typically don't have the Picker API enabled.
 - Google Picker handles folder navigation, search, multi-select
-- Files downloaded via Drive API v3 (`/files/{id}?alt=media`)
+- Files downloaded via Drive API v3 (`/files/{id}?alt=media&supportsAllDrives=true`)
+- **Requires Google Drive API v3 enabled** in the Google Cloud project (APIs & Services > Library). The Picker API is separate and works without it, but file download requires the Drive API.
+
+#### Drive Download Error Handling (script.js `downloadDriveFile`)
+
+- **401**: Token expired — automatically re-authenticates with `drive.readonly` scope via popup, retries download once
+- **403**: Parses the Google API JSON error response body for the actual reason:
+  - "has not been used in project" / "it is disabled" → shows actionable message to enable Drive API
+  - Other reasons → shows Google's error message directly
+- **No re-auth on 403**: Unlike 401, a 403 does not trigger re-auth popup (avoids bad UX when the real issue is API not enabled, not missing scope)
+- `supportsAllDrives=true` query param included for files in shared/team drives
 
 ### PDF Merge Logic (downloadPDF modification)
 
@@ -596,7 +606,9 @@ When a template is deleted, both starred and recent references are cleared:
 - File too large: Toast with size limit
 - Invalid file type: Toast with accepted types
 - PDF parse failure: Per-attachment try/catch, skips failed files, continues others
-- Drive auth expired: Toast prompting re-auth
+- Drive auth expired (401): Auto re-auth popup with drive scope, then retry
+- Drive API not enabled (403): Parses Google error response, shows specific message to enable Drive API in Cloud Console
+- Drive download forbidden (403, other): Shows Google's actual error message (e.g., file restrictions, domain policy)
 - pdf-lib not loaded: Falls back to invoice-only download with warning toast
 - Merge failure: Falls back to invoice-only download with warning toast
 
@@ -657,6 +669,7 @@ Firebase config is **not** hardcoded in `script.js`. Instead:
 - `loadFirebaseConfig()` — Fetches `/api/config` on page load before `initFirebase()`
 - **Graceful fallback**: If the API route is unavailable (local dev without Vercel), Firebase is simply disabled and the app works fully offline with localStorage
 - **Env vars** must be set in Vercel dashboard (Settings > Environment Variables): `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`
+- **Optional env var**: `GOOGLE_PICKER_API_KEY` — dedicated API key with the Picker API enabled (for Google Drive file picker). If not set, the Picker works with OAuth token alone. **Do not reuse `FIREBASE_API_KEY` for the Picker** — Firebase keys lack Picker API access and cause an uncatchable error dialog.
 
 ## Development Notes
 
