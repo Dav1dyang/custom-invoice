@@ -3923,6 +3923,128 @@ async function downloadPDF() {
   const rowH = ROW_HEIGHT
   const spacer = SECTION_SPACER
 
+  // Dynamic payment section height calculation (moved before header for pagination)
+  function calculatePaymentHeight(doc, paymentInstructions, splitW, items) {
+    // Base measurements
+    const headerHeight = 5
+    const headerPadding = 6
+    const lineHeight = 4
+    const bottomPadding = 8
+
+    // Calculate payment instruction lines
+    let paymentLines = 0
+    paymentInstructions.split('\n').forEach(line => {
+      if (line.trim()) {
+        const wrapped = doc.splitTextToSize(line, splitW - 4.2)
+        paymentLines += wrapped.length
+      }
+    })
+
+    // Calculate total section lines DYNAMICALLY based on type subtotals
+    const { typeGroups, uncategorizedTotal, hasTypes } = calculateSubtotalsByType(items)
+    const typeCount = hasTypes ? Object.keys(typeGroups).length : 0
+    const uncatLine = uncategorizedTotal > 0 && hasTypes ? 1 : 0
+    const totalLine = 1  // Always have TOTAL line
+    const totalExtraSpacing = 5
+
+    const totalLines = typeCount + uncatLine + totalLine
+
+    // Calculate heights for both sections
+    const paymentSectionHeight = headerHeight + headerPadding +
+      (paymentLines * lineHeight) + bottomPadding
+    const totalSectionHeight = headerHeight + headerPadding +
+      (totalLines * lineHeight) + totalExtraSpacing + bottomPadding
+
+    // Return the larger of the two sections, with increased minimum for dynamic content
+    return Math.max(paymentSectionHeight, totalSectionHeight, 25)
+  }
+
+  // Calculate dynamic payment height (now with items parameter)
+  const paymentH = calculatePaymentHeight(doc, paymentInstructions, splitW, items)
+
+  // Calculate notes height (dynamic, can be 0)
+  const notesH = calculateNotesHeight(doc, invoiceNotes, contentW)
+
+  // All pages: Content starts at CONTENT_START_Y = 35mm (perfect alignment!)
+  const yDataTop = CONTENT_START_Y  // FROM/BILL TO grid at 35mm on page 1
+
+  // Line items start after grid + notes (if notes above)
+  const notesOffset = notesPosition === 'above' && notesH > 0 ? notesH + SECTION_SPACER : 0
+  const yItemsTop = yDataTop + DATA_GRID_HEIGHT + SECTION_SPACER + notesOffset
+
+  // Page 2+: Line items start at CONTENT_START_Y (35mm - SAME as page 1 grid!)
+  const yItemsTopContinuation = CONTENT_START_Y  // 35mm on all pages
+
+  // TWO-PASS PAGINATION: determines totalPages and rowsFirstPage
+  // Pass 1: Try single-page layout (with payment + notes-below reserved on page 1)
+  const yPaymentTopSingle = pageH - BOTTOM_MARGIN - paymentH
+  let availableSinglePage = yPaymentTopSingle - SECTION_SPACER - yItemsTop - TABLE_HEADER_HEIGHT
+  if (notesPosition === 'below' && notesH > 0) {
+    availableSinglePage -= (notesH + SECTION_SPACER)
+  }
+  let rowsSinglePage = 0
+  let accSingle = 0
+  for (let i = 0; i < items.length; i++) {
+    if (accSingle + itemRowHeights[i] > availableSinglePage) break
+    accSingle += itemRowHeights[i]
+    rowsSinglePage++
+  }
+  const isMultiPage = rowsSinglePage < items.length
+
+  let rowsFirstPage = 0
+  let totalPages = 1
+  // Space calculations for continuation pages (used in multi-page rendering loop)
+  const contFullSpace = pageH - BOTTOM_MARGIN - SECTION_SPACER - yItemsTopContinuation - TABLE_HEADER_HEIGHT
+  const notesBelowExtra = (notesPosition === 'below' && notesH > 0) ? notesH + SECTION_SPACER : 0
+  const contLastSpace = contFullSpace - paymentH - SECTION_SPACER - notesBelowExtra
+
+  if (isMultiPage) {
+    // Pass 2: Multi-page — page 1 fills fully (no payment/notes-below reservation)
+    const page1FullSpace = pageH - BOTTOM_MARGIN - SECTION_SPACER - yItemsTop - TABLE_HEADER_HEIGHT
+    rowsFirstPage = 0
+    let accH = 0
+    for (let i = 0; i < items.length; i++) {
+      if (accH + itemRowHeights[i] > page1FullSpace) break
+      accH += itemRowHeights[i]
+      rowsFirstPage++
+    }
+    if (rowsFirstPage === 0) rowsFirstPage = 1  // force at least 1 item
+
+    // Simulate continuation pages to find totalPages
+    // Each page checks: do remaining items fit on a "last page" (with payment+notes)?
+    // If yes → this is the last page. If no → fill with full space, continue.
+    totalPages = 1
+    let simIdx = rowsFirstPage
+    while (simIdx < items.length) {
+      totalPages++
+      const remaining = items.length - simIdx
+      // Can all remaining items fit on a last page (with payment reserved)?
+      let lastFit = 0, lastAcc = 0
+      for (let i = simIdx; i < items.length; i++) {
+        if (lastAcc + itemRowHeights[i] > contLastSpace) break
+        lastAcc += itemRowHeights[i]
+        lastFit++
+      }
+      if (lastFit >= remaining) {
+        // All remaining fit on a last page
+        simIdx = items.length
+      } else {
+        // Fill with full space (no payment reservation)
+        let fullFit = 0, fullAcc = 0
+        for (let i = simIdx; i < items.length; i++) {
+          if (fullAcc + itemRowHeights[i] > contFullSpace) break
+          fullAcc += itemRowHeights[i]
+          fullFit++
+        }
+        simIdx += Math.max(fullFit, 1)  // force at least 1 to prevent infinite loop
+      }
+    }
+  } else {
+    // Single page — everything fits with payment reserved
+    rowsFirstPage = rowsSinglePage
+    totalPages = 1
+  }
+
   // OPTION A - CONDENSED PAGE 1 HEADER with visual distinction
   doc.setFont(fonts.hdr, 'bold')
   doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
@@ -3974,96 +4096,15 @@ async function downloadPDF() {
 
     // Separator line at condensed position (30mm - same as page 2)
     if (showB) doc.line(margin, HEADER_END_Y, pageW - margin, HEADER_END_Y)
-  }
 
-  // Dynamic payment section height calculation
-  function calculatePaymentHeight(doc, paymentInstructions, splitW, items) {
-    // Base measurements
-    const headerHeight = 5
-    const headerPadding = 6
-    const lineHeight = 4
-    const bottomPadding = 8
-
-    // Calculate payment instruction lines
-    let paymentLines = 0
-    paymentInstructions.split('\n').forEach(line => {
-      if (line.trim()) {
-        const wrapped = doc.splitTextToSize(line, splitW - 4.2)
-        paymentLines += wrapped.length
-      }
-    })
-
-    // Calculate total section lines DYNAMICALLY based on type subtotals
-    const { typeGroups, uncategorizedTotal, hasTypes } = calculateSubtotalsByType(items)
-    const typeCount = hasTypes ? Object.keys(typeGroups).length : 0
-    const uncatLine = uncategorizedTotal > 0 && hasTypes ? 1 : 0
-    const totalLine = 1  // Always have TOTAL line
-    const totalExtraSpacing = 5
-
-    const totalLines = typeCount + uncatLine + totalLine
-
-    // Calculate heights for both sections
-    const paymentSectionHeight = headerHeight + headerPadding +
-      (paymentLines * lineHeight) + bottomPadding
-    const totalSectionHeight = headerHeight + headerPadding +
-      (totalLines * lineHeight) + totalExtraSpacing + bottomPadding
-
-    // Return the larger of the two sections, with increased minimum for dynamic content
-    return Math.max(paymentSectionHeight, totalSectionHeight, 25)
-  }
-
-  // Calculate dynamic payment height (now with items parameter)
-  const paymentH = calculatePaymentHeight(doc, paymentInstructions, splitW, items)
-
-  // OPTION A - FORWARD CALCULATION with perfect alignment
-  // Calculate notes height (dynamic, can be 0)
-  const notesH = calculateNotesHeight(doc, invoiceNotes, contentW)
-
-  // All pages: Content starts at CONTENT_START_Y = 35mm (perfect alignment!)
-  const yDataTop = CONTENT_START_Y  // FROM/BILL TO grid at 35mm on page 1
-
-  // Line items start after grid + notes (if notes above)
-  const notesOffset = notesPosition === 'above' && notesH > 0 ? notesH + SECTION_SPACER : 0
-  const yItemsTop = yDataTop + DATA_GRID_HEIGHT + SECTION_SPACER + notesOffset
-
-  // Calculate space available for line items on page 1
-  const yPaymentTop = pageH - BOTTOM_MARGIN - paymentH
-  let availableSpaceForItemsPage1 = yPaymentTop - SECTION_SPACER - yItemsTop
-
-  // If notes below, subtract notes space from available items space
-  if (notesPosition === 'below' && notesH > 0) {
-    availableSpaceForItemsPage1 -= (notesH + SECTION_SPACER)
-  }
-
-  // Page 1: accumulate actual row heights to find how many items fit
-  const spaceForRowsPage1 = availableSpaceForItemsPage1 - TABLE_HEADER_HEIGHT
-  let rowsFirstPage = 0
-  let accH = 0
-  for (let i = 0; i < items.length; i++) {
-    if (accH + itemRowHeights[i] > spaceForRowsPage1) break
-    accH += itemRowHeights[i]
-    rowsFirstPage++
-  }
-
-  // Page 2+: Line items start at CONTENT_START_Y (35mm - SAME as page 1 grid!)
-  // Perfect alignment between pages
-  const yItemsTopContinuation = CONTENT_START_Y  // 35mm on all pages
-  const availableSpaceForItemsContinuation = yPaymentTop - SECTION_SPACER - yItemsTopContinuation
-  const spaceForRowsContinuation = availableSpaceForItemsContinuation - TABLE_HEADER_HEIGHT
-
-  // Simulate continuation pages to count total pages needed
-  let totalPages = 1
-  let simIdx = rowsFirstPage
-  while (simIdx < items.length) {
-    totalPages++
-    let pageAccH = 0
-    let fitted = 0
-    while (simIdx < items.length && pageAccH + itemRowHeights[simIdx] <= spaceForRowsContinuation) {
-      pageAccH += itemRowHeights[simIdx]
-      simIdx++
-      fitted++
+    // Page number on page 1 (only shown for multi-page invoices)
+    // Placed left-aligned to avoid overlap with right-aligned INVOICE text
+    if (totalPages > 1) {
+      doc.setFont(fonts.hdr, 'bold')
+      doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
+      doc.setFontSize(9)
+      doc.text(`PAGE 1 OF ${totalPages}`, margin, HEADER_END_Y - 2)
     }
-    if (fitted === 0) simIdx++  // force 1 item to prevent infinite loop
   }
 
   // Spec grid with optional fill/borders
@@ -4365,9 +4406,10 @@ async function downloadPDF() {
   let totalSubtotal = firstPageResult.pageSubtotal
   let itemIndex = firstPageResult.renderedItems
 
-  // NOTES SECTION - Render BELOW items if position is 'below' (page 1 only)
-  if (notesPosition === 'below' && notesH > 0) {
-    const yNotesBelowItems = yPaymentTop - SECTION_SPACER - notesH
+  // Notes below on single-page invoice (rendered on page 1 between items and payment)
+  if (!isMultiPage && notesPosition === 'below' && notesH > 0) {
+    const yPaymentTopSinglePage = pageH - BOTTOM_MARGIN - paymentH
+    const yNotesBelowItems = yPaymentTopSinglePage - SECTION_SPACER - notesH
 
     // Render notes box
     if (showF && boxAlpha > 0) {
@@ -4408,7 +4450,7 @@ async function downloadPDF() {
     })
   }
 
-  // Render continuation pages if needed
+  // Render continuation pages if needed (multi-page only)
   while (itemIndex < items.length) {
     doc.addPage()
 
@@ -4434,11 +4476,22 @@ async function downloadPDF() {
       doc.line(margin, HEADER_END_Y, pageW - margin, HEADER_END_Y)
     }
 
-    // Render line items starting at CONTENT_START_Y (35mm - SAME as page 1 grid!)
+    // Determine if this is the last page: check if all remaining items fit with payment reserved
     const remHeights = itemRowHeights.slice(itemIndex)
+    const remainingCount = items.length - itemIndex
+    let lastPageFitCheck = 0, lastPageAccCheck = 0
+    for (let i = 0; i < remHeights.length; i++) {
+      if (lastPageAccCheck + remHeights[i] > contLastSpace) break
+      lastPageAccCheck += remHeights[i]
+      lastPageFitCheck++
+    }
+    const isLastContPage = lastPageFitCheck >= remainingCount
+
+    // Use full space for non-last pages, reserved space for last page
+    const spaceForThisPage = isLastContPage ? contLastSpace : contFullSpace
     let fitCount = 0, fitH = 0
     for (let i = 0; i < remHeights.length; i++) {
-      if (fitH + remHeights[i] > spaceForRowsContinuation) break
+      if (fitH + remHeights[i] > spaceForThisPage) break
       fitH += remHeights[i]
       fitCount++
     }
@@ -4456,12 +4509,55 @@ async function downloadPDF() {
     itemIndex += continuationPageResult.renderedItems
   }
 
-  // Payment + totals (always on the last page)
-  const xSplit = margin + splitW
-
-  // Calculate payment section position on current page
+  // Notes below on multi-page invoice (rendered on last page, above payment)
+  // We're now on the last page after the continuation loop
   const currentPageH = doc.internal.pageSize.getHeight()
   const yPayTop = currentPageH - bottomMargin - paymentH
+
+  if (isMultiPage && notesPosition === 'below' && notesH > 0) {
+    const yNotesBelowItems = yPayTop - SECTION_SPACER - notesH
+
+    // Render notes box
+    if (showF && boxAlpha > 0) {
+      doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
+      doc.setGState(new doc.GState({ opacity: boxAlpha }))
+      doc.rect(margin, yNotesBelowItems, contentW, notesH, 'F')
+      doc.setGState(new doc.GState({ opacity: 1 }))
+    }
+    if (showB) {
+      doc.rect(margin, yNotesBelowItems, contentW, notesH)
+    }
+
+    // Notes header
+    doc.setFont(fonts.hdr, 'bold')
+    doc.setTextColor(boxTextRGB.r, boxTextRGB.g, boxTextRGB.b)
+    doc.setFontSize(7)
+    doc.text('NOTES', margin + 2.1, yNotesBelowItems + 5)
+
+    // Divider line under NOTES header (match grid panel headers)
+    if (showB) {
+      doc.line(margin + 2.1, yNotesBelowItems + 7, margin + contentW - 2.1, yNotesBelowItems + 7)
+    }
+
+    // Notes content
+    doc.setFont(fonts.body, 'normal')
+    doc.setFontSize(8)
+    let ny = yNotesBelowItems + 11
+    invoiceNotes.split('\n').forEach(line => {
+      if (line.trim()) {
+        const lines = doc.splitTextToSize(line, contentW - 4.2)
+        lines.forEach(L => {
+          if (ny < yNotesBelowItems + notesH - 2) {
+            doc.text(L, margin + 2.1, ny)
+            ny += 4
+          }
+        })
+      }
+    })
+  }
+
+  // Payment + totals (always on the last page)
+  const xSplit = margin + splitW
 
   if (showF && boxAlpha > 0) {
     doc.setFillColor(boxRGB.r, boxRGB.g, boxRGB.b)
