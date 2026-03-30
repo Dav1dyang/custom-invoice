@@ -39,23 +39,35 @@ function showToast(message, type = 'info', duration = 3000) {
   return toast
 }
 
-function showConfirmToast(message, onConfirm, onCancel) {
+function showConfirmToast(message, onConfirm, onCancel, options = {}) {
   const container = document.getElementById('toastContainer')
   if (!container) return
+
+  const confirmLabel = options.confirmLabel || 'Yes'
+  const denyLabel = options.denyLabel || 'No'
+  const cancelLabel = options.cancelLabel || 'Cancel'
 
   const toast = document.createElement('div')
   toast.className = 'toast toast--warning'
   toast.innerHTML = `
     <span class="toast__message">${message}</span>
     <div class="toast-actions">
-      <button class="toast-confirm">Yes</button>
-      <button class="toast-cancel">Cancel</button>
+      <button class="toast-confirm">${confirmLabel}</button>
+      ${options.onDeny ? `<button class="toast-deny">${denyLabel}</button>` : ''}
+      <button class="toast-cancel">${cancelLabel}</button>
     </div>
   `
 
   toast.querySelector('.toast-confirm').onclick = () => {
     dismissToast(toast)
     if (onConfirm) onConfirm()
+  }
+  const denyBtn = toast.querySelector('.toast-deny')
+  if (denyBtn) {
+    denyBtn.onclick = () => {
+      dismissToast(toast)
+      options.onDeny()
+    }
   }
   toast.querySelector('.toast-cancel').onclick = () => {
     dismissToast(toast)
@@ -2813,9 +2825,12 @@ function handleAuthClick() {
         firebaseAuth.signOut()
         showToast('Templates synced and signed out', 'success')
       },
-      () => {
-        firebaseAuth.signOut()
-        showToast('Signed out', 'info')
+      null,
+      {
+        onDeny: () => {
+          firebaseAuth.signOut()
+          showToast('Signed out', 'info')
+        }
       }
     )
   } else {
