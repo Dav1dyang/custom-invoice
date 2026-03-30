@@ -552,19 +552,23 @@ When a template is deleted, both starred and recent references are cleared:
 
 ### Key Functions (script.js)
 
-- `handleAttachmentUpload(event)` — Process local file input, validate, generate thumbnails for images
+- `handleAttachmentSelect()` — Smart upload: uses `showOpenFilePicker` (Chromium) with file handle storage, falls back to `<input type="file">`
+- `handleAttachmentUpload(event)` — Fallback file input handler for non-Chromium browsers
 - `addAttachmentFromData(name, mimeType, arrayBuffer, thumbnailUrl, sourceInfo)` — Add to `invoiceAttachments[]` array with source tracking
 - `renderAttachmentList()` — Build attachment list DOM with status-aware rendering (loaded/loading/unavailable/failed states)
-- `removeAttachment(id)` / `clearAllAttachments()` — Remove with confirm toast, persists refs
-- `handleReuploadAttachment(attId)` — Re-upload flow for local file placeholders
+- `removeAttachment(id)` / `clearAllAttachments()` — Remove with confirm toast, persists refs + cleans up IndexedDB handles
+- `handleReuploadAttachment(attId)` — Re-upload flow for local file placeholders (uses `showOpenFilePicker` when available)
 - `openDrivePicker()` — Open Google Picker for Drive file selection (requires sign-in)
 - `downloadDriveFile(fileId, name, mimeType, sizeBytes)` — Download file from Drive API
 - `mergeAttachmentsIntoPDF(invoiceBytes)` — Core merge function using pdf-lib (skips unloaded attachments)
 - `validateAttachment(file)` — Check type and size constraints
+- `generateAttachmentThumbnail(arrayBuffer, mimeType)` — Generate 72x72 thumbnail for image attachments
 - `saveAttachmentRefs()` / `loadAttachmentRefs()` — Persist/load lightweight refs to localStorage
 - `saveAttachmentRefsToCloud()` / `loadAttachmentRefsFromCloud()` — Firebase sync for attachment refs
 - `restoreAttachments()` — Restore attachment placeholders and auto-download Drive files on page load
 - `restoreDriveAttachment(ref)` — Download a single Drive file by stored ref, update in-place
+- `restoreLocalAttachment(ref)` — Re-read a local file from its stored `FileSystemFileHandle` in IndexedDB
+- `openHandlesDB()` / `storeFileHandle()` / `getFileHandle()` / `deleteFileHandle()` / `clearAllFileHandles()` — IndexedDB helpers for file handle persistence
 
 ### Google Drive Integration
 
@@ -610,12 +614,15 @@ When a template is deleted, both starred and recent references are cleared:
 ### Attachment Persistence
 
 - **Storage key**: `invoice_attachment_refs` (localStorage), `users/{uid}/meta/preferences.attachmentRefs` (Firestore)
-- **Stored per ref**: `{ id, name, mimeType, size, source: 'drive'|'local', driveFileId }` (~200 bytes each)
-- **Restore flow**: DOMContentLoaded loads placeholders → onAuthStateChanged triggers Drive downloads
+- **Stored per ref**: `{ id, name, mimeType, size, source: 'drive'|'local', driveFileId, hasFileHandle }` (~200 bytes each)
+- **File handles DB**: `invoice_attachment_handles` (IndexedDB) — stores `FileSystemFileHandle` objects for local files (Chromium only)
+- **Restore flow**: DOMContentLoaded loads placeholders → tries local file handles immediately → onAuthStateChanged triggers Drive downloads
 - **Status states**: `loaded`, `loading`, `unavailable`, `needs-auth`, `failed`, `not-found`
-- **Local files**: Cannot auto-restore (browser security); shown as greyed-out placeholders with "Re-upload" button
+- **Local files (Chromium)**: Auto-restore via stored `FileSystemFileHandle` in IndexedDB; one permission prompt per session (per-origin, not per-file); works even if file was renamed (handle tracks by inode)
+- **Local files (Firefox/Safari)**: `showOpenFilePicker` unavailable; shown as greyed-out placeholders with "Re-upload" button
 - **Drive files**: Auto-download on reload when signed in; handle 401 re-auth, 404 not found
-- **Sign-out**: Clears refs from localStorage + in-memory array
+- **Smart upload**: `handleAttachmentSelect()` uses `showOpenFilePicker` when available (stores file handles), falls back to `<input type="file">`
+- **Sign-out**: Clears refs from localStorage + IndexedDB handles + in-memory array
 - **CSS classes**: `.att-loading`, `.att-unavailable`, `.att-spinner`, `.att-status-hint`, `.attachment-action-btn`
 
 ### Error Handling
@@ -627,6 +634,9 @@ When a template is deleted, both starred and recent references are cleared:
 - Drive API not enabled (403): Parses Google error response, shows specific message to enable Drive API in Cloud Console
 - Drive download forbidden (403, other): Shows Google's actual error message (e.g., file restrictions, domain policy)
 - Drive file deleted (404 on restore): Marks attachment as `not-found`, shows message + remove button
+- Local file handle permission denied: Falls back to "Re-upload" placeholder
+- Local file deleted/moved (handle stale): Cleans up IndexedDB handle, shows "Re-upload" placeholder
+- File System Access API unavailable (Firefox/Safari): Graceful fallback to `<input type="file">`, no handle storage
 - Unloaded attachments at PDF time: Skips with warning toast, merges only loaded ones
 - pdf-lib not loaded: Falls back to invoice-only download with warning toast
 - Merge failure: Falls back to invoice-only download with warning toast
