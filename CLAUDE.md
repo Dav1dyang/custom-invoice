@@ -92,20 +92,36 @@ PDF generation uses **Option A layout** with condensed headers and perfect align
 - Page 2+: No logo, INVOICE text **11pt** (condensed)
 - Both pages: Header ends at 30mm, content starts at 35mm
 
+### Two-Pass Pagination
+
+Uses a two-pass approach to maximize space usage:
+
+**Pass 1**: Try single-page layout (with payment + notes-below reserved on page 1)
+- If all items fit → single page, no page numbers
+
+**Pass 2 (multi-page)**: Page 1 and middle pages fill to bottom margin
+- Page 1: NO payment/notes-below reservation (fills fully)
+- Middle continuation pages: NO payment reservation (fills fully)
+- Last page only: Reserves space for payment + notes-below (if applicable)
+
 ### Page Layout
 
-1. **Page 1**: Condensed header (30mm) → FROM/BILL TO grid at y=35mm → line items → payment (bottom)
-2. **Page 2+**: Condensed header (30mm) → line items at y=35mm → payment (bottom)
-3. **Perfect alignment**: Both pages have content starting at y=35mm
-4. Page 1 visually distinct with larger INVOICE text (16pt vs 11pt)
-5. More items fit on page 1 (~~8-10 items) vs Option B (~~5-7 items)
-6. Payment section always anchored at bottom with fixed margin
+1. **Single page**: Header → grid → notes-above → items → notes-below → payment (bottom)
+2. **Multi-page, Page 1**: Header + page number → grid → notes-above → items (fills to bottom)
+3. **Multi-page, Middle pages**: Condensed header + page number → items (fills to bottom)
+4. **Multi-page, Last page**: Condensed header + page number → items → notes-below → payment (bottom)
+5. **Perfect alignment**: All pages have content starting at y=35mm
+6. Page 1 visually distinct with larger INVOICE text (16pt vs 11pt)
+7. Notes "below items" appears after ALL items on the last page (not on page 1)
+8. Page numbers ("PAGE X OF Y") on all pages when multi-page
 
 Key variables:
 
-- `maxRowsFitFirstPage`: Items that fit on page 1 (~8-10 items)
-- `maxRowsFitContinuationPage`: Items per continuation page (~12-15 items)
+- `rowsFirstPage`: Items that fit on page 1 (dynamic, more in multi-page since no payment reservation)
+- `contFullSpace`: Available space on non-last continuation pages (no payment reservation)
+- `contLastSpace`: Available space on last page (with payment + notes-below reserved)
 - `yItemsTopContinuation`: Fixed position for line items on page 2+ (35mm - same as page 1 grid!)
+- `isMultiPage`: Boolean flag determining single vs multi-page behavior
 
 ## Invoice Number Format
 
@@ -162,13 +178,17 @@ Invoice numbers use a split field format: **IN-{ABBREVIATION}-{SEQUENCE}**
 
 **Position Options:**
 
-- **Above Items**: Notes appear between FROM/BILL TO grid and line items
-- **Below Items**: Notes appear between line items and payment/totals section
+- **Above Items**: Notes appear between FROM/BILL TO grid and line items (page 1 only)
+- **Below Items**: Notes appear after ALL line items, before payment/totals section
+  - Single page: renders on page 1 between items and payment
+  - Multi-page: renders on the LAST page after all items, above payment
 
 **Display:**
 
 - Preview: Notes position changes based on selected radio button
-- PDF: Notes render in selected position (page 1 only, not repeated on page 2+)
+- PDF: Notes render in selected position
+  - "Above": Page 1 only, between grid and items
+  - "Below": On the last page, after all line items, above payment
 - Only shows if filled (conditional rendering)
 - Saves position preference with template
 - Dynamic height calculation in PDF based on content
@@ -177,8 +197,9 @@ Invoice numbers use a split field format: **IN-{ABBREVIATION}-{SEQUENCE}**
 **PDF Layout Impact:**
 
 - Above: Takes space after grid, reduces items on page 1
-- Below: Takes space before payment, reduces items on page 1
-- Long notes: Significantly fewer items on page 1 (~5-7 vs ~8-10)
+- Below (single page): Takes space before payment, reduces items on page 1
+- Below (multi-page): Takes space on last page only, page 1 fills fully
+- Long notes: Fewer items on the page where notes appear
 - Pagination automatically adjusts for either position
 
 ## Type/Category Column (Conditional Display)
