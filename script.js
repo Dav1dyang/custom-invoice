@@ -1097,7 +1097,14 @@ function hasAnyTypes(items) {
 }
 
 // Update line items table footer with type subtotals and grand total
+function updateItemCount() {
+  const count = document.querySelectorAll('#itemsBody tr').length
+  const el = document.getElementById('itemCount')
+  if (el) el.textContent = `(${count})`
+}
+
 function updateItemsTotals() {
+  updateItemCount()
   const items = getItems()
   const tfoot = document.getElementById('itemsTfoot')
   if (!tfoot) return
