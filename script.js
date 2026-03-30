@@ -1417,6 +1417,14 @@ document.addEventListener('keydown', (e) => {
   }
 })
 
+// Cmd+S / Ctrl+S to save template
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 's' && !e.shiftKey && !e.altKey) {
+    e.preventDefault()
+    handleSaveAction()
+  }
+})
+
 // Update action buttons based on current selection
 function updateActionButtons() {
   const templateInput = document.getElementById('templateInput')
