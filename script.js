@@ -111,7 +111,62 @@ function updateThemeIcon() {
 let invoiceAttachments = []  // { id, name, mimeType, size, data: ArrayBuffer, thumbnailUrl?, source, driveFileId?, status? }
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  // 10 MB
 const ATTACHMENT_REFS_KEY = 'invoice_attachment_refs'
+const ATTACHMENT_HANDLES_DB = 'invoice_attachment_handles'
 let attachDraggedItem = null
+
+// IndexedDB for persisting FileSystemFileHandle objects (Chromium only)
+function openHandlesDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(ATTACHMENT_HANDLES_DB, 1)
+    req.onupgradeneeded = () => req.result.createObjectStore('handles')
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function storeFileHandle(attId, handle) {
+  try {
+    const db = await openHandlesDB()
+    const tx = db.transaction('handles', 'readwrite')
+    tx.objectStore('handles').put(handle, attId)
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej })
+    db.close()
+  } catch (e) { /* IndexedDB unavailable */ }
+}
+
+async function getFileHandle(attId) {
+  try {
+    const db = await openHandlesDB()
+    const tx = db.transaction('handles', 'readonly')
+    const handle = await new Promise((res, rej) => {
+      const req = tx.objectStore('handles').get(attId)
+      req.onsuccess = () => res(req.result)
+      req.onerror = rej
+    })
+    db.close()
+    return handle || null
+  } catch (e) { return null }
+}
+
+async function deleteFileHandle(attId) {
+  try {
+    const db = await openHandlesDB()
+    const tx = db.transaction('handles', 'readwrite')
+    tx.objectStore('handles').delete(attId)
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej })
+    db.close()
+  } catch (e) { /* ignore */ }
+}
+
+async function clearAllFileHandles() {
+  try {
+    const db = await openHandlesDB()
+    const tx = db.transaction('handles', 'readwrite')
+    tx.objectStore('handles').clear()
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej })
+    db.close()
+  } catch (e) { /* ignore */ }
+}
 
 function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + ' B'
@@ -144,6 +199,81 @@ function addAttachmentFromData(name, mimeType, arrayBuffer, thumbnailUrl, source
   invoiceAttachments.push(entry)
   renderAttachmentList()
   saveAttachmentRefs()
+}
+
+// Generate thumbnail for an image ArrayBuffer, returns Promise<string|null>
+function generateAttachmentThumbnail(arrayBuffer, mimeType) {
+  return new Promise((resolve) => {
+    try {
+      const blob = new Blob([arrayBuffer], { type: mimeType })
+      const url = URL.createObjectURL(blob)
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const size = 72
+        canvas.width = size; canvas.height = size
+        const ctx = canvas.getContext('2d')
+        const scale = Math.min(size / img.width, size / img.height)
+        const w = img.width * scale, h = img.height * scale
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
+        URL.revokeObjectURL(url)
+        resolve(canvas.toDataURL('image/png'))
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+      img.src = url
+    } catch { resolve(null) }
+  })
+}
+
+// Smart upload: uses showOpenFilePicker (stores file handles for auto-restore) with fallback to <input type="file">
+async function handleAttachmentSelect() {
+  if (window.showOpenFilePicker) {
+    try {
+      const handles = await window.showOpenFilePicker({
+        multiple: true,
+        types: [{
+          description: 'Documents & Images',
+          accept: {
+            'application/pdf': ['.pdf'],
+            'image/png': ['.png'],
+            'image/jpeg': ['.jpg', '.jpeg']
+          }
+        }]
+      })
+      let added = 0
+      for (const handle of handles) {
+        try {
+          const file = await handle.getFile()
+          const validation = validateAttachment(file)
+          if (!validation.valid) {
+            showToast(validation.error, 'warning', 4000)
+            continue
+          }
+          const arrayBuffer = await file.arrayBuffer()
+          const thumbUrl = file.type.startsWith('image/')
+            ? await generateAttachmentThumbnail(arrayBuffer, file.type)
+            : null
+          addAttachmentFromData(file.name, file.type, arrayBuffer, thumbUrl, { source: 'local' })
+          // Store the file handle in IndexedDB for auto-restore on reload
+          const lastAtt = invoiceAttachments[invoiceAttachments.length - 1]
+          await storeFileHandle(lastAtt.id, handle)
+          lastAtt.hasFileHandle = true
+          saveAttachmentRefs()
+          added++
+        } catch (e) {
+          showToast(`Failed to read file: ${e.message}`, 'error')
+        }
+      }
+      if (added > 0) showToast(`Added ${added} attachment(s)`, 'success')
+      return
+    } catch (e) {
+      if (e.name === 'AbortError') return  // User cancelled picker
+      // Fall through to legacy file input
+    }
+  }
+  // Fallback: trigger the hidden file input
+  const input = document.getElementById('attachmentFileInput')
+  if (input) input.click()
 }
 
 function handleAttachmentUpload(event) {
@@ -215,6 +345,7 @@ function handleAttachmentUpload(event) {
 }
 
 function removeAttachment(id) {
+  deleteFileHandle(id)
   invoiceAttachments = invoiceAttachments.filter(a => a.id !== id)
   renderAttachmentList()
   saveAttachmentRefs()
@@ -225,6 +356,7 @@ function clearAllAttachments() {
   showConfirmToast(
     `Remove all ${invoiceAttachments.length} attachment(s)?`,
     () => {
+      clearAllFileHandles()
       invoiceAttachments = []
       renderAttachmentList()
       saveAttachmentRefs()
@@ -237,7 +369,8 @@ function saveAttachmentRefs() {
   const refs = invoiceAttachments.map(a => ({
     id: a.id, name: a.name, mimeType: a.mimeType, size: a.size,
     source: a.source || 'local',
-    driveFileId: a.driveFileId || null
+    driveFileId: a.driveFileId || null,
+    hasFileHandle: a.hasFileHandle || false
   }))
   try { localStorage.setItem(ATTACHMENT_REFS_KEY, JSON.stringify(refs)) } catch (e) { /* quota */ }
   saveAttachmentRefsToCloud()
@@ -326,81 +459,214 @@ async function restoreDriveAttachment(ref) {
   att.status = 'loaded'
 }
 
+// Try to restore a local file from its stored FileSystemFileHandle
+async function restoreLocalAttachment(ref) {
+  const att = invoiceAttachments.find(a => a.id === ref.id)
+  if (!att) return false
+
+  const handle = await getFileHandle(ref.id)
+  if (!handle) return false
+
+  // Request permission (shows one-time prompt per session, per-origin)
+  let permission = await handle.queryPermission({ mode: 'read' })
+  if (permission === 'prompt') {
+    try {
+      permission = await handle.requestPermission({ mode: 'read' })
+    } catch (e) {
+      // User denied or browser blocked
+      return false
+    }
+  }
+  if (permission !== 'granted') return false
+
+  // Try to read the file
+  let file
+  try {
+    file = await handle.getFile()
+  } catch (e) {
+    // File deleted, moved, or handle invalid
+    await deleteFileHandle(ref.id)
+    return false
+  }
+
+  // Validate type and size still match
+  const allowed = ['application/pdf', 'image/png', 'image/jpeg']
+  if (!allowed.includes(file.type) || file.size > MAX_ATTACHMENT_SIZE) {
+    await deleteFileHandle(ref.id)
+    return false
+  }
+
+  const arrayBuffer = await file.arrayBuffer()
+  att.data = arrayBuffer
+  att.size = arrayBuffer.byteLength
+  att.name = file.name  // May have been renamed — use current name
+  att.mimeType = file.type
+  att.hasFileHandle = true
+
+  // Generate thumbnail for images
+  if (file.type.startsWith('image/')) {
+    att.thumbnailUrl = await generateAttachmentThumbnail(arrayBuffer, file.type)
+  }
+
+  att.status = 'loaded'
+  return true
+}
+
 async function restoreAttachments() {
   const refs = loadAttachmentRefs()
   if (refs.length === 0) return
 
-  // Don't restore if any attachment already has data loaded (user already added fresh ones)
-  if (invoiceAttachments.some(a => a.data)) return
+  // Check which refs still need restoring (some locals may already be loaded by DOMContentLoaded)
+  const refIds = new Set(refs.map(r => r.id))
+  const hasNewAttachments = invoiceAttachments.some(a => !refIds.has(a.id))
+  if (hasNewAttachments) return  // User added fresh attachments, don't interfere
 
   const driveRefs = refs.filter(r => r.source === 'drive' && r.driveFileId)
   const localRefs = refs.filter(r => r.source === 'local' || !r.driveFileId)
+  // Only try file handles for locals that aren't already loaded
+  const localWithHandles = localRefs.filter(r => {
+    if (!r.hasFileHandle || !window.showOpenFilePicker) return false
+    const att = invoiceAttachments.find(a => a.id === r.id)
+    return !att || !att.data  // Skip already-restored ones
+  })
+  const localWithoutHandles = localRefs.filter(r => !r.hasFileHandle || !window.showOpenFilePicker)
 
-  // If placeholders were already loaded by DOMContentLoaded, just update Drive statuses
+  // Set up placeholders (or update existing ones from DOMContentLoaded)
   if (invoiceAttachments.length === 0) {
     refs.forEach(ref => {
       const isDrive = ref.source === 'drive' && ref.driveFileId
+      const hasHandle = ref.hasFileHandle && window.showOpenFilePicker
       invoiceAttachments.push({
         ...ref,
         data: null,
         thumbnailUrl: null,
-        status: isDrive ? 'loading' : 'unavailable'
+        status: isDrive ? 'loading' : (hasHandle ? 'loading' : 'unavailable')
       })
     })
   } else {
-    // Update existing placeholders to loading state for drive files
+    // Update existing placeholders for drive files to loading state
     driveRefs.forEach(ref => {
       const att = invoiceAttachments.find(a => a.id === ref.id)
-      if (att) att.status = 'loading'
+      if (att && !att.data) att.status = 'loading'
+    })
+    localWithHandles.forEach(ref => {
+      const att = invoiceAttachments.find(a => a.id === ref.id)
+      if (att && !att.data) att.status = 'loading'
     })
   }
   renderAttachmentList()
 
-  // Auto-download Drive files if signed in with valid token
-  if (currentUser && gcalAccessToken && !gcalTokenExpired() && driveRefs.length > 0) {
-    for (const ref of driveRefs) {
+  // 1. Try to restore local files from stored file handles (if not already done)
+  let localRestored = 0
+  let localFailed = 0
+  // Count locals already restored by DOMContentLoaded
+  const alreadyRestoredLocals = localRefs.filter(r => {
+    const att = invoiceAttachments.find(a => a.id === r.id)
+    return att && att.data
+  }).length
+  localRestored += alreadyRestoredLocals
+
+  if (localWithHandles.length > 0) {
+    for (const ref of localWithHandles) {
       try {
-        await restoreDriveAttachment(ref)
+        const ok = await restoreLocalAttachment(ref)
+        if (ok) {
+          localRestored++
+        } else {
+          const att = invoiceAttachments.find(a => a.id === ref.id)
+          if (att) att.status = 'unavailable'
+          localFailed++
+        }
       } catch (e) {
         const att = invoiceAttachments.find(a => a.id === ref.id)
-        if (att) att.status = 'failed'
+        if (att) att.status = 'unavailable'
+        localFailed++
       }
     }
     renderAttachmentList()
-
-    const restored = driveRefs.filter(r => {
-      const a = invoiceAttachments.find(x => x.id === r.id)
-      return a && a.status === 'loaded'
-    }).length
-    const parts = []
-    if (restored > 0) parts.push(`${restored} from Drive`)
-    const failed = driveRefs.length - restored
-    if (failed > 0) parts.push(`${failed} Drive file(s) unavailable`)
-    if (localRefs.length > 0) parts.push(`${localRefs.length} need re-upload`)
-    if (parts.length > 0) showToast(`Attachments: ${parts.join(', ')}`, 'info', 4000)
-  } else if (driveRefs.length > 0) {
-    // Not signed in or no token — mark drive refs appropriately
-    driveRefs.forEach(ref => {
-      const att = invoiceAttachments.find(a => a.id === ref.id)
-      if (att) att.status = currentUser ? 'failed' : 'needs-auth'
-    })
-    renderAttachmentList()
-    if (localRefs.length > 0 || driveRefs.length > 0) {
-      const parts = []
-      if (driveRefs.length > 0) parts.push(currentUser ? `${driveRefs.length} Drive file(s) unavailable` : `${driveRefs.length} need sign-in`)
-      if (localRefs.length > 0) parts.push(`${localRefs.length} need re-upload`)
-      showToast(`Attachments: ${parts.join(', ')}`, 'info', 4000)
-    }
-  } else if (localRefs.length > 0) {
-    showToast(`${localRefs.length} attachment(s) need re-upload`, 'info', 4000)
   }
+
+  // 2. Auto-download Drive files if signed in with valid token
+  let driveRestored = 0
+  let driveFailed = 0
+  if (driveRefs.length > 0) {
+    if (currentUser && gcalAccessToken && !gcalTokenExpired()) {
+      for (const ref of driveRefs) {
+        try {
+          await restoreDriveAttachment(ref)
+          driveRestored++
+        } catch (e) {
+          const att = invoiceAttachments.find(a => a.id === ref.id)
+          if (att) att.status = 'failed'
+          driveFailed++
+        }
+      }
+    } else {
+      driveRefs.forEach(ref => {
+        const att = invoiceAttachments.find(a => a.id === ref.id)
+        if (att) att.status = currentUser ? 'failed' : 'needs-auth'
+      })
+      driveFailed = driveRefs.length
+    }
+    renderAttachmentList()
+  }
+
+  // 3. Show summary toast
+  const totalRestored = localRestored + driveRestored
+  const needsReupload = localWithoutHandles.length + localFailed
+  const parts = []
+  if (totalRestored > 0) parts.push(`${totalRestored} restored`)
+  if (driveFailed > 0) parts.push(`${driveFailed} Drive file(s) unavailable`)
+  if (needsReupload > 0) parts.push(`${needsReupload} need re-upload`)
+  if (parts.length > 0) showToast(`Attachments: ${parts.join(', ')}`, 'info', 4000)
 }
 
-function handleReuploadAttachment(attId) {
+async function handleReuploadAttachment(attId) {
+  // Try showOpenFilePicker first (stores handle for future auto-restore)
+  if (window.showOpenFilePicker) {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        types: [{
+          description: 'Documents & Images',
+          accept: {
+            'application/pdf': ['.pdf'],
+            'image/png': ['.png'],
+            'image/jpeg': ['.jpg', '.jpeg']
+          }
+        }]
+      })
+      const file = await handle.getFile()
+      const validation = validateAttachment(file)
+      if (!validation.valid) {
+        showToast(validation.error, 'warning', 4000)
+        return
+      }
+      const att = invoiceAttachments.find(a => a.id === attId)
+      if (!att) return
+      att.data = await file.arrayBuffer()
+      att.size = att.data.byteLength
+      att.name = file.name
+      att.mimeType = file.type
+      att.status = 'loaded'
+      att.hasFileHandle = true
+      att.thumbnailUrl = file.type.startsWith('image/')
+        ? await generateAttachmentThumbnail(att.data, file.type)
+        : null
+      await storeFileHandle(attId, handle)
+      renderAttachmentList()
+      saveAttachmentRefs()
+      return
+    } catch (e) {
+      if (e.name === 'AbortError') return  // User cancelled
+      // Fall through to legacy file input
+    }
+  }
+  // Fallback: use hidden file input
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = '.pdf,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf'
-  input.onchange = (e) => {
+  input.onchange = async (e) => {
     const file = e.target.files[0]
     if (!file) return
     const validation = validateAttachment(file)
@@ -408,42 +674,19 @@ function handleReuploadAttachment(attId) {
       showToast(validation.error, 'warning', 4000)
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      const att = invoiceAttachments.find(a => a.id === attId)
-      if (!att) return
-      att.data = reader.result
-      att.size = reader.result.byteLength
-      att.name = file.name
-      att.mimeType = file.type
-      att.status = 'loaded'
-      // Generate thumbnail for images
-      if (file.type.startsWith('image/')) {
-        const blob = new Blob([reader.result], { type: file.type })
-        const url = URL.createObjectURL(blob)
-        const img = new Image()
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          const size = 72
-          canvas.width = size; canvas.height = size
-          const ctx = canvas.getContext('2d')
-          const scale = Math.min(size / img.width, size / img.height)
-          const w = img.width * scale, h = img.height * scale
-          ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
-          att.thumbnailUrl = canvas.toDataURL('image/png')
-          URL.revokeObjectURL(url)
-          renderAttachmentList()
-          saveAttachmentRefs()
-        }
-        img.onerror = () => { URL.revokeObjectURL(url); renderAttachmentList(); saveAttachmentRefs() }
-        img.src = url
-      } else {
-        att.thumbnailUrl = null
-        renderAttachmentList()
-        saveAttachmentRefs()
-      }
-    }
-    reader.readAsArrayBuffer(file)
+    const att = invoiceAttachments.find(a => a.id === attId)
+    if (!att) return
+    const arrayBuffer = await file.arrayBuffer()
+    att.data = arrayBuffer
+    att.size = arrayBuffer.byteLength
+    att.name = file.name
+    att.mimeType = file.type
+    att.status = 'loaded'
+    att.thumbnailUrl = file.type.startsWith('image/')
+      ? await generateAttachmentThumbnail(arrayBuffer, file.type)
+      : null
+    renderAttachmentList()
+    saveAttachmentRefs()
   }
   input.click()
 }
@@ -852,19 +1095,53 @@ document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('attachmentFileInput')
   if (input) input.addEventListener('change', handleAttachmentUpload)
 
-  // Restore attachment placeholders from localStorage (Drive files re-download after auth)
+  // Restore attachment placeholders from localStorage
+  // Drive files re-download after auth; local files with handles re-read after permission
   const refs = loadAttachmentRefs()
   if (refs.length > 0) {
     refs.forEach(ref => {
       const isDrive = ref.source === 'drive' && ref.driveFileId
+      const hasHandle = ref.hasFileHandle && window.showOpenFilePicker
+      let status
+      if (isDrive) {
+        status = 'needs-auth'  // Will become 'loading' when auth fires
+      } else if (hasHandle) {
+        status = 'loading'     // Will try file handle restore
+      } else {
+        status = 'unavailable' // No handle, needs manual re-upload
+      }
       invoiceAttachments.push({
         ...ref,
         data: null,
         thumbnailUrl: null,
-        status: isDrive ? 'needs-auth' : 'unavailable'
+        status
       })
     })
     renderAttachmentList()
+
+    // Immediately try to restore local files with stored file handles (no auth needed)
+    const localHandleRefs = refs.filter(r => (r.source === 'local' || !r.driveFileId) && r.hasFileHandle && window.showOpenFilePicker)
+    if (localHandleRefs.length > 0) {
+      ;(async () => {
+        let restored = 0
+        for (const ref of localHandleRefs) {
+          try {
+            const ok = await restoreLocalAttachment(ref)
+            if (ok) {
+              restored++
+            } else {
+              const att = invoiceAttachments.find(a => a.id === ref.id)
+              if (att) att.status = 'unavailable'
+            }
+          } catch (e) {
+            const att = invoiceAttachments.find(a => a.id === ref.id)
+            if (att) att.status = 'unavailable'
+          }
+        }
+        renderAttachmentList()
+        if (restored > 0) showToast(`${restored} local file(s) auto-restored`, 'success')
+      })()
+    }
   }
 })
 
@@ -3062,6 +3339,7 @@ function initFirebase() {
         localStorage.removeItem(RECENT_KEY)
         localStorage.removeItem(CUSTOM_TYPES_KEY)
         localStorage.removeItem(ATTACHMENT_REFS_KEY)
+        clearAllFileHandles()
         invoiceAttachments = []
         renderAttachmentList()
         resetFormToDefaults()
