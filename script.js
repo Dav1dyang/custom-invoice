@@ -2501,13 +2501,10 @@ async function fetchGcalEvents() {
       function formatWeekRange(weekStart) {
         const weekEnd = new Date(weekStart)
         weekEnd.setDate(weekEnd.getDate() + 6)
-        const opts = { month: 'short', day: 'numeric' }
-        const startStr = weekStart.toLocaleDateString('en-US', opts)
-        if (weekStart.getMonth() === weekEnd.getMonth()) {
-          return `${startStr}-${weekEnd.getDate()}`
-        }
-        const endStr = weekEnd.toLocaleDateString('en-US', opts)
-        return `${startStr} - ${endStr}`
+        const pad = (n) => String(n).padStart(2, '0')
+        const s = `${pad(weekStart.getMonth() + 1)}/${pad(weekStart.getDate())}`
+        const e = `${pad(weekEnd.getMonth() + 1)}/${pad(weekEnd.getDate())}`
+        return `${s}-${e}`
       }
 
       const grouped = {}
@@ -2523,7 +2520,7 @@ async function fetchGcalEvents() {
       events = Object.values(grouped)
         .sort((a, b) => a._weekStart - b._weekStart)
         .map((e) => ({
-          title: `${e.title} (${e._weekLabel})`,
+          title: `${e._weekLabel} ${e.title}`,
           date: e._weekLabel,
           hours: Math.round(e.hours * 100) / 100,
           selected: true,
