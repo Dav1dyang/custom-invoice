@@ -108,8 +108,9 @@ function updateThemeIcon() {
 }
 
 /* ----------------------------- ATTACHMENTS ------------------------------ */
-let invoiceAttachments = []  // { id, name, mimeType, size, data: ArrayBuffer, thumbnailUrl?: string }
+let invoiceAttachments = []  // { id, name, mimeType, size, data: ArrayBuffer, thumbnailUrl?, source, driveFileId?, status? }
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  // 10 MB
+const ATTACHMENT_REFS_KEY = 'invoice_attachment_refs'
 let attachDraggedItem = null
 
 function formatFileSize(bytes) {
@@ -129,17 +130,20 @@ function validateAttachment(file) {
   return { valid: true }
 }
 
-function addAttachmentFromData(name, mimeType, arrayBuffer, thumbnailUrl) {
+function addAttachmentFromData(name, mimeType, arrayBuffer, thumbnailUrl, sourceInfo) {
   const entry = {
     id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
     name,
     mimeType,
-    size: arrayBuffer.byteLength,
+    size: arrayBuffer ? arrayBuffer.byteLength : 0,
     data: arrayBuffer,
-    thumbnailUrl: thumbnailUrl || null
+    thumbnailUrl: thumbnailUrl || null,
+    source: (sourceInfo && sourceInfo.source) || 'local',
+    driveFileId: (sourceInfo && sourceInfo.driveFileId) || null
   }
   invoiceAttachments.push(entry)
   renderAttachmentList()
+  saveAttachmentRefs()
 }
 
 function handleAttachmentUpload(event) {
@@ -213,6 +217,7 @@ function handleAttachmentUpload(event) {
 function removeAttachment(id) {
   invoiceAttachments = invoiceAttachments.filter(a => a.id !== id)
   renderAttachmentList()
+  saveAttachmentRefs()
 }
 
 function clearAllAttachments() {
@@ -222,9 +227,225 @@ function clearAllAttachments() {
     () => {
       invoiceAttachments = []
       renderAttachmentList()
+      saveAttachmentRefs()
       showToast('Attachments cleared', 'info')
     }
   )
+}
+
+function saveAttachmentRefs() {
+  const refs = invoiceAttachments.map(a => ({
+    id: a.id, name: a.name, mimeType: a.mimeType, size: a.size,
+    source: a.source || 'local',
+    driveFileId: a.driveFileId || null
+  }))
+  try { localStorage.setItem(ATTACHMENT_REFS_KEY, JSON.stringify(refs)) } catch (e) { /* quota */ }
+  saveAttachmentRefsToCloud()
+}
+
+function loadAttachmentRefs() {
+  try {
+    return JSON.parse(localStorage.getItem(ATTACHMENT_REFS_KEY)) || []
+  } catch { return [] }
+}
+
+async function restoreDriveAttachment(ref) {
+  const att = invoiceAttachments.find(a => a.id === ref.id)
+  if (!att) return
+
+  let res
+  try {
+    res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${ref.driveFileId}?alt=media&supportsAllDrives=true`,
+      { headers: { Authorization: `Bearer ${gcalAccessToken}` } }
+    )
+  } catch (e) {
+    att.status = 'failed'
+    return
+  }
+
+  // 401: token expired — attempt re-auth once
+  if (res.status === 401) {
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider()
+      provider.addScope('https://www.googleapis.com/auth/drive.readonly')
+      const result = await firebaseAuth.signInWithPopup(provider)
+      if (result.credential && result.credential.accessToken) {
+        setGcalToken(result.credential.accessToken)
+        res = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${ref.driveFileId}?alt=media&supportsAllDrives=true`,
+          { headers: { Authorization: `Bearer ${gcalAccessToken}` } }
+        )
+      }
+    } catch (authError) {
+      att.status = 'needs-auth'
+      return
+    }
+  }
+
+  if (res.status === 404) {
+    att.status = 'not-found'
+    return
+  }
+
+  if (!res.ok) {
+    att.status = 'failed'
+    return
+  }
+
+  const arrayBuffer = await res.arrayBuffer()
+  att.data = arrayBuffer
+  att.size = arrayBuffer.byteLength
+
+  // Generate thumbnail for images
+  if (ref.mimeType.startsWith('image/')) {
+    try {
+      const blob = new Blob([arrayBuffer], { type: ref.mimeType })
+      const url = URL.createObjectURL(blob)
+      att.thumbnailUrl = await new Promise((resolve) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const size = 72
+          canvas.width = size
+          canvas.height = size
+          const ctx = canvas.getContext('2d')
+          const scale = Math.min(size / img.width, size / img.height)
+          const w = img.width * scale
+          const h = img.height * scale
+          ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
+          URL.revokeObjectURL(url)
+          resolve(canvas.toDataURL('image/png'))
+        }
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+        img.src = url
+      })
+    } catch { att.thumbnailUrl = null }
+  }
+
+  att.status = 'loaded'
+}
+
+async function restoreAttachments() {
+  const refs = loadAttachmentRefs()
+  if (refs.length === 0) return
+
+  // Don't restore if any attachment already has data loaded (user already added fresh ones)
+  if (invoiceAttachments.some(a => a.data)) return
+
+  const driveRefs = refs.filter(r => r.source === 'drive' && r.driveFileId)
+  const localRefs = refs.filter(r => r.source === 'local' || !r.driveFileId)
+
+  // If placeholders were already loaded by DOMContentLoaded, just update Drive statuses
+  if (invoiceAttachments.length === 0) {
+    refs.forEach(ref => {
+      const isDrive = ref.source === 'drive' && ref.driveFileId
+      invoiceAttachments.push({
+        ...ref,
+        data: null,
+        thumbnailUrl: null,
+        status: isDrive ? 'loading' : 'unavailable'
+      })
+    })
+  } else {
+    // Update existing placeholders to loading state for drive files
+    driveRefs.forEach(ref => {
+      const att = invoiceAttachments.find(a => a.id === ref.id)
+      if (att) att.status = 'loading'
+    })
+  }
+  renderAttachmentList()
+
+  // Auto-download Drive files if signed in with valid token
+  if (currentUser && gcalAccessToken && !gcalTokenExpired() && driveRefs.length > 0) {
+    for (const ref of driveRefs) {
+      try {
+        await restoreDriveAttachment(ref)
+      } catch (e) {
+        const att = invoiceAttachments.find(a => a.id === ref.id)
+        if (att) att.status = 'failed'
+      }
+    }
+    renderAttachmentList()
+
+    const restored = driveRefs.filter(r => {
+      const a = invoiceAttachments.find(x => x.id === r.id)
+      return a && a.status === 'loaded'
+    }).length
+    const parts = []
+    if (restored > 0) parts.push(`${restored} from Drive`)
+    const failed = driveRefs.length - restored
+    if (failed > 0) parts.push(`${failed} Drive file(s) unavailable`)
+    if (localRefs.length > 0) parts.push(`${localRefs.length} need re-upload`)
+    if (parts.length > 0) showToast(`Attachments: ${parts.join(', ')}`, 'info', 4000)
+  } else if (driveRefs.length > 0) {
+    // Not signed in or no token — mark drive refs appropriately
+    driveRefs.forEach(ref => {
+      const att = invoiceAttachments.find(a => a.id === ref.id)
+      if (att) att.status = currentUser ? 'failed' : 'needs-auth'
+    })
+    renderAttachmentList()
+    if (localRefs.length > 0 || driveRefs.length > 0) {
+      const parts = []
+      if (driveRefs.length > 0) parts.push(currentUser ? `${driveRefs.length} Drive file(s) unavailable` : `${driveRefs.length} need sign-in`)
+      if (localRefs.length > 0) parts.push(`${localRefs.length} need re-upload`)
+      showToast(`Attachments: ${parts.join(', ')}`, 'info', 4000)
+    }
+  } else if (localRefs.length > 0) {
+    showToast(`${localRefs.length} attachment(s) need re-upload`, 'info', 4000)
+  }
+}
+
+function handleReuploadAttachment(attId) {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.pdf,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf'
+  input.onchange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const validation = validateAttachment(file)
+    if (!validation.valid) {
+      showToast(validation.error, 'warning', 4000)
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const att = invoiceAttachments.find(a => a.id === attId)
+      if (!att) return
+      att.data = reader.result
+      att.size = reader.result.byteLength
+      att.name = file.name
+      att.mimeType = file.type
+      att.status = 'loaded'
+      // Generate thumbnail for images
+      if (file.type.startsWith('image/')) {
+        const blob = new Blob([reader.result], { type: file.type })
+        const url = URL.createObjectURL(blob)
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const size = 72
+          canvas.width = size; canvas.height = size
+          const ctx = canvas.getContext('2d')
+          const scale = Math.min(size / img.width, size / img.height)
+          const w = img.width * scale, h = img.height * scale
+          ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
+          att.thumbnailUrl = canvas.toDataURL('image/png')
+          URL.revokeObjectURL(url)
+          renderAttachmentList()
+          saveAttachmentRefs()
+        }
+        img.onerror = () => { URL.revokeObjectURL(url); renderAttachmentList(); saveAttachmentRefs() }
+        img.src = url
+      } else {
+        att.thumbnailUrl = null
+        renderAttachmentList()
+        saveAttachmentRefs()
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+  input.click()
 }
 
 function renderAttachmentList() {
@@ -241,23 +462,39 @@ function renderAttachmentList() {
   }
 
   if (actionsEl) actionsEl.style.display = ''
-  const totalSize = invoiceAttachments.reduce((s, a) => s + a.size, 0)
-  if (countEl) countEl.textContent = `${invoiceAttachments.length} file(s) \u00b7 ${formatFileSize(totalSize)}`
+  const loadedAtts = invoiceAttachments.filter(a => a.data)
+  const totalSize = loadedAtts.reduce((s, a) => s + a.size, 0)
+  const unloaded = invoiceAttachments.length - loadedAtts.length
+  let countText = `${invoiceAttachments.length} file(s)`
+  if (totalSize > 0) countText += ` \u00b7 ${formatFileSize(totalSize)}`
+  if (unloaded > 0) countText += ` \u00b7 ${unloaded} pending`
+  if (countEl) countEl.textContent = countText
 
   invoiceAttachments.forEach((att, idx) => {
+    const status = att.status || (att.data ? 'loaded' : 'unavailable')
+    const isLoaded = status === 'loaded' || (att.data && !att.status)
+    const isLoading = status === 'loading'
+    const isUnavailable = !isLoaded && !isLoading
+
     const row = document.createElement('div')
     row.className = 'attachment-item'
-    row.draggable = true
+    if (isLoading) row.classList.add('att-loading')
+    if (isUnavailable) row.classList.add('att-unavailable')
+    row.draggable = isLoaded
     row.dataset.index = idx
 
     // Drag handle
     const handle = document.createElement('span')
     handle.className = 'attachment-drag-handle'
-    handle.textContent = '\u22ee\u22ee'
+    handle.textContent = isLoaded ? '\u22ee\u22ee' : ''
 
-    // Thumbnail or PDF icon
+    // Thumbnail or status icon
     let thumb
-    if (att.thumbnailUrl) {
+    if (isLoading) {
+      thumb = document.createElement('div')
+      thumb.className = 'attachment-pdf-icon att-spinner'
+      thumb.textContent = '\u21bb'
+    } else if (att.thumbnailUrl) {
       thumb = document.createElement('img')
       thumb.className = 'attachment-thumb'
       thumb.src = att.thumbnailUrl
@@ -265,7 +502,7 @@ function renderAttachmentList() {
     } else {
       thumb = document.createElement('div')
       thumb.className = 'attachment-pdf-icon'
-      thumb.textContent = 'PDF'
+      thumb.textContent = att.mimeType === 'application/pdf' ? 'PDF' : 'IMG'
     }
 
     // Name
@@ -277,33 +514,89 @@ function renderAttachmentList() {
     // Size
     const sizeEl = document.createElement('span')
     sizeEl.className = 'attachment-size'
-    sizeEl.textContent = formatFileSize(att.size)
+    if (isLoaded) {
+      sizeEl.textContent = formatFileSize(att.size)
+    } else if (isLoading) {
+      sizeEl.textContent = 'Loading\u2026'
+    } else if (status === 'needs-auth') {
+      sizeEl.textContent = 'Sign in to restore'
+      sizeEl.classList.add('att-status-hint')
+    } else if (status === 'not-found') {
+      sizeEl.textContent = 'Not found on Drive'
+      sizeEl.classList.add('att-status-hint')
+    } else if (status === 'failed') {
+      sizeEl.textContent = 'Download failed'
+      sizeEl.classList.add('att-status-hint')
+    } else {
+      sizeEl.textContent = 'Re-upload needed'
+      sizeEl.classList.add('att-status-hint')
+    }
 
     // Type badge
     const badge = document.createElement('span')
     badge.className = 'attachment-type-badge'
     badge.textContent = att.mimeType === 'application/pdf' ? 'PDF' : 'IMG'
 
-    // Remove button
-    const rmBtn = document.createElement('button')
-    rmBtn.type = 'button'
-    rmBtn.className = 'attachment-remove'
-    rmBtn.textContent = '\u00d7'
-    rmBtn.onclick = () => removeAttachment(att.id)
+    // Action button (depends on status)
+    let actionBtn
+    if (isLoaded || status === 'not-found') {
+      // Remove button
+      actionBtn = document.createElement('button')
+      actionBtn.type = 'button'
+      actionBtn.className = 'attachment-remove'
+      actionBtn.textContent = '\u00d7'
+      actionBtn.onclick = () => removeAttachment(att.id)
+    } else if (status === 'unavailable') {
+      // Re-upload button for local files
+      actionBtn = document.createElement('button')
+      actionBtn.type = 'button'
+      actionBtn.className = 'attachment-action-btn'
+      actionBtn.textContent = 'Re-upload'
+      actionBtn.onclick = () => handleReuploadAttachment(att.id)
+    } else if (status === 'failed') {
+      // Retry button for failed Drive downloads
+      actionBtn = document.createElement('button')
+      actionBtn.type = 'button'
+      actionBtn.className = 'attachment-action-btn'
+      actionBtn.textContent = 'Retry'
+      actionBtn.onclick = async () => {
+        att.status = 'loading'
+        renderAttachmentList()
+        try {
+          await restoreDriveAttachment(att)
+        } catch (e) {
+          att.status = 'failed'
+        }
+        renderAttachmentList()
+      }
+    } else if (isLoading) {
+      // Loading — no action
+      actionBtn = document.createElement('span')
+      actionBtn.className = 'attachment-size'
+    } else {
+      // needs-auth or other — remove button
+      actionBtn = document.createElement('button')
+      actionBtn.type = 'button'
+      actionBtn.className = 'attachment-remove'
+      actionBtn.textContent = '\u00d7'
+      actionBtn.onclick = () => removeAttachment(att.id)
+    }
 
-    row.append(handle, thumb, nameEl, sizeEl, badge, rmBtn)
+    row.append(handle, thumb, nameEl, sizeEl, badge, actionBtn)
 
-    // Drag-to-reorder
-    row.addEventListener('dragstart', (e) => {
-      attachDraggedItem = idx
-      row.classList.add('dragging')
-      e.dataTransfer.effectAllowed = 'move'
-    })
-    row.addEventListener('dragend', () => {
-      row.classList.remove('dragging')
-      attachDraggedItem = null
-      listEl.querySelectorAll('.attachment-item').forEach(el => el.classList.remove('drag-over'))
-    })
+    // Drag-to-reorder (only for loaded items)
+    if (isLoaded) {
+      row.addEventListener('dragstart', (e) => {
+        attachDraggedItem = idx
+        row.classList.add('dragging')
+        e.dataTransfer.effectAllowed = 'move'
+      })
+      row.addEventListener('dragend', () => {
+        row.classList.remove('dragging')
+        attachDraggedItem = null
+        listEl.querySelectorAll('.attachment-item').forEach(el => el.classList.remove('drag-over'))
+      })
+    }
     row.addEventListener('dragover', (e) => {
       e.preventDefault()
       e.dataTransfer.dropEffect = 'move'
@@ -321,6 +614,7 @@ function renderAttachmentList() {
         const [item] = invoiceAttachments.splice(from, 1)
         invoiceAttachments.splice(to, 0, item)
         renderAttachmentList()
+        saveAttachmentRefs()
       }
     })
 
@@ -498,20 +792,26 @@ async function downloadDriveFile(fileId, name, mimeType, sizeBytes) {
     } catch { thumbnailUrl = null }
   }
 
-  addAttachmentFromData(name, mimeType, arrayBuffer, thumbnailUrl)
+  addAttachmentFromData(name, mimeType, arrayBuffer, thumbnailUrl, { source: 'drive', driveFileId: fileId })
   showToast(`Added "${name}" from Drive`, 'success')
 }
 
 // Merge attachments into PDF using pdf-lib
 async function mergeAttachmentsIntoPDF(invoiceBytes) {
-  if (invoiceAttachments.length === 0) return invoiceBytes
+  const loadedAttachments = invoiceAttachments.filter(a => a.data)
+  if (loadedAttachments.length === 0) return invoiceBytes
+
+  const skipped = invoiceAttachments.length - loadedAttachments.length
+  if (skipped > 0) {
+    showToast(`${skipped} attachment(s) not loaded — skipped in PDF`, 'warning', 4000)
+  }
 
   const { PDFDocument } = PDFLib
   const mergedPdf = await PDFDocument.load(invoiceBytes)
   const firstPage = mergedPdf.getPage(0)
   const { width: pageWidth, height: pageHeight } = firstPage.getSize()
 
-  for (const attachment of invoiceAttachments) {
+  for (const attachment of loadedAttachments) {
     try {
       if (attachment.mimeType === 'application/pdf') {
         const attachedPdf = await PDFDocument.load(attachment.data, { ignoreEncryption: true })
@@ -547,10 +847,25 @@ async function mergeAttachmentsIntoPDF(invoiceBytes) {
   return await mergedPdf.save()
 }
 
-// Initialize attachment file input listener
+// Initialize attachment file input listener and restore persisted refs
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('attachmentFileInput')
   if (input) input.addEventListener('change', handleAttachmentUpload)
+
+  // Restore attachment placeholders from localStorage (Drive files re-download after auth)
+  const refs = loadAttachmentRefs()
+  if (refs.length > 0) {
+    refs.forEach(ref => {
+      const isDrive = ref.source === 'drive' && ref.driveFileId
+      invoiceAttachments.push({
+        ...ref,
+        data: null,
+        thumbnailUrl: null,
+        status: isDrive ? 'needs-auth' : 'unavailable'
+      })
+    })
+    renderAttachmentList()
+  }
 })
 
 /* ----------------------------- LOGO ------------------------------ */
@@ -2723,8 +3038,8 @@ function initFirebase() {
           const syncBtn = document.getElementById('syncBtn')
           if (syncBtn) syncBtn.style.display = ''
         })
-        // Auto-sync on sign in
-        syncTemplates()
+        // Auto-sync on sign in, then restore attachments
+        syncTemplates().then(() => restoreAttachments())
       } else {
         const syncBtn = document.getElementById('syncBtn')
         if (syncBtn) syncBtn.style.display = 'none'
@@ -2746,6 +3061,9 @@ function initFirebase() {
         localStorage.removeItem(STARRED_KEY)
         localStorage.removeItem(RECENT_KEY)
         localStorage.removeItem(CUSTOM_TYPES_KEY)
+        localStorage.removeItem(ATTACHMENT_REFS_KEY)
+        invoiceAttachments = []
+        renderAttachmentList()
         resetFormToDefaults()
         refreshTypeDatalist()
         initializeTemplateDisplay()
@@ -2788,6 +3106,23 @@ async function loadTypesFromCloud() {
   const doc = await firebaseDb.collection('users').doc(currentUser.uid)
     .collection('meta').doc('preferences').get()
   return doc.exists ? (doc.data().customTypes || null) : null
+}
+
+// Attachment refs cloud sync
+async function saveAttachmentRefsToCloud() {
+  if (!currentUser || !firebaseDb) return
+  const refs = loadAttachmentRefs()
+  try {
+    await firebaseDb.collection('users').doc(currentUser.uid)
+      .collection('meta').doc('preferences').set({ attachmentRefs: refs }, { merge: true })
+  } catch (e) { /* silent — localStorage is primary */ }
+}
+
+async function loadAttachmentRefsFromCloud() {
+  if (!currentUser || !firebaseDb) return null
+  const doc = await firebaseDb.collection('users').doc(currentUser.uid)
+    .collection('meta').doc('preferences').get()
+  return doc.exists ? (doc.data().attachmentRefs || null) : null
 }
 
 function updateAuthUI() {
@@ -2972,6 +3307,15 @@ async function syncTemplates() {
       if (mergedTypes.length !== localTypes.length) changes++
     } else {
       await saveTypesToCloud()
+    }
+
+    // Sync attachment refs (cloud wins if local is empty)
+    const cloudAttRefs = await loadAttachmentRefsFromCloud()
+    const localAttRefs = loadAttachmentRefs()
+    if (cloudAttRefs && cloudAttRefs.length > 0 && localAttRefs.length === 0) {
+      try { localStorage.setItem(ATTACHMENT_REFS_KEY, JSON.stringify(cloudAttRefs)) } catch (e) { /* quota */ }
+    } else if (localAttRefs.length > 0 && (!cloudAttRefs || cloudAttRefs.length === 0)) {
+      await saveAttachmentRefsToCloud()
     }
 
     initializeTemplateDisplay()

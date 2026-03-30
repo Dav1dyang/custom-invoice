@@ -2605,6 +2605,51 @@ button {
   color: #fff;
 }
 
+/* Attachment status states */
+.attachment-item.att-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.attachment-item.att-unavailable {
+  opacity: 0.5;
+}
+
+.att-spinner {
+  animation: att-spin 1s linear infinite;
+}
+
+@keyframes att-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.att-status-hint {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.attachment-action-btn {
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: var(--font-size-label);
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.attachment-action-btn:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
 @media (max-width: 768px) {
   .attachment-item {
     gap: 6px;
