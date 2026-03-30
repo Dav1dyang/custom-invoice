@@ -2512,6 +2512,7 @@ async function fetchGcalEvents() {
         const pad = (n) => String(n).padStart(2, '0')
         const s = `${pad(clampedStart.getMonth() + 1)}/${pad(clampedStart.getDate())}`
         const e = `${pad(clampedEnd.getMonth() + 1)}/${pad(clampedEnd.getDate())}`
+        if (s === e) return s
         return `${s}-${e}`
       }
 
