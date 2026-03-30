@@ -114,6 +114,7 @@ const ATTACHMENT_REFS_KEY = 'invoice_attachment_refs'
 const ATTACHMENT_HANDLES_DB = 'invoice_attachment_handles'
 let attachDraggedItem = null
 let attachmentRestorePromise = null
+let localRestorePromise = null
 
 // IndexedDB for persisting FileSystemFileHandle objects (Chromium only)
 function openHandlesDB() {
@@ -472,9 +473,12 @@ async function restoreLocalAttachment(ref) {
   let permission = await handle.queryPermission({ mode: 'read' })
   if (permission === 'prompt') {
     try {
-      permission = await handle.requestPermission({ mode: 'read' })
+      permission = await Promise.race([
+        handle.requestPermission({ mode: 'read' }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Permission prompt timed out')), 5000))
+      ])
     } catch (e) {
-      // User denied or browser blocked
+      // User denied, browser blocked, or timed out
       return false
     }
   }
@@ -558,6 +562,12 @@ async function restoreAttachments() {
   renderAttachmentList()
 
   // 1. Try to restore local files from stored file handles (if not already done)
+  // Wait for DOMContentLoaded local restore to finish first (prevent race condition)
+  if (localRestorePromise) {
+    try { await localRestorePromise } catch (e) {}
+    localRestorePromise = null
+  }
+
   let localRestored = 0
   let localFailed = 0
   // Count locals already restored by DOMContentLoaded
@@ -1129,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Immediately try to restore local files with stored file handles (no auth needed)
     const localHandleRefs = refs.filter(r => (r.source === 'local' || !r.driveFileId) && r.hasFileHandle && window.showOpenFilePicker)
     if (localHandleRefs.length > 0) {
-      ;(async () => {
+      localRestorePromise = (async () => {
         let restored = 0
         for (const ref of localHandleRefs) {
           try {
@@ -1144,8 +1154,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const att = invoiceAttachments.find(a => a.id === ref.id)
             if (att) att.status = 'unavailable'
           }
+          renderAttachmentList()
         }
-        renderAttachmentList()
         if (restored > 0) showToast(`${restored} local file(s) auto-restored`, 'success')
       })()
     }
