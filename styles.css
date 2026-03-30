@@ -302,6 +302,7 @@ details.attachment-settings[open] summary {
 .gcal-select-actions {
   display: flex;
   gap: 8px;
+  margin-top: 12px;
   margin-bottom: 8px;
 }
 
