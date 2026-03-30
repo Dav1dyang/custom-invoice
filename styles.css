@@ -2242,6 +2242,12 @@ button {
   border-color: var(--ui-fg);
 }
 
+.toast-actions .toast-deny {
+  background: transparent;
+  color: var(--ui-fg);
+  border-color: var(--ui-fg);
+}
+
 .toast-actions .toast-cancel {
   background: transparent;
   color: var(--ui-fg);
