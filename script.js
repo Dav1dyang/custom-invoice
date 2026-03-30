@@ -3982,24 +3982,29 @@ async function downloadPDF() {
       const amt = '$' + amtVal.toFixed(2)
       pageSubtotal += amtVal
 
+      // Vertical center offset for single-line text in this row
+      const midY = y + thisRowH / 2 + 1
+
       // Render TYPE column if types exist (centered)
       if (hasTypes) {
         const typeLine = doc.splitTextToSize(it.type || '', typeW - 4)[0] || ''
-        doc.text(typeLine, xType + typeW / 2, y + 6, { align: 'center' })
+        doc.text(typeLine, xType + typeW / 2, midY, { align: 'center' })
       }
 
-      // Render description with text wrapping (all lines)
+      // Render description with text wrapping (vertically centered block)
       const descLines = doc.splitTextToSize(it.description || '', descW - 4)
+      const descBlockH = (descLines.length - 1) * LINE_H
+      const descStartY = y + (thisRowH - descBlockH) / 2 + 1
       descLines.forEach((line, li) => {
-        doc.text(line, xDesc + 2, y + 6 + li * LINE_H)
+        doc.text(line, xDesc + 2, descStartY + li * LINE_H)
       })
 
-      // QTY, RATE, AMOUNT aligned with first line of description
-      doc.text(String(it.qty || ''), xQty + qtyW / 2, y + 6, { align: 'center' })
-      doc.text(rate, xRate + rateW - 2, y + 6, { align: 'right' })
+      // QTY, RATE, AMOUNT vertically centered in the row
+      doc.text(String(it.qty || ''), xQty + qtyW / 2, midY, { align: 'center' })
+      doc.text(rate, xRate + rateW - 2, midY, { align: 'right' })
 
       doc.setFont(fonts.body, 'bold')
-      doc.text(amt, xAmt + amtW - 2, y + 6, { align: 'right' })
+      doc.text(amt, xAmt + amtW - 2, midY, { align: 'right' })
       doc.setFont(fonts.body, 'normal')
 
       y += thisRowH
