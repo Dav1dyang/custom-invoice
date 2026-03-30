@@ -2476,6 +2476,7 @@ async function fetchGcalEvents() {
           date: start.toLocaleDateString(),
           hours: Math.round(hours * 100) / 100,
           selected: true,
+          _start: start,
         }
       })
 
@@ -2486,20 +2487,47 @@ async function fetchGcalEvents() {
       )
     }
 
-    // Group by title if requested
+    // Group by title + week if requested
     if (groupByTitle && events.length > 0) {
+      function getWeekStart(date) {
+        const d = new Date(date)
+        const day = d.getDay()
+        const diff = (day === 0 ? -6 : 1) - day
+        d.setDate(d.getDate() + diff)
+        d.setHours(0, 0, 0, 0)
+        return d
+      }
+
+      function formatWeekRange(weekStart) {
+        const weekEnd = new Date(weekStart)
+        weekEnd.setDate(weekEnd.getDate() + 6)
+        const opts = { month: 'short', day: 'numeric' }
+        const startStr = weekStart.toLocaleDateString('en-US', opts)
+        if (weekStart.getMonth() === weekEnd.getMonth()) {
+          return `${startStr}-${weekEnd.getDate()}`
+        }
+        const endStr = weekEnd.toLocaleDateString('en-US', opts)
+        return `${startStr} - ${endStr}`
+      }
+
       const grouped = {}
       events.forEach((e) => {
-        if (!grouped[e.title]) {
-          grouped[e.title] = { ...e, hours: 0 }
+        const ws = getWeekStart(e._start)
+        const key = `${e.title}|||${ws.toISOString()}`
+        if (!grouped[key]) {
+          grouped[key] = { ...e, hours: 0, _weekStart: ws, _weekLabel: formatWeekRange(ws) }
         }
-        grouped[e.title].hours += e.hours
+        grouped[key].hours += e.hours
       })
-      events = Object.values(grouped).map((e) => ({
-        ...e,
-        hours: Math.round(e.hours * 100) / 100,
-        date: '(grouped)',
-      }))
+
+      events = Object.values(grouped)
+        .sort((a, b) => a._weekStart - b._weekStart)
+        .map((e) => ({
+          title: `${e.title} (${e._weekLabel})`,
+          date: e._weekLabel,
+          hours: Math.round(e.hours * 100) / 100,
+          selected: true,
+        }))
     }
 
     gcalEvents = events
