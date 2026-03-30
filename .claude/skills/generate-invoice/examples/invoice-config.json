@@ -1,0 +1,44 @@
+{
+  "client": {
+    "company": "Client Corp",
+    "contacts": "Jane Smith",
+    "address": "456 Client Ave, Suite 200, City, ST 67890",
+    "contactEmail": "jane@clientcorp.com"
+  },
+  "billing": {
+    "model": "hourly",
+    "defaultRate": 150,
+    "dueDays": 30,
+    "paymentMethods": ["wire", "venmo"],
+    "categories": {
+      "Development": 150,
+      "Design": 125,
+      "Consulting": 200,
+      "Documentation": 100
+    }
+  },
+  "invoice": {
+    "companyAbbrev": "",
+    "sequenceStart": 1,
+    "titleFormat": "{month} {year} Services",
+    "notes": "",
+    "notesPosition": "above"
+  },
+  "pdf": {
+    "paperSize": "letter",
+    "orientation": "portrait",
+    "styleMode": "outline",
+    "accentColor": "#000000"
+  },
+  "invoiceToolUrl": "",
+  "timeTracking": {
+    "source": "git",
+    "hoursPerCommitDay": 4,
+    "roundToNearest": 0.25
+  },
+  "gitFilters": {
+    "authors": [],
+    "excludePaths": ["node_modules", ".github", "*.lock"],
+    "excludeMessages": ["merge", "bump version", "Merge branch"]
+  }
+}

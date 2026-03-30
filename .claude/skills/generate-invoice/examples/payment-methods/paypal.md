@@ -1,0 +1,3 @@
+# PayPal
+
+paypal@example.com
