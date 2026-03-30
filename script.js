@@ -3753,14 +3753,6 @@ async function downloadPDF() {
     // Separator line at condensed position (30mm - same as page 2)
     if (showB) doc.line(margin, HEADER_END_Y, pageW - margin, HEADER_END_Y)
 
-    // Page number on page 1 (only shown for multi-page invoices)
-    // Placed left-aligned to avoid overlap with right-aligned INVOICE text
-    if (totalPages > 1) {
-      doc.setFont(fonts.hdr, 'bold')
-      doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
-      doc.setFontSize(9)
-      doc.text(`PAGE 1 OF ${totalPages}`, margin, HEADER_END_Y - 2)
-    }
   }
 
   // Spec grid with optional fill/borders
@@ -4122,8 +4114,6 @@ async function downloadPDF() {
     doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
     doc.setFontSize(11)  // Smaller than page 1 (16pt) for subtle distinction
     doc.text(`INVOICE ${invoiceNumber} (CONTINUED)`, pageW - margin, 15, { align: 'right' })
-    doc.setFontSize(9)
-    doc.text(`PAGE ${doc.internal.getCurrentPageInfo().pageNumber} OF ${totalPages}`, pageW - margin, 20, { align: 'right' })
 
     // Separator line at same position as page 1 (30mm)
     if (showB) {
@@ -4303,6 +4293,17 @@ async function downloadPDF() {
   doc.setFontSize(10)
   doc.text('TOTAL (' + currency + '): ', xSplit + 2.1, ty)
   doc.text('$' + totalSubtotal.toFixed(2), rightX, ty, { align: 'right' })
+
+  // Page numbers at bottom-right of every page (multi-page invoices only)
+  if (totalPages > 1) {
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p)
+      doc.setFont(fonts.hdr, 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
+      doc.text(`PAGE ${p} OF ${totalPages}`, pageW - margin, pageH - 8, { align: 'right' })
+    }
+  }
 
   // Merge attachments (if any) and save
   if (invoiceAttachments.length > 0 && window.PDFLib && window.PDFLib.PDFDocument) {
