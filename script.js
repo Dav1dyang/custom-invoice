@@ -3518,6 +3518,19 @@ async function downloadPDF() {
   const BOTTOM_MARGIN = 15            // Bottom page margin
   const ROW_HEIGHT = 10               // Line item row height
   const TABLE_HEADER_HEIGHT = 8       // Line items table header height
+  const LINE_H = 4                    // mm per text line (matches notes/grid pattern)
+  const VERT_PAD = 4                  // 2mm top + 2mm bottom padding in row
+
+  // Pre-compute description column width for row height measurement
+  const descWMeasure = hasTypes ? contentW * 0.42 : contentW * 0.5
+
+  // Pre-compute row heights for all items (dynamic based on description wrapping)
+  doc.setFont(fonts.body, 'normal')
+  doc.setFontSize(8)
+  const itemRowHeights = items.map(item => {
+    const lines = doc.splitTextToSize(item.description || '', descWMeasure - 4)
+    return Math.max(ROW_HEIGHT, lines.length * LINE_H + VERT_PAD)
+  })
 
   // Dynamic grid height based on actual content
   function calculateGridHeight(doc, colTextWidth) {
@@ -3678,28 +3691,36 @@ async function downloadPDF() {
     availableSpaceForItemsPage1 -= (notesH + SECTION_SPACER)
   }
 
-  const maxRowsFitFirstPage = Math.max(
-    0,
-    Math.floor((availableSpaceForItemsPage1 - TABLE_HEADER_HEIGHT) / ROW_HEIGHT)
-  )
+  // Page 1: accumulate actual row heights to find how many items fit
+  const spaceForRowsPage1 = availableSpaceForItemsPage1 - TABLE_HEADER_HEIGHT
+  let rowsFirstPage = 0
+  let accH = 0
+  for (let i = 0; i < items.length; i++) {
+    if (accH + itemRowHeights[i] > spaceForRowsPage1) break
+    accH += itemRowHeights[i]
+    rowsFirstPage++
+  }
 
   // Page 2+: Line items start at CONTENT_START_Y (35mm - SAME as page 1 grid!)
   // Perfect alignment between pages
   const yItemsTopContinuation = CONTENT_START_Y  // 35mm on all pages
   const availableSpaceForItemsContinuation = yPaymentTop - SECTION_SPACER - yItemsTopContinuation
-  const maxRowsFitContinuationPage = Math.max(
-    0,
-    Math.floor((availableSpaceForItemsContinuation - TABLE_HEADER_HEIGHT) / ROW_HEIGHT)
-  )
+  const spaceForRowsContinuation = availableSpaceForItemsContinuation - TABLE_HEADER_HEIGHT
 
-  // Determine how many pages we need
+  // Simulate continuation pages to count total pages needed
   let totalPages = 1
-  let remainingItems = items.length - maxRowsFitFirstPage
-  if (remainingItems > 0) {
-    totalPages += Math.ceil(remainingItems / maxRowsFitContinuationPage)
+  let simIdx = rowsFirstPage
+  while (simIdx < items.length) {
+    totalPages++
+    let pageAccH = 0
+    let fitted = 0
+    while (simIdx < items.length && pageAccH + itemRowHeights[simIdx] <= spaceForRowsContinuation) {
+      pageAccH += itemRowHeights[simIdx]
+      simIdx++
+      fitted++
+    }
+    if (fitted === 0) simIdx++  // force 1 item to prevent infinite loop
   }
-
-  const rowsFirstPage = Math.min(items.length, maxRowsFitFirstPage)
 
   // Spec grid with optional fill/borders
   if (showF && boxAlpha > 0) {
@@ -3923,10 +3944,11 @@ async function downloadPDF() {
     }
   }
 
-  // Function to render line items
-  function renderLineItems(itemsToRender, yTop, maxRows) {
+  // Function to render line items (supports dynamic row heights for wrapped descriptions)
+  function renderLineItems(itemsToRender, yTop, maxRows, rowHeights) {
     const actualRows = Math.min(itemsToRender.length, maxRows)
-    const tableH = itemsHeaderH + actualRows * rowH
+    const totalRowsH = rowHeights.slice(0, actualRows).reduce((s, h) => s + h, 0)
+    const tableH = itemsHeaderH + totalRowsH
 
     if (showB) {
       doc.rect(margin, yTop, contentW, tableH)
@@ -3946,11 +3968,12 @@ async function downloadPDF() {
 
     for (let i = 0; i < actualRows; i++) {
       const it = itemsToRender[i]
+      const thisRowH = rowHeights[i]
 
       if (showF && boxAlpha > 0) {
         doc.setFillColor(tableRGB.r, tableRGB.g, tableRGB.b)
         doc.setGState(new doc.GState({ opacity: 1 }))
-        doc.rect(margin, y, contentW, rowH, 'F')
+        doc.rect(margin, y, contentW, thisRowH, 'F')
         doc.setGState(new doc.GState({ opacity: 1 }))
       }
 
@@ -3965,8 +3988,13 @@ async function downloadPDF() {
         doc.text(typeLine, xType + typeW / 2, y + 6, { align: 'center' })
       }
 
-      const dLine = doc.splitTextToSize(it.description, descW - 4)[0] || ''
-      doc.text(dLine, xDesc + 2, y + 6)
+      // Render description with text wrapping (all lines)
+      const descLines = doc.splitTextToSize(it.description || '', descW - 4)
+      descLines.forEach((line, li) => {
+        doc.text(line, xDesc + 2, y + 6 + li * LINE_H)
+      })
+
+      // QTY, RATE, AMOUNT aligned with first line of description
       doc.text(String(it.qty || ''), xQty + qtyW / 2, y + 6, { align: 'center' })
       doc.text(rate, xRate + rateW - 2, y + 6, { align: 'right' })
 
@@ -3974,7 +4002,7 @@ async function downloadPDF() {
       doc.text(amt, xAmt + amtW - 2, y + 6, { align: 'right' })
       doc.setFont(fonts.body, 'normal')
 
-      y += rowH
+      y += thisRowH
       if (showB && i < actualRows - 1) {
         doc.line(margin, y, margin + contentW, y)
       }
@@ -3984,7 +4012,7 @@ async function downloadPDF() {
   }
 
   // Render first page line items
-  const firstPageResult = renderLineItems(items, yItemsTop, rowsFirstPage)
+  const firstPageResult = renderLineItems(items, yItemsTop, rowsFirstPage, itemRowHeights.slice(0, rowsFirstPage))
   let totalSubtotal = firstPageResult.pageSubtotal
   let itemIndex = firstPageResult.renderedItems
 
@@ -4058,11 +4086,21 @@ async function downloadPDF() {
     }
 
     // Render line items starting at CONTENT_START_Y (35mm - SAME as page 1 grid!)
+    const remHeights = itemRowHeights.slice(itemIndex)
+    let fitCount = 0, fitH = 0
+    for (let i = 0; i < remHeights.length; i++) {
+      if (fitH + remHeights[i] > spaceForRowsContinuation) break
+      fitH += remHeights[i]
+      fitCount++
+    }
+    if (fitCount === 0) fitCount = 1  // force at least 1 item to prevent infinite loop
+
     const remainingItems = items.slice(itemIndex)
     const continuationPageResult = renderLineItems(
       remainingItems,
       yItemsTopContinuation,  // 35mm - aligned with page 1
-      maxRowsFitContinuationPage
+      fitCount,
+      remHeights.slice(0, fitCount)
     )
 
     totalSubtotal += continuationPageResult.pageSubtotal
