@@ -2489,6 +2489,11 @@ async function fetchGcalEvents() {
 
     // Group by title + week if requested
     if (groupByTitle && events.length > 0) {
+      const rangeStart = new Date(dateFrom)
+      rangeStart.setHours(0, 0, 0, 0)
+      const rangeEnd = new Date(dateTo)
+      rangeEnd.setHours(23, 59, 59, 999)
+
       function getWeekStart(date) {
         const d = new Date(date)
         const day = d.getDay()
@@ -2501,9 +2506,12 @@ async function fetchGcalEvents() {
       function formatWeekRange(weekStart) {
         const weekEnd = new Date(weekStart)
         weekEnd.setDate(weekEnd.getDate() + 6)
+        // Clamp to selected date range
+        const clampedStart = weekStart < rangeStart ? rangeStart : weekStart
+        const clampedEnd = weekEnd > rangeEnd ? rangeEnd : weekEnd
         const pad = (n) => String(n).padStart(2, '0')
-        const s = `${pad(weekStart.getMonth() + 1)}/${pad(weekStart.getDate())}`
-        const e = `${pad(weekEnd.getMonth() + 1)}/${pad(weekEnd.getDate())}`
+        const s = `${pad(clampedStart.getMonth() + 1)}/${pad(clampedStart.getDate())}`
+        const e = `${pad(clampedEnd.getMonth() + 1)}/${pad(clampedEnd.getDate())}`
         return `${s}-${e}`
       }
 
