@@ -1419,6 +1419,45 @@ textarea {
   padding-bottom: 8px;
 }
 
+/* Items table footer - subtotals and grand total */
+#itemsTfoot .items-subtotal-row td,
+#itemsTfoot .items-total-row td {
+  border: none;
+  padding: 4px 8px;
+}
+
+.items-subtotal-label,
+.items-total-label {
+  text-align: right;
+  font-size: var(--font-size-body);
+  letter-spacing: 0.5px;
+}
+
+.items-subtotal-amount,
+.items-total-amount {
+  text-align: right;
+  font-size: var(--font-size-body);
+}
+
+.items-subtotal-row:first-child td {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.items-total-row td {
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.items-total-label {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.items-total-amount {
+  font-weight: 700;
+}
+
 /* Items footer - Add button (left) + Checkbox (right) */
 .items-footer {
   display: flex;

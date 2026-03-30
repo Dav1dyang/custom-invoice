@@ -723,13 +723,14 @@ function addItem(desc = '', qty = '', rate = '', type = '') {
   function calc() {
     amtEl.value = ((+qtyEl.value || 0) * (+rateEl.value || 0)).toFixed(2)
     renderPreview()
+    updateItemsTotals()
   }
   qtyEl.addEventListener('input', calc)
   rateEl.addEventListener('input', calc)
   calc()
-  typeEl.addEventListener('input', () => renderPreview())
+  typeEl.addEventListener('input', () => { renderPreview(); updateItemsTotals() })
   tr.querySelector('.item-desc').addEventListener('input', () => renderPreview())
-  rm.onclick = () => { tr.remove(); renderPreview() }
+  rm.onclick = () => { tr.remove(); renderPreview(); updateItemsTotals() }
 
   // Enable drag and drop for reordering
   tr.setAttribute('draggable', 'true')
@@ -766,6 +767,43 @@ function getItems() {
 // Check if any items have types filled
 function hasAnyTypes(items) {
   return items.some(item => item.type && item.type.trim())
+}
+
+// Update line items table footer with type subtotals and grand total
+function updateItemsTotals() {
+  const items = getItems()
+  const tfoot = document.getElementById('itemsTfoot')
+  if (!tfoot) return
+  tfoot.innerHTML = ''
+  if (items.length === 0) return
+
+  const { typeGroups, uncategorizedTotal, hasTypes } = calculateSubtotalsByType(items)
+  const total = items.reduce((sum, item) => sum + (+item.amount || 0), 0)
+  const fmtMoney = (v) => `$${(+v || 0).toFixed(2)}`
+  const colSpan = 5 // drag + type + desc + qty + rate
+
+  // Type subtotal rows
+  if (hasTypes) {
+    Object.entries(typeGroups).sort((a, b) => a[0].localeCompare(b[0])).forEach(([type, amount]) => {
+      const tr = document.createElement('tr')
+      tr.className = 'items-subtotal-row'
+      tr.innerHTML = `<td colspan="${colSpan}" class="items-subtotal-label">${type}:</td><td class="items-subtotal-amount">${fmtMoney(amount)}</td><td></td>`
+      tfoot.appendChild(tr)
+    })
+    if (uncategorizedTotal > 0) {
+      const tr = document.createElement('tr')
+      tr.className = 'items-subtotal-row'
+      tr.innerHTML = `<td colspan="${colSpan}" class="items-subtotal-label">Other:</td><td class="items-subtotal-amount">${fmtMoney(uncategorizedTotal)}</td><td></td>`
+      tfoot.appendChild(tr)
+    }
+  }
+
+  // Grand total row
+  const currency = document.getElementById('currency')?.value || 'USD'
+  const totalTr = document.createElement('tr')
+  totalTr.className = 'items-total-row'
+  totalTr.innerHTML = `<td colspan="${colSpan}" class="items-total-label">TOTAL (${currency}):</td><td class="items-total-amount">${fmtMoney(total)}</td><td></td>`
+  tfoot.appendChild(totalTr)
 }
 
 // Get notes position (above or below items)
@@ -1149,6 +1187,10 @@ document.querySelectorAll('select, input[type="radio"], input[type="checkbox"]')
 
 // Initial preview render
 renderPreview()
+updateItemsTotals()
+
+// Update totals footer when currency changes
+document.getElementById('currency').addEventListener('input', updateItemsTotals)
 
 /* ------------------------- TEMPLATE SYSTEM ----------------------- */
 // Global template state
