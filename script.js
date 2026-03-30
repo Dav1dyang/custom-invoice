@@ -113,6 +113,7 @@ const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  // 10 MB
 const ATTACHMENT_REFS_KEY = 'invoice_attachment_refs'
 const ATTACHMENT_HANDLES_DB = 'invoice_attachment_handles'
 let attachDraggedItem = null
+let attachmentRestorePromise = null
 
 // IndexedDB for persisting FileSystemFileHandle objects (Chromium only)
 function openHandlesDB() {
@@ -582,8 +583,8 @@ async function restoreAttachments() {
         if (att) att.status = 'unavailable'
         localFailed++
       }
+      renderAttachmentList()
     }
-    renderAttachmentList()
   }
 
   // 2. Auto-download Drive files if signed in with valid token
@@ -591,20 +592,26 @@ async function restoreAttachments() {
   let driveFailed = 0
   if (driveRefs.length > 0) {
     if (currentUser && gcalAccessToken && !gcalTokenExpired()) {
-      for (const ref of driveRefs) {
+      await Promise.allSettled(driveRefs.map(async (ref) => {
         try {
           await restoreDriveAttachment(ref)
-          driveRestored++
+          const att = invoiceAttachments.find(a => a.id === ref.id)
+          if (att && att.status === 'loaded') {
+            driveRestored++
+          } else {
+            driveFailed++
+          }
         } catch (e) {
           const att = invoiceAttachments.find(a => a.id === ref.id)
           if (att) att.status = 'failed'
           driveFailed++
         }
-      }
+        renderAttachmentList()
+      }))
     } else {
       driveRefs.forEach(ref => {
         const att = invoiceAttachments.find(a => a.id === ref.id)
-        if (att) att.status = currentUser ? 'failed' : 'needs-auth'
+        if (att) att.status = (currentUser && gcalAccessToken) ? 'failed' : 'needs-auth'
       })
       driveFailed = driveRefs.length
     }
@@ -3323,7 +3330,7 @@ function initFirebase() {
           if (syncBtn) syncBtn.style.display = ''
         })
         // Auto-sync on sign in, then restore attachments
-        syncTemplates().then(() => restoreAttachments())
+        syncTemplates().then(() => { attachmentRestorePromise = restoreAttachments() })
       } else {
         const syncBtn = document.getElementById('syncBtn')
         if (syncBtn) syncBtn.style.display = 'none'
@@ -4932,6 +4939,15 @@ async function downloadPDF() {
       doc.setTextColor(accRGB.r, accRGB.g, accRGB.b)
       doc.text(`PAGE ${p} OF ${totalPages}`, pageW - margin, pageH - 8, { align: 'right' })
     }
+  }
+
+  // Wait for any in-progress attachment restoration before merging
+  if (attachmentRestorePromise) {
+    try { await attachmentRestorePromise } catch (e) { /* partial failure ok */ }
+  }
+  const stillLoading = invoiceAttachments.filter(a => a.status === 'loading')
+  if (stillLoading.length > 0) {
+    showToast(`${stillLoading.length} attachment(s) still loading — they will be skipped`, 'warning', 4000)
   }
 
   // Merge attachments (if any) and save
